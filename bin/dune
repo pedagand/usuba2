@@ -1,0 +1,4 @@
+(executable
+ (public_name usuba2)
+ (name main)
+ (libraries usuba2))

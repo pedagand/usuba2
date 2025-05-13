@@ -25,9 +25,11 @@ let app = FnIdent.fresh "@app"
 
 (* type tykind = KType | KArrow of { parameters : tykind list; return : tykind } *)
 
+type kind = KindTy of kind list
+
 type ty =
   | TyApp of { name : TyDeclIdent.t; ty_args : ty list }
-  | TyVar of TyIdent.t
+  | TyVarApp of { name : TyIdent.t; ty_args : ty list }
   | TyTuple of { size : int; ty : ty }
   | TyFun of (ty list * ty)
   | TyBool
@@ -49,7 +51,7 @@ type expression =
   | EIndexing of { expression : expression; indexing : indexing }
   | EOp of { op : expression op }
   | EFunctionCall of {
-      fn_name : FnIdent.t;
+      fn_name : (FnIdent.t, TermIdent.t) Either.t;
       ty_args : ty list;
       args : expression list;
     }
@@ -92,23 +94,24 @@ module Pp = struct
   let rec pp_ty format = function
     | TyBool -> Format.fprintf format "bool"
     | TyApp { name; ty_args } ->
-        let pp_ty_args format ty_args =
-          match ty_args with
-          | [] -> ()
-          | (TyFun _ as ty) :: [] -> Format.fprintf format "(%a) " pp_ty ty
-          | ty :: [] -> Format.fprintf format "%a " pp_ty ty
-          | _ :: _ as ty_args -> Format.fprintf format "(%a) " pp_tys ty_args
-        in
         Format.fprintf format "%a%a" pp_ty_args ty_args TyDeclIdent.pp name
     | TyFun (params, ret) ->
         Format.fprintf format "(%a) -> %a" pp_tys params pp_ty ret
-    | TyVar v -> Format.fprintf format "%a" TyIdent.pp v
+    | TyVarApp { name; ty_args } ->
+        Format.fprintf format "%a%a" pp_ty_args ty_args TyIdent.pp name
     | TyTuple { size; ty } -> Format.fprintf format "%a tuple<%u>" pp_ty ty size
 
   and pp_tys format =
     Format.pp_print_list
       ~pp_sep:(fun format () -> Format.pp_print_char format ',')
       pp_ty format
+
+  and pp_ty_args format ty_args =
+    match ty_args with
+    | [] -> ()
+    | (TyFun _ as ty) :: [] -> Format.fprintf format "(%a) " pp_ty ty
+    | ty :: [] -> Format.fprintf format "%a " pp_ty ty
+    | _ :: _ as ty_args -> Format.fprintf format "(%a) " pp_tys ty_args
 
   let pp_op fmt format = function
     | Unot expression -> Format.fprintf format "! %a" fmt expression
@@ -147,7 +150,10 @@ module Pp = struct
             ~pp_sep:(fun format () -> Format.pp_print_char format ',')
             pp_expression
         in
-        Format.fprintf format "%a%a(%a)" FnIdent.pp fn_name pp_ty_args ty_args
+        let pp_either =
+          Format.pp_print_either ~left:FnIdent.pp ~right:TermIdent.pp
+        in
+        Format.fprintf format "%a%a(%a)" pp_either fn_name pp_ty_args ty_args
           pp_expressions args
 
   and pp_expressions format =
@@ -224,7 +230,8 @@ module Ty = struct
   let app name ty_args = TyApp { name; ty_args }
   let tuple size ty = TyTuple { size; ty }
   let fn args ret = TyFun (args, ret)
-  let v id = TyVar id
+  let v name = TyVarApp { name; ty_args = [] }
+  let varapp name ty_args = TyVarApp { name; ty_args }
 end
 
 module Expression = struct
@@ -235,11 +242,20 @@ module Expression = struct
     EIndexing { expression = e; indexing = { name = slice; index } }
 
   let indexing s slice index = e_indexing (EVar s) slice index
-  let fn_call fn_name ty_args args = EFunctionCall { fn_name; ty_args; args }
+
+  let fn_call fn_name ty_args args =
+    EFunctionCall { fn_name = Left fn_name; ty_args; args }
+
+  let term_call fn_name ty_args args =
+    EFunctionCall { fn_name = Right fn_name; ty_args; args }
+
   let ( land ) lhs rhs = EOp { op = BAnd (lhs, rhs) }
   let ( lor ) lhs rhs = EOp { op = BOr (lhs, rhs) }
   let ( lxor ) lhs rhs = EOp { op = BXor (lhs, rhs) }
-  let ( |> ) e fn_name = EFunctionCall { fn_name; ty_args = []; args = [ e ] }
+
+  let ( |> ) e fn_name =
+    EFunctionCall { fn_name = Either.left fn_name; ty_args = []; args = [ e ] }
+
   let lnot expr = EOp { op = Unot expr }
   let v s = EVar s
   let fv s = EFunVar s
@@ -299,7 +315,7 @@ let gift =
        {
          ty_vars = [ alpha ];
          ty_name = row;
-         definition = TyTuple { size = 4; ty = TyVar alpha };
+         definition = TyTuple { size = 4; ty = Ty.v alpha };
        });
     (let alpha = TyIdent.fresh "'a" in
      KnTypedecl
@@ -313,7 +329,7 @@ let gift =
        {
          ty_vars = [ alpha ];
          ty_name = slice;
-         definition = TyTuple { size = 4; ty = TyVar alpha };
+         definition = TyTuple { size = 4; ty = Ty.v alpha };
        });
     KnTypedecl
       {
@@ -327,6 +343,33 @@ let gift =
         ty_name = keys;
         definition = Ty.(tuple 28 @@ app state []);
       };
+    (let alpha = TyIdent.fresh "'a" in
+     let beta = TyIdent.fresh "'b" in
+     let charly = TyIdent.fresh "'c" in
+     let ctrl = TyIdent.fresh "#t" in
+     let ty_alpha = Ty.(v alpha) in
+     let ty_beta = Ty.(v beta) in
+     let ty_charly = Ty.(v charly) in
+     let ty_ctrl_alpha = Ty.(varapp ctrl [ ty_alpha ]) in
+     let ty_ctrl_beta = Ty.(varapp ctrl [ ty_beta ]) in
+     let ty_ctrl_charly = Ty.(varapp ctrl [ ty_charly ]) in
+     let ty_fn = Ty.(fn [ ty_alpha; ty_beta ] ty_charly) in
+     let f = TermIdent.fresh "f" in
+     let xs = TermIdent.fresh "xs" in
+     let ys = TermIdent.fresh "ys" in
+     let statements, expression =
+       Statement.let_plus "x" Expression.(v xs) Expression.[ ("y", v ys) ]
+       @@ fun x ands ->
+       let y = match ands with [] -> assert false | t :: _ -> t in
+       ([], Expression.term_call f [] Expression.[ v x; v y ])
+     in
+     KnFundecl
+       {
+         fn_name = map2;
+         parameters = [ (f, ty_fn); (xs, ty_ctrl_alpha); (ys, ty_ctrl_beta) ];
+         return_type = ty_ctrl_charly;
+         body = { statements; expression };
+       });
     (let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
      let lhs = TermIdent.fresh "lhs" in
@@ -368,9 +411,7 @@ let gift =
      let alpha = TyIdent.fresh "'a" in
      (* let ty_alpha = Ty.(v alpha) in *)
      let ty_slice = Ty.(app slice [ v alpha ]) in
-     let statements, expression =
-       ([], Expression.(fn_call map2 [ ty_slice ] [ fv fxor; v s; v key ]))
-     in
+     let statements, expression = ([], Expression.(v s lxor v key)) in
      KnFundecl
        {
          fn_name = add_round_key;

@@ -25,7 +25,7 @@ let app = FnIdent.fresh "@app"
 
 (* type tykind = KType | KArrow of { parameters : tykind list; return : tykind } *)
 
-type kind = KindTy of kind list
+type tykind = KType | KArrow of { parameters : tykind list; return : tykind }
 
 type ty =
   | TyApp of { name : TyDeclIdent.t; ty_args : ty list }
@@ -79,6 +79,7 @@ type kasumi_type_decl = {
 
 type kasumi_function_decl = {
   fn_name : FnIdent.t;
+  ty_vars : (TyIdent.t * tykind) list;
   parameters : (TermIdent.t * ty) list;
   return_type : ty;
   body : body;
@@ -91,6 +92,16 @@ type kasumi_node =
 type ksm_module = kasumi_node list
 
 module Pp = struct
+  let rec pp_kind format = function
+    | KType -> Format.fprintf format "*"
+    | KArrow { parameters; return } ->
+        let pp_list =
+          Format.pp_print_list
+            ~pp_sep:(fun format () -> Format.pp_print_string format ",")
+            pp_kind
+        in
+        Format.fprintf format "(%a) => %a" pp_list parameters pp_kind return
+
   let rec pp_ty format = function
     | TyBool -> Format.fprintf format "bool"
     | TyApp { name; ty_args } ->
@@ -176,13 +187,30 @@ module Pp = struct
               Format.fprintf format "and+ %a = %a" TermIdent.pp id pp_expression
                 expression)
         in
-        Format.fprintf format "let+ %a = %a%a in" TermIdent.pp variable
+        Format.fprintf format "let+ %a = %a %a in" TermIdent.pp variable
           pp_expression expression pp_ands ands
 
   let pp_function_decl format decl =
-    let { fn_name; parameters; return_type; body = { statements; expression } }
-        =
+    let {
+      fn_name;
+      ty_vars;
+      parameters;
+      return_type;
+      body = { statements; expression };
+    } =
       decl
+    in
+    let pp_tyvars format ty_vars =
+      match ty_vars with
+      | [] -> ()
+      | _ :: _ as ty_vars ->
+          let pp_list =
+            Format.pp_print_list ~pp_sep:(fun format () ->
+                Format.fprintf format ", ")
+            @@ fun format (id, kind) ->
+            Format.fprintf format "%a :: %a" TyIdent.pp id pp_kind kind
+          in
+          Format.fprintf format "%a. " pp_list ty_vars
     in
     let pp_args =
       Format.pp_print_list
@@ -193,10 +221,10 @@ module Pp = struct
     let pp_statements =
       Format.pp_print_list ~pp_sep:Format.pp_print_newline pp_statement
     in
-    Format.fprintf format "def %a(%a) -> %a =%a%a%a%a" FnIdent.pp fn_name
-      pp_args parameters pp_ty return_type Format.pp_print_newline ()
-      pp_statements statements Format.pp_print_newline () pp_expression
-      expression
+    Format.fprintf format "def %a%a(%a) -> %a =%a%a%a%a" pp_tyvars ty_vars
+      FnIdent.pp fn_name pp_args parameters pp_ty return_type
+      Format.pp_print_newline () pp_statements statements
+      Format.pp_print_newline () pp_expression expression
 
   let pp_type_decl format type_decl =
     let { ty_vars; ty_name; definition } = type_decl in
@@ -366,6 +394,13 @@ let gift =
      KnFundecl
        {
          fn_name = map2;
+         ty_vars =
+           [
+             (ctrl, KArrow { parameters = [ KType ]; return = KType });
+             (alpha, KType);
+             (beta, KType);
+             (charly, KType);
+           ];
          parameters = [ (f, ty_fn); (xs, ty_ctrl_alpha); (ys, ty_ctrl_beta) ];
          return_type = ty_ctrl_charly;
          body = { statements; expression };
@@ -377,6 +412,7 @@ let gift =
      KnFundecl
        {
          fn_name = fxor;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (lhs, ty_alpha); (rhs, ty_alpha) ];
          return_type = ty_alpha;
          body = { statements = []; expression = Expression.(v lhs lxor v rhs) };
@@ -402,6 +438,7 @@ let gift =
      KnFundecl
        {
          fn_name = subcells;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (s, ty_slice) ];
          return_type = ty_slice;
          body = { statements; expression };
@@ -415,6 +452,7 @@ let gift =
      KnFundecl
        {
          fn_name = add_round_key;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (s, ty_slice); (key, ty_slice) ];
          return_type = ty_slice;
          body = { statements; expression };
@@ -447,6 +485,7 @@ let gift =
      KnFundecl
        {
          fn_name = transpose;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (state, ty_cols_rows) ];
          return_type = ty_rows_cols;
          body = { statements; expression };
@@ -479,6 +518,7 @@ let gift =
      KnFundecl
        {
          fn_name = reindex_cols_row;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (state, ty_row_cols) ];
          return_type = ty_col_rows;
          body = { statements; expression };
@@ -491,6 +531,7 @@ let gift =
      KnFundecl
        {
          fn_name = row_ror_0;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (rows, ty_rows) ];
          return_type = ty_rows;
          body = { statements; expression };
@@ -507,6 +548,7 @@ let gift =
      KnFundecl
        {
          fn_name = row_ror_1;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (rows, ty_rows) ];
          return_type = ty_rows;
          body = { statements; expression };
@@ -523,6 +565,7 @@ let gift =
      KnFundecl
        {
          fn_name = row_ror_2;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (rows, ty_rows) ];
          return_type = ty_rows;
          body = { statements; expression };
@@ -539,6 +582,7 @@ let gift =
      KnFundecl
        {
          fn_name = row_ror_3;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (rows, ty_rows) ];
          return_type = ty_rows;
          body = { statements; expression };
@@ -556,6 +600,7 @@ let gift =
      KnFundecl
        {
          fn_name = rev_rotate_0;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (cols, ty_cols_rows) ];
          return_type = ty_cols_rows;
          body = { statements; expression };
@@ -573,6 +618,7 @@ let gift =
      KnFundecl
        {
          fn_name = rev_rotate_1;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (cols, ty_cols_rows) ];
          return_type = ty_cols_rows;
          body = { statements; expression };
@@ -590,6 +636,7 @@ let gift =
      KnFundecl
        {
          fn_name = rev_rotate_3;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (cols, ty_cols_rows) ];
          return_type = ty_cols_rows;
          body = { statements; expression };
@@ -607,6 +654,7 @@ let gift =
      KnFundecl
        {
          fn_name = rev_rotate_1;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (cols, ty_cols_rows) ];
          return_type = ty_cols_rows;
          body = { statements; expression };
@@ -623,6 +671,7 @@ let gift =
      KnFundecl
        {
          fn_name = col_reverse;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (cols, ty_col_alpha) ];
          return_type = ty_col_alpha;
          body = { statements; expression };
@@ -643,6 +692,7 @@ let gift =
      KnFundecl
        {
          fn_name = permbits;
+         ty_vars = [ (alpha, KType) ];
          parameters = [];
          return_type = ty_slice;
          body = { statements; expression };
@@ -673,6 +723,7 @@ let gift =
      KnFundecl
        {
          fn_name = round;
+         ty_vars = [ (alpha, KType) ];
          parameters = [ (s, ty_state); (key, ty_state) ];
          return_type = ty_state;
          body = { statements; expression };
@@ -691,6 +742,7 @@ let gift =
      KnFundecl
        {
          fn_name = gift;
+         ty_vars = [];
          parameters = [ (vstate, ty_state); (vkeys, ty_keys) ];
          return_type = ty_state;
          body = { statements = []; expression };

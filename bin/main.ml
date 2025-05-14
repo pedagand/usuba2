@@ -1,1 +1,1 @@
-let () = Format.printf "%a" Usuba2.Gift.Pp.pp_module Usuba2.Gift.gift
+let () = Format.printf "%a" Usuba2.Pp.pp_module Usuba2.Gift.gift

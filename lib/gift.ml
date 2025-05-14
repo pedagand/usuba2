@@ -4,7 +4,10 @@ module Ty = struct
   let bool = TyBool
   let app name ty_args = TyApp { name; ty_args }
   let tuple size ty = TyTuple { size; ty }
-  let fn args ret = TyFun (args, ret)
+
+  let fn ty_vars parameters return_type =
+    TyFun { ty_vars; parameters; return_type }
+
   let v name = TyVarApp { name; ty_args = [] }
   let varapp name ty_args = TyVarApp { name; ty_args }
 end
@@ -128,7 +131,9 @@ let gift =
      let ty_ctrl_alpha = Ty.(varapp ctrl [ ty_alpha ]) in
      let ty_ctrl_beta = Ty.(varapp ctrl [ ty_beta ]) in
      let ty_ctrl_charly = Ty.(varapp ctrl [ ty_charly ]) in
-     let ty_fn = Ty.(fn [ ty_alpha; ty_beta ] ty_charly) in
+     let ty_fn =
+       Ty.(fn [ alpha; beta; charly ] [ ty_alpha; ty_beta ] ty_charly)
+     in
      let f = TermIdent.fresh "f" in
      let xs = TermIdent.fresh "xs" in
      let ys = TermIdent.fresh "ys" in
@@ -426,7 +431,9 @@ let gift =
     (let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
      let ty_cols_rows = Ty.(app col [ app row [ ty_alpha ] ]) in
-     let ty_fn_row_cols__row_cols = Ty.(fn [ ty_cols_rows ] ty_cols_rows) in
+     let ty_fn_row_cols__row_cols =
+       Ty.(fn [ alpha ] [ ty_cols_rows ] ty_cols_rows)
+     in
      let ty_slice = Ty.(app slice [ ty_fn_row_cols__row_cols ]) in
      let statements, expression =
        Statement.cstr "slice" ty_slice
@@ -451,7 +458,9 @@ let gift =
      let _ty_slice = Ty.(app slice [ v alpha ]) in
      let ty_state = Ty.(app state []) in
      let ty_cols_rows = Ty.(app col [ app row [ ty_alpha ] ]) in
-     let ty_fn_row_cols__row_cols = Ty.(fn [ ty_cols_rows ] ty_cols_rows) in
+     let ty_fn_row_cols__row_cols =
+       Ty.(fn [ alpha ] [ ty_cols_rows ] ty_cols_rows)
+     in
      let ty_slice = Ty.(app slice [ ty_fn_row_cols__row_cols ]) in
      let statements, expression =
        Statement.cstr "permbits" ty_slice

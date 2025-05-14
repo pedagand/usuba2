@@ -28,11 +28,17 @@ let app = FnIdent.fresh "@app"
 
 type tykind = KType | KArrow of { parameters : tykind list; return : tykind }
 
-type ty =
+type signature = {
+  ty_vars : TyIdent.t list;
+  parameters : ty list;
+  return_type : ty;
+}
+
+and ty =
   | TyApp of { name : TyDeclIdent.t; ty_args : ty list }
   | TyVarApp of { name : TyIdent.t; ty_args : ty list }
   | TyTuple of { size : int; ty : ty }
-  | TyFun of (ty list * ty)
+  | TyFun of signature
   | TyBool
 
 type indexing = { name : TyDeclIdent.t; index : int }

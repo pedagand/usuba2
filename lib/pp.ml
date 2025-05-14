@@ -10,12 +10,36 @@ let rec pp_kind format = function
       in
       Format.fprintf format "(%a) => %a" pp_list parameters pp_kind return
 
+let pp_tyvars format ty_vars =
+  match ty_vars with
+  | [] -> ()
+  | _ :: _ as ty_vars ->
+      let pp_list =
+        Format.pp_print_list ~pp_sep:(fun format () ->
+            Format.fprintf format ", ")
+        @@ fun format (id, kind) ->
+        Format.fprintf format "%a :: %a" TyIdent.pp id pp_kind kind
+      in
+      Format.fprintf format "%a. " pp_list ty_vars
+
+let pp_tyvars' format ty_vars =
+  match ty_vars with
+  | [] -> ()
+  | _ :: _ as ty_vars ->
+      let pp_list =
+        Format.pp_print_list
+          ~pp_sep:(fun format () -> Format.fprintf format ", ")
+          TyIdent.pp
+      in
+      Format.fprintf format "%a. " pp_list ty_vars
+
 let rec pp_ty format = function
   | TyBool -> Format.fprintf format "bool"
   | TyApp { name; ty_args } ->
       Format.fprintf format "%a%a" pp_ty_args ty_args TyDeclIdent.pp name
-  | TyFun (params, ret) ->
-      Format.fprintf format "(%a) -> %a" pp_tys params pp_ty ret
+  | TyFun { ty_vars; parameters; return_type } ->
+      Format.fprintf format "%a(%a) -> %a" pp_tyvars' ty_vars pp_tys parameters
+        pp_ty return_type
   | TyVarApp { name; ty_args } ->
       Format.fprintf format "%a%a" pp_ty_args ty_args TyIdent.pp name
   | TyTuple { size; ty } -> Format.fprintf format "%a tuple<%u>" pp_ty ty size
@@ -107,18 +131,6 @@ let pp_function_decl format decl =
     body = { statements; expression };
   } =
     decl
-  in
-  let pp_tyvars format ty_vars =
-    match ty_vars with
-    | [] -> ()
-    | _ :: _ as ty_vars ->
-        let pp_list =
-          Format.pp_print_list ~pp_sep:(fun format () ->
-              Format.fprintf format ", ")
-          @@ fun format (id, kind) ->
-          Format.fprintf format "%a :: %a" TyIdent.pp id pp_kind kind
-        in
-        Format.fprintf format "%a. " pp_list ty_vars
   in
   let pp_args =
     Format.pp_print_list

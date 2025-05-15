@@ -46,6 +46,8 @@ module Types = Map.Make (Ast.TyDeclIdent)
 module Functions = Map.Make (Ast.FnIdent)
 module Variables = Map.Make (Ast.TermIdent)
 
+let err fmt = Printf.ksprintf failwith fmt
+
 module Env = struct
   type t = {
     type_decls : Ast.ty Types.t;
@@ -59,6 +61,8 @@ module Env = struct
       fn_decls = Functions.empty;
       variables = Variables.empty;
     }
+
+  let ty_canon tydecl env = Types.find tydecl env.type_decls
 
   let rec canonical_type ty env =
     match ty with
@@ -114,7 +118,31 @@ let rec eval_expression env =
       let args = List.map (fst $ eval_expression env) args in
       eval env fn_decl ty_args args
   | EOp op -> eval_op env op
-  | EIndexing _ -> failwith ""
+  | EIndexing { expression; indexing = { name; index } } ->
+      let value, ty = eval_expression env expression in
+      let ty' = Env.ty_canon name env in
+      let () = assert (ty = ty') in
+      let size, _ty' =
+        match ty' with
+        | TyTuple { size; ty } -> (size, ty)
+        | TyFun _ | TyBool | TyApp _ | TyVarApp _ -> err "non-indexable type"
+      in
+      let () =
+        if index < 0 || index >= size then
+          err "invalid index : %d outside of 0-%d" index size
+      in
+      let value =
+        match value with
+        | Varray values -> Array.get values index
+        | VBool _ | VFunction _ -> assert false
+      in
+      let ty =
+        match ty with
+        | TyTuple { ty; size = _ } | TyApp { ty_args = ty :: _; name = _ } -> ty
+        | TyApp { ty_args = []; name = _ } | TyFun _ | TyVarApp _ | TyBool ->
+            assert false
+      in
+      (value, ty)
 
 and eval_builin env ty_args args = function
   | Ast.BCirc -> failwith ""
@@ -123,14 +151,14 @@ and eval_builin env ty_args args = function
       let ty =
         match ty_args with
         | t :: [] -> t
-        | [] -> failwith "@pure : missing type args"
-        | _ :: _ :: _ -> failwith "@pure : too many ty args"
+        | [] -> err "@pure : missing type args"
+        | _ :: _ :: _ -> err "@pure : too many ty args"
       in
       let arg =
         match args with
         | t :: [] -> t
-        | [] -> failwith "@pure : missing arg"
-        | _ :: _ :: _ -> failwith "@pure : too many args"
+        | [] -> err "@pure : missing arg"
+        | _ :: _ :: _ -> err "@pure : too many args"
       in
       let value, _vty = eval_expression env arg in
       let ty = Env.canonical_type ty env in
@@ -160,7 +188,33 @@ and eval_statement env = function
   | Ast.StDeclaration { variable; expression } ->
       let value_ty = eval_expression env expression in
       Env.add_binding variable value_ty env
-  | StConstructor { variable = _; ty = _; expressions = _ } -> failwith ""
+  | StConstructor { variable; ty; expressions } -> (
+      let ty' = Env.canonical_type ty env in
+      match ty' with
+      | Ast.TyTuple { size; ty } ->
+          let () = assert (List.compare_length_with expressions size = 0) in
+          let values =
+            List.map
+              (fun expression ->
+                let value, vty = eval_expression env expression in
+                let vty = Env.canonical_type vty env in
+                let () = assert (vty = ty) in
+                value)
+              expressions
+          in
+          let array = Array.of_list values in
+          let value = Value.Varray array in
+          Env.add_binding variable (value, ty) env
+      | TyBool -> (
+          match expressions with
+          | t :: [] ->
+              let value, t = eval_expression env t in
+              let () = assert (t = TyBool) in
+              Env.add_binding variable (value, t) env
+          | [] -> err "cstr(bool): missing args"
+          | _ :: _ :: _ -> err "cstr(boo): too many args: expects 1")
+      | TyFun _s -> failwith ""
+      | TyVarApp _ | TyApp _ -> assert false)
   | SLetPLus { variable = _; expression = _; ands = _ } -> failwith ""
 
 and eval env (fn_decl : Ast.kasumi_function_decl) _ty_args args =

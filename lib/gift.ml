@@ -20,6 +20,7 @@ module Expression = struct
     EIndexing { expression = e; indexing = { name = slice; index } }
 
   let indexing s slice index = e_indexing (EVar s) slice index
+  let builin_call builtin ty_args args = EBuiltinCall { builtin; ty_args; args }
 
   let fn_call fn_name ty_args args =
     EFunctionCall { fn_name = Left fn_name; ty_args; args }
@@ -27,14 +28,14 @@ module Expression = struct
   let term_call fn_name ty_args args =
     EFunctionCall { fn_name = Right fn_name; ty_args; args }
 
-  let ( land ) lhs rhs = EOp { op = BAnd (lhs, rhs) }
-  let ( lor ) lhs rhs = EOp { op = BOr (lhs, rhs) }
-  let ( lxor ) lhs rhs = EOp { op = BXor (lhs, rhs) }
+  let ( land ) lhs rhs = EOp (BAnd (lhs, rhs))
+  let ( lor ) lhs rhs = EOp (BOr (lhs, rhs))
+  let ( lxor ) lhs rhs = EOp (BXor (lhs, rhs))
 
   let ( |> ) e fn_name =
     EFunctionCall { fn_name = Either.left fn_name; ty_args = []; args = [ e ] }
 
-  let lnot expr = EOp { op = Unot expr }
+  let lnot expr = EOp (Unot expr)
   let v s = EVar s
   let fv s = EFunVar s
   let vars idents = List.map v idents
@@ -65,6 +66,8 @@ module Statement = struct
 end
 
 let gift =
+  let app = FnIdent.fresh "app" in
+  let map2 = FnIdent.fresh "map2" in
   let row = TyDeclIdent.fresh "row" in
   let col = TyDeclIdent.fresh "col" in
   let keys = TyDeclIdent.fresh "keys" in
@@ -123,6 +126,36 @@ let gift =
       };
     (let alpha = TyIdent.fresh "'a" in
      let beta = TyIdent.fresh "'b" in
+     let ctrl = TyIdent.fresh "#t" in
+     let ty_alpha = Ty.(v alpha) in
+     let ty_beta = Ty.(v beta) in
+     let ty_fn = Ty.(fn [] [ ty_alpha ] ty_beta) in
+     let ty_ctrl_fn = Ty.(varapp ctrl [ ty_fn ]) in
+     let ty_ctrl_alpha = Ty.(varapp ctrl [ ty_alpha ]) in
+     let ty_ctrl_beta = Ty.(varapp ctrl [ ty_beta ]) in
+     let fs = TermIdent.fresh "fs" in
+     let xs = TermIdent.fresh "xs" in
+     let statements, expression =
+       Statement.let_plus "f" Expression.(v fs) Expression.[ ("x", v xs) ]
+       @@ fun f ands ->
+       let x = match ands with [] -> assert false | x :: _ -> x in
+       ([], Expression.(term_call f [] [ v x ]))
+     in
+     KnFundecl
+       {
+         fn_name = app;
+         ty_vars =
+           [
+             (ctrl, KArrow { parameters = [ KType ]; return = KType });
+             (alpha, KType);
+             (beta, KType);
+           ];
+         parameters = [ (fs, ty_ctrl_fn); (xs, ty_ctrl_alpha) ];
+         return_type = ty_ctrl_beta;
+         body = { statements; expression };
+       });
+    (let alpha = TyIdent.fresh "'a" in
+     let beta = TyIdent.fresh "'b" in
      let charly = TyIdent.fresh "'c" in
      let ctrl = TyIdent.fresh "#t" in
      let ty_alpha = Ty.(v alpha) in
@@ -131,9 +164,7 @@ let gift =
      let ty_ctrl_alpha = Ty.(varapp ctrl [ ty_alpha ]) in
      let ty_ctrl_beta = Ty.(varapp ctrl [ ty_beta ]) in
      let ty_ctrl_charly = Ty.(varapp ctrl [ ty_charly ]) in
-     let ty_fn =
-       Ty.(fn [ alpha; beta; charly ] [ ty_alpha; ty_beta ] ty_charly)
-     in
+     let ty_fn = Ty.(fn [] [ ty_alpha; ty_beta ] ty_charly) in
      let f = TermIdent.fresh "f" in
      let xs = TermIdent.fresh "xs" in
      let ys = TermIdent.fresh "ys" in
@@ -431,9 +462,7 @@ let gift =
     (let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
      let ty_cols_rows = Ty.(app col [ app row [ ty_alpha ] ]) in
-     let ty_fn_row_cols__row_cols =
-       Ty.(fn [ alpha ] [ ty_cols_rows ] ty_cols_rows)
-     in
+     let ty_fn_row_cols__row_cols = Ty.(fn [] [ ty_cols_rows ] ty_cols_rows) in
      let ty_slice = Ty.(app slice [ ty_fn_row_cols__row_cols ]) in
      let statements, expression =
        Statement.cstr "slice" ty_slice
@@ -458,9 +487,7 @@ let gift =
      let _ty_slice = Ty.(app slice [ v alpha ]) in
      let ty_state = Ty.(app state []) in
      let ty_cols_rows = Ty.(app col [ app row [ ty_alpha ] ]) in
-     let ty_fn_row_cols__row_cols =
-       Ty.(fn [ alpha ] [ ty_cols_rows ] ty_cols_rows)
-     in
+     let ty_fn_row_cols__row_cols = Ty.(fn [] [ ty_cols_rows ] ty_cols_rows) in
      let ty_slice = Ty.(app slice [ ty_fn_row_cols__row_cols ]) in
      let statements, expression =
        Statement.cstr "permbits" ty_slice

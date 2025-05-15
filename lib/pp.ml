@@ -1,5 +1,10 @@
 open Ast
 
+let pp_builtin format = function
+  | BCirc -> Format.fprintf format "@circ"
+  | BAntiCirc -> Format.fprintf format "@anti_circ"
+  | BPure -> Format.fprintf format "@pure"
+
 let rec pp_kind format = function
   | KType -> Format.fprintf format "*"
   | KArrow { parameters; return } ->
@@ -58,7 +63,6 @@ and pp_ty_args format ty_args =
 
 let pp_op fmt format = function
   | Unot expression -> Format.fprintf format "! %a" fmt expression
-  | Uneg expression -> Format.fprintf format "- %a" fmt expression
   | BAnd (lhs, rhs) -> Format.fprintf format "%a and (%a)" fmt lhs fmt rhs
   | BOr (lhs, rhs) -> Format.fprintf format "%a or (%a)" fmt lhs fmt rhs
   | BXor (lhs, rhs) -> Format.fprintf format "%a xor (%a)" fmt lhs fmt rhs
@@ -75,24 +79,11 @@ let rec pp_expression format = function
   | EIndexing { expression; indexing } ->
       Format.fprintf format "%a[%a]" pp_expression expression pp_indexing
         indexing
-  | EOp { op } -> pp_op pp_expression format op
+  | EOp op -> pp_op pp_expression format op
+  | EBuiltinCall { builtin; ty_args; args } ->
+      Format.fprintf format "%a%a(%a)" pp_builtin builtin pp_ty_args ty_args
+        pp_expressions args
   | EFunctionCall { fn_name; ty_args; args } ->
-      let pp_ty_args format ty_args =
-        match ty_args with
-        | [] -> ()
-        | _ :: _ as ty_args ->
-            let pp_list =
-              Format.pp_print_list
-                ~pp_sep:(fun format () -> Format.pp_print_char format ',')
-                pp_ty
-            in
-            Format.fprintf format "[%a] " pp_list ty_args
-      in
-      let pp_expressions =
-        Format.pp_print_list
-          ~pp_sep:(fun format () -> Format.pp_print_char format ',')
-          pp_expression
-      in
       let pp_either =
         Format.pp_print_either ~left:FnIdent.pp ~right:TermIdent.pp
       in

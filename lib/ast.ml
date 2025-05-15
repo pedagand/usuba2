@@ -17,16 +17,17 @@ module TyDeclIdent = Ident ()
 module TermIdent = Ident ()
 module FnIdent = Ident ()
 
-let circ = FnIdent.fresh "@circ"
+(*let circ = FnIdent.fresh "@circ"
 let anti_circ = FnIdent.fresh "@anti_circ"
 let map2 = FnIdent.fresh "@map2"
 let pure = FnIdent.fresh "@pure"
-let app = FnIdent.fresh "@app"
+let app = FnIdent.fresh "@app"*)
 (* type 'a = 'a Util.Position.loc *)
 
 (* type tykind = KType | KArrow of { parameters : tykind list; return : tykind } *)
 
 type tykind = KType | KArrow of { parameters : tykind list; return : tykind }
+type builtin = BCirc | BAntiCirc | BPure
 
 type signature = {
   ty_vars : TyIdent.t list;
@@ -45,7 +46,6 @@ type indexing = { name : TyDeclIdent.t; index : int }
 
 type 'a op =
   | Unot of 'a
-  | Uneg of 'a
   | BAnd of ('a * 'a)
   | BOr of ('a * 'a)
   | BXor of ('a * 'a)
@@ -56,7 +56,12 @@ type expression =
   | EVar of TermIdent.t
   | EFunVar of FnIdent.t
   | EIndexing of { expression : expression; indexing : indexing }
-  | EOp of { op : expression op }
+  | EOp of expression op
+  | EBuiltinCall of {
+      builtin : builtin;
+      ty_args : ty list;
+      args : expression list;
+    }
   | EFunctionCall of {
       fn_name : (FnIdent.t, TermIdent.t) Either.t;
       ty_args : ty list;

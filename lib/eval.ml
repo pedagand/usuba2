@@ -27,6 +27,19 @@ module Value = struct
   let as_function = function
     | VFunction fn_ident -> Some fn_ident
     | VBool _ | Varray _ -> None
+
+  let rec make_pure_nested ty value =
+    match ty with
+    | Ast.TyTuple { size; ty } ->
+        Varray (Array.init size (fun _ -> make_pure_nested ty value))
+    | Ast.TyBool | TyFun _ -> value
+    | Ast.TyApp _ | TyVarApp _ -> assert false
+
+  let make_pure ty value =
+    match ty with
+    | Ast.TyTuple { size; ty = _ } -> Varray (Array.init size (Fun.const value))
+    | Ast.TyBool | TyFun _ -> value
+    | Ast.TyApp _ | TyVarApp _ -> assert false
 end
 
 module Types = Map.Make (Ast.TyDeclIdent)
@@ -46,6 +59,15 @@ module Env = struct
       fn_decls = Functions.empty;
       variables = Variables.empty;
     }
+
+  let rec canonical_type ty env =
+    match ty with
+    | Ast.TyApp { name; ty_args = _ } ->
+        canonical_type (Types.find name env.type_decls) env
+    | TyTuple { size; ty } ->
+        let ty = canonical_type ty env in
+        Ast.TyTuple { size; ty }
+    | (TyVarApp _ | TyFun _ | TyBool) as ty -> ty
 
   let add_binding term variable env =
     let variables = Variables.add term variable env.variables in
@@ -78,7 +100,9 @@ let rec eval_expression env =
   | EFalse -> (Value.false', Ast.TyBool)
   | EVar term -> Env.value term env
   | EFunVar fn -> Env.function' fn env
-  | EFunctionCall { fn_name; ty_args = _; args } ->
+  | EBuiltinCall { builtin; ty_args; args } ->
+      eval_builin env ty_args args builtin
+  | EFunctionCall { fn_name; ty_args; args } ->
       let fn_ident =
         match fn_name with
         | Either.Left fn -> fn
@@ -88,9 +112,49 @@ let rec eval_expression env =
       in
       let fn_decl = Env.function_decl fn_ident env in
       let args = List.map (fst $ eval_expression env) args in
-      eval env fn_decl args
+      eval env fn_decl ty_args args
+  | EOp op -> eval_op env op
   | EIndexing _ -> failwith ""
-  | EOp _ -> failwith ""
+
+and eval_builin env ty_args args = function
+  | Ast.BCirc -> failwith ""
+  | BAntiCirc -> failwith ""
+  | BPure ->
+      let ty =
+        match ty_args with
+        | t :: [] -> t
+        | [] -> failwith "@pure : missing type args"
+        | _ :: _ :: _ -> failwith "@pure : too many ty args"
+      in
+      let arg =
+        match args with
+        | t :: [] -> t
+        | [] -> failwith "@pure : missing arg"
+        | _ :: _ :: _ -> failwith "@pure : too many args"
+      in
+      let value, _vty = eval_expression env arg in
+      let ty = Env.canonical_type ty env in
+      (Value.make_pure_nested ty value, ty)
+
+and eval_op env = function
+  | Ast.Unot expr ->
+      let value, ty = eval_expression env expr in
+      (Value.map not value, ty)
+  | BAnd (lhs, rhs) ->
+      let lvalue, lty = eval_expression env lhs in
+      let rvalue, rty = eval_expression env rhs in
+      let () = assert (lty = rty) in
+      (Value.map2 ( && ) lvalue rvalue, lty)
+  | BOr (lhs, rhs) ->
+      let lvalue, lty = eval_expression env lhs in
+      let rvalue, rty = eval_expression env rhs in
+      let () = assert (lty = rty) in
+      (Value.map2 ( || ) lvalue rvalue, lty)
+  | BXor (lhs, rhs) ->
+      let lvalue, lty = eval_expression env lhs in
+      let rvalue, rty = eval_expression env rhs in
+      let () = assert (lty = rty) in
+      (Value.map2 ( <> ) lvalue rvalue, lty)
 
 and eval_statement env = function
   | Ast.StDeclaration { variable; expression } ->
@@ -99,7 +163,7 @@ and eval_statement env = function
   | StConstructor { variable = _; ty = _; expressions = _ } -> failwith ""
   | SLetPLus { variable = _; expression = _; ands = _ } -> failwith ""
 
-and eval env (fn_decl : Ast.kasumi_function_decl) args =
+and eval env (fn_decl : Ast.kasumi_function_decl) _ty_args args =
   let Ast.
         {
           fn_name = _;
@@ -136,11 +200,11 @@ let add_typedecl env (type_decl : Ast.kasumi_type_decl) =
   in
   { env with type_decls = Types.add type_decl.ty_name ty env.type_decls }
 
-let eval_node fn_name args env = function
+let eval_node fn_name ty_args args env = function
   | Ast.KnFundecl function_decl -> (
       match Ast.FnIdent.equal fn_name function_decl.fn_name with
       | true ->
-          let value = eval env function_decl args in
+          let value = eval env function_decl ty_args args in
           Either.right value
       | false ->
           let env = add_fndecl env function_decl in
@@ -149,5 +213,7 @@ let eval_node fn_name args env = function
       let env = add_typedecl env type_decl in
       Either.left env
 
-let eval ast fn_name args =
-  ast |> find_fold_map (eval_node fn_name args) Env.empty |> Either.find_right
+let eval ast fn_name ty_args args =
+  ast
+  |> find_fold_map (eval_node fn_name ty_args args) Env.empty
+  |> Either.find_right

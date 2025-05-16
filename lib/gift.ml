@@ -36,6 +36,24 @@ module Expression = struct
   let ( |> ) e fn_name =
     EFunctionCall { fn_name = Either.left fn_name; ty_args = []; args = [ e ] }
 
+  let let_plus variable expression ands k =
+    let variable = TermIdent.fresh variable in
+    let ands =
+      List.map
+        (fun (variable, expression) ->
+          let variable = TermIdent.fresh variable in
+          (variable, expression))
+        ands
+    in
+    let statements, expression' = k variable (List.map fst ands) in
+    SLetPLus
+      {
+        variable;
+        expression;
+        ands;
+        body = { statements; expression = expression' };
+      }
+
   let lnot expr = EOp (Unot expr)
   let v s = EVar s
   let fv s = EFunVar s
@@ -52,18 +70,6 @@ module Statement = struct
     let variable = TermIdent.fresh variable in
     let statements, finale = k variable in
     (StConstructor { variable; ty; expressions } :: statements, finale)
-
-  let let_plus variable expression ands k =
-    let variable = TermIdent.fresh variable in
-    let ands =
-      List.map
-        (fun (variable, expression) ->
-          let variable = TermIdent.fresh variable in
-          (variable, expression))
-        ands
-    in
-    let statements, final = k variable (List.map fst ands) in
-    (SLetPLus { variable; expression; ands } :: statements, final)
 end
 
 let gift =
@@ -132,8 +138,8 @@ let gift =
      let ty_ctrl_beta = Ty.(varapp ctrl ty_beta) in
      let fs = TermIdent.fresh "fs" in
      let xs = TermIdent.fresh "xs" in
-     let statements, expression =
-       Statement.let_plus "f" Expression.(v fs) Expression.[ ("x", v xs) ]
+     let expression =
+       Expression.let_plus "f" Expression.(v fs) Expression.[ ("x", v xs) ]
        @@ fun f ands ->
        let x = match ands with [] -> assert false | x :: _ -> x in
        ([], Expression.(term_call f [] [ v x ]))
@@ -145,7 +151,7 @@ let gift =
            [ (ctrl, KArrow (KType, KType)); (alpha, KType); (beta, KType) ];
          parameters = [ (fs, ty_ctrl_fn); (xs, ty_ctrl_alpha) ];
          return_type = ty_ctrl_beta;
-         body = { statements; expression };
+         body = { statements = []; expression };
        });
     (let alpha = TyIdent.fresh "'a" in
      let beta = TyIdent.fresh "'b" in
@@ -161,8 +167,8 @@ let gift =
      let f = TermIdent.fresh "f" in
      let xs = TermIdent.fresh "xs" in
      let ys = TermIdent.fresh "ys" in
-     let statements, expression =
-       Statement.let_plus "x" Expression.(v xs) Expression.[ ("y", v ys) ]
+     let expression =
+       Expression.let_plus "x" Expression.(v xs) Expression.[ ("y", v ys) ]
        @@ fun x ands ->
        let y = match ands with [] -> assert false | t :: _ -> t in
        ([], Expression.term_call f [] Expression.[ v x; v y ])
@@ -179,7 +185,7 @@ let gift =
            ];
          parameters = [ (f, ty_fn); (xs, ty_ctrl_alpha); (ys, ty_ctrl_beta) ];
          return_type = ty_ctrl_charly;
-         body = { statements; expression };
+         body = { statements = []; expression };
        });
     (let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in

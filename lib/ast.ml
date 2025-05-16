@@ -62,26 +62,27 @@ type expression =
       ty_args : ty list;
       args : expression list;
     }
+  | SLetPLus of {
+      variable : TermIdent.t;
+      expression : expression;
+      ands : (TermIdent.t * expression) list;
+      body : body;
+    }
   | EFunctionCall of {
       fn_name : (FnIdent.t, TermIdent.t) Either.t;
       ty_args : ty list;
       args : expression list;
     }
 
-type statement =
+and statement =
   | StDeclaration of { variable : TermIdent.t; expression : expression }
   | StConstructor of {
       variable : TermIdent.t;
       ty : ty;
       expressions : expression list;
     }
-  | SLetPLus of {
-      variable : TermIdent.t;
-      expression : expression;
-      ands : (TermIdent.t * expression) list;
-    }
 
-type body = { statements : statement list; expression : expression }
+and body = { statements : statement list; expression : expression }
 
 type kasumi_type_decl = {
   ty_vars : TyIdent.t list;

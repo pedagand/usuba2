@@ -6,6 +6,23 @@ let rec find_fold_map f acc = function
       | Either.Left acc -> find_fold_map f acc q
       | Right _ as r -> r)
 
+let rec mapn f lists =
+  let args, lists =
+    List.split
+    @@ List.filter_map (function [] -> None | t :: q -> Some (t, q)) lists
+  in
+  match args with [] -> [] | args -> f args :: mapn f lists
+
+let mapn f lists =
+  match lists with
+  | [] -> []
+  | t :: q ->
+      let l = List.length t in
+      let () =
+        assert (List.for_all (fun list -> List.compare_length_with list l = 0) q)
+      in
+      mapn f lists
+
 let err fmt = Printf.ksprintf failwith fmt
 
 module Value = struct
@@ -24,6 +41,11 @@ module Value = struct
   let rec map f = function
     | VBool b -> VBool (f b)
     | Varray a -> Varray (Array.map (map f) a)
+    | VFunction _ -> assert false
+
+  let get i = function
+    | Varray array -> array.(i)
+    | VBool _ as v -> if i = 0 then v else assert false
     | VFunction _ -> assert false
 
   let as_function = function
@@ -49,6 +71,13 @@ module Functions = Map.Make (Ast.FnIdent)
 module Variables = Map.Make (Ast.TermIdent)
 
 module Ty = struct
+  let substitute ty = function
+    | Ast.TyVarApp { name; ty_args = _ } ->
+        Ast.TyVarApp { name; ty_args = Some ty }
+    | TyApp { name; ty_args = _ } -> TyApp { name; ty_args = Some ty }
+    | TyTuple { size; ty } -> TyTuple { size; ty }
+    | TyFun _ | TyBool -> assert false
+
   let rec instanciate map = function
     | Ast.TyVarApp { name; ty_args = Some ty } -> (
         let ty_args = instanciate map ty in
@@ -99,6 +128,16 @@ module Ty = struct
         let ty = instanciate map ty in
         TyTuple { size; ty }
     | (TyApp { name = _; ty_args = None } | TyBool) as ty -> ty
+
+  let ty_nested = function
+    | Ast.TyApp { ty_args = Some ty; name = _ }
+    | TyVarApp { ty_args = Some ty; name = _ }
+    | TyTuple { ty; size = _ } ->
+        Some ty
+    | TyApp { ty_args = None; name = _ }
+    | TyVarApp { ty_args = None; name = _ }
+    | TyFun _ | TyBool ->
+        None
 end
 
 module Env = struct
@@ -138,6 +177,14 @@ module Env = struct
     | Ast.TyTuple _ -> 1
     | TyFun _ | TyBool -> 0
 
+  let size ty env =
+    let ty = canonical_type ty env in
+    match ty with
+    | Ast.TyTuple { size; _ } -> size
+    | TyBool -> 1
+    | Ast.TyFun _ -> 0
+    | Ast.TyApp _ | TyVarApp _ -> assert false
+
   let partially_applied ty env =
     let arity = ty_arity ty env in
     match ty with
@@ -150,6 +197,8 @@ module Env = struct
   let add_binding term variable env =
     let variables = Variables.add term variable env.variables in
     { env with variables }
+
+  let clear_variables env = { env with variables = Variables.empty }
 
   let signature_of_function_decl (function_decl : Ast.kasumi_function_decl) =
     Ast.
@@ -192,6 +241,38 @@ let rec eval_expression env =
       let args = List.map (fst $ eval_expression env) args in
       eval env fn_decl ty_args args
   | EOp op -> eval_op env op
+  | SLetPLus { variable; expression; ands; body } ->
+      let ((_, ty) as valuet) = eval_expression' env expression in
+      let ands =
+        List.map
+          (fun (term, expression) -> (term, eval_expression' env expression))
+          ands
+      in
+      let () =
+        match List.for_all (fun (_, (_, t)) -> ty = t) ands with
+        | true -> ()
+        | false -> err "@eval: let_plus not same type"
+      in
+      let args = (variable, valuet) :: ands in
+      let nty = Option.get @@ Ty.ty_nested ty in
+      let size = Env.size ty env in
+      let array =
+        Array.init size (fun index ->
+            let env = Env.clear_variables env in
+            let env =
+              List.fold_left
+                (fun env (ident, (value, _)) ->
+                  let value = Value.get index value in
+                  Env.add_binding ident (value, nty) env)
+                env args
+            in
+            eval_body env body)
+      in
+      let values, types = Array.split array in
+      let value = Value.Varray values in
+      let ty_value = Array.get types 0 in
+      let ty = Ty.substitute ty_value ty in
+      (value, ty)
   | EIndexing { expression; indexing = { name; index } } ->
       let value, ty = eval_expression env expression in
       let ty' = Env.ty_canon name env in
@@ -217,6 +298,11 @@ let rec eval_expression env =
             assert false
       in
       (value, ty)
+
+and eval_expression' env expression' =
+  let value, ty = eval_expression env expression' in
+  let ty = Env.instanciate ty env in
+  (value, ty)
 
 and eval_builin env ty_args args = function
   | Ast.BCirc -> failwith ""
@@ -289,17 +375,14 @@ and eval_statement env = function
           | _ :: _ :: _ -> err "cstr(boo): too many args: expects 1")
       | TyFun _s -> failwith ""
       | TyVarApp _ | TyApp _ -> assert false)
-  | SLetPLus { variable = _; expression = _; ands = _ } -> failwith ""
+
+and eval_body env body =
+  let Ast.{ statements; expression } = body in
+  let env = List.fold_left eval_statement env statements in
+  eval_expression env expression
 
 and eval env (fn_decl : Ast.kasumi_function_decl) ty_args args =
-  let Ast.
-        {
-          fn_name = _;
-          ty_vars;
-          parameters;
-          return_type = _;
-          body = { statements; expression };
-        } =
+  let Ast.{ fn_name = _; ty_vars; parameters; return_type = _; body } =
     fn_decl
   in
   let type_instances =
@@ -322,8 +405,7 @@ and eval env (fn_decl : Ast.kasumi_function_decl) ty_args args =
       Variables.empty parameters args
   in
   let env = Env.{ env with variables } in
-  let env = List.fold_left eval_statement env statements in
-  eval_expression env expression
+  eval_body env body
 
 let add_fndecl env (fn_decl : Ast.kasumi_function_decl) =
   Env.

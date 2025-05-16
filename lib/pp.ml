@@ -90,20 +90,13 @@ let rec pp_expression format = function
       in
       Format.fprintf format "%a%a(%a)" pp_either fn_name pp_ty_args ty_args
         pp_expressions args
-
-and pp_expressions format =
-  Format.pp_print_list
-    ~pp_sep:(fun format () -> Format.pp_print_char format ',')
-    pp_expression format
-
-let pp_statement format = function
-  | StDeclaration { variable; expression } ->
-      Format.fprintf format "let %a = %a in" TermIdent.pp variable pp_expression
-        expression
-  | StConstructor { variable; ty; expressions } ->
-      Format.fprintf format "let %a = %a {%a} in" TermIdent.pp variable pp_ty ty
-        pp_expressions expressions
-  | SLetPLus { variable; expression; ands } ->
+  | SLetPLus
+      {
+        variable;
+        expression;
+        ands;
+        body = { statements; expression = expression' };
+      } ->
       let pp_ands =
         Format.pp_print_list
           ~pp_sep:(fun format () -> Format.pp_print_string format ", ")
@@ -111,8 +104,26 @@ let pp_statement format = function
             Format.fprintf format "and+ %a = %a" TermIdent.pp id pp_expression
               expression)
       in
-      Format.fprintf format "let+ %a = %a %a in" TermIdent.pp variable
-        pp_expression expression pp_ands ands
+      Format.fprintf format "let+ %a = %a %a in%a%a%a%a" TermIdent.pp variable
+        pp_expression expression pp_ands ands pp_statements statements
+        pp_expression expression Format.pp_print_newline () pp_expression
+        expression'
+
+and pp_expressions format =
+  Format.pp_print_list
+    ~pp_sep:(fun format () -> Format.pp_print_char format ',')
+    pp_expression format
+
+and pp_statement format = function
+  | StDeclaration { variable; expression } ->
+      Format.fprintf format "let %a = %a in" TermIdent.pp variable pp_expression
+        expression
+  | StConstructor { variable; ty; expressions } ->
+      Format.fprintf format "let %a = %a {%a} in" TermIdent.pp variable pp_ty ty
+        pp_expressions expressions
+
+and pp_statements format =
+  Format.pp_print_list ~pp_sep:Format.pp_print_newline pp_statement format
 
 let pp_function_decl format decl =
   let {
@@ -129,9 +140,6 @@ let pp_function_decl format decl =
       ~pp_sep:(fun format () -> Format.pp_print_string format ", ")
       (fun format (id, expression) ->
         Format.fprintf format "%a: %a" TermIdent.pp id pp_ty expression)
-  in
-  let pp_statements =
-    Format.pp_print_list ~pp_sep:Format.pp_print_newline pp_statement
   in
   Format.fprintf format "def %a%a(%a) -> %a =%a%a%a%a" pp_tyvars ty_vars
     FnIdent.pp fn_name pp_args parameters pp_ty return_type

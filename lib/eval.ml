@@ -138,8 +138,8 @@ let rec eval_expression env =
       in
       let ty =
         match ty with
-        | TyTuple { ty; size = _ } | TyApp { ty_args = ty :: _; name = _ } -> ty
-        | TyApp { ty_args = []; name = _ } | TyFun _ | TyVarApp _ | TyBool ->
+        | TyTuple { ty; size = _ } | TyApp { ty_args = Some ty; name = _ } -> ty
+        | TyApp { ty_args = None; name = _ } | TyFun _ | TyVarApp _ | TyBool ->
             assert false
       in
       (value, ty)

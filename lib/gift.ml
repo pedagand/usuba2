@@ -2,14 +2,15 @@ open Ast
 
 module Ty = struct
   let bool = TyBool
-  let app name ty_args = TyApp { name; ty_args }
+  let eapp name = TyApp { name; ty_args = None }
+  let app name ty_args = TyApp { name; ty_args = Some ty_args }
   let tuple size ty = TyTuple { size; ty }
 
   let fn ty_vars parameters return_type =
     TyFun { ty_vars; parameters; return_type }
 
-  let v name = TyVarApp { name; ty_args = [] }
-  let varapp name ty_args = TyVarApp { name; ty_args }
+  let v name = TyVarApp { name; ty_args = None }
+  let varapp name ty_args = TyVarApp { name; ty_args = Some ty_args }
 end
 
 module Expression = struct
@@ -116,23 +117,19 @@ let gift =
       {
         ty_vars = [];
         ty_name = state;
-        definition = Ty.(app slice [ app col [ app row [ bool ] ] ]);
+        definition = Ty.(app slice (app col (app row bool)));
       };
     KnTypedecl
-      {
-        ty_vars = [];
-        ty_name = keys;
-        definition = Ty.(tuple 28 @@ app state []);
-      };
+      { ty_vars = []; ty_name = keys; definition = Ty.(tuple 28 @@ eapp state) };
     (let alpha = TyIdent.fresh "'a" in
      let beta = TyIdent.fresh "'b" in
      let ctrl = TyIdent.fresh "#t" in
      let ty_alpha = Ty.(v alpha) in
      let ty_beta = Ty.(v beta) in
      let ty_fn = Ty.(fn [] [ ty_alpha ] ty_beta) in
-     let ty_ctrl_fn = Ty.(varapp ctrl [ ty_fn ]) in
-     let ty_ctrl_alpha = Ty.(varapp ctrl [ ty_alpha ]) in
-     let ty_ctrl_beta = Ty.(varapp ctrl [ ty_beta ]) in
+     let ty_ctrl_fn = Ty.(varapp ctrl ty_fn) in
+     let ty_ctrl_alpha = Ty.(varapp ctrl ty_alpha) in
+     let ty_ctrl_beta = Ty.(varapp ctrl ty_beta) in
      let fs = TermIdent.fresh "fs" in
      let xs = TermIdent.fresh "xs" in
      let statements, expression =
@@ -145,11 +142,7 @@ let gift =
        {
          fn_name = app;
          ty_vars =
-           [
-             (ctrl, KArrow { parameters = [ KType ]; return = KType });
-             (alpha, KType);
-             (beta, KType);
-           ];
+           [ (ctrl, KArrow (KType, KType)); (alpha, KType); (beta, KType) ];
          parameters = [ (fs, ty_ctrl_fn); (xs, ty_ctrl_alpha) ];
          return_type = ty_ctrl_beta;
          body = { statements; expression };
@@ -161,9 +154,9 @@ let gift =
      let ty_alpha = Ty.(v alpha) in
      let ty_beta = Ty.(v beta) in
      let ty_charly = Ty.(v charly) in
-     let ty_ctrl_alpha = Ty.(varapp ctrl [ ty_alpha ]) in
-     let ty_ctrl_beta = Ty.(varapp ctrl [ ty_beta ]) in
-     let ty_ctrl_charly = Ty.(varapp ctrl [ ty_charly ]) in
+     let ty_ctrl_alpha = Ty.(varapp ctrl ty_alpha) in
+     let ty_ctrl_beta = Ty.(varapp ctrl ty_beta) in
+     let ty_ctrl_charly = Ty.(varapp ctrl ty_charly) in
      let ty_fn = Ty.(fn [] [ ty_alpha; ty_beta ] ty_charly) in
      let f = TermIdent.fresh "f" in
      let xs = TermIdent.fresh "xs" in
@@ -179,7 +172,7 @@ let gift =
          fn_name = map2;
          ty_vars =
            [
-             (ctrl, KArrow { parameters = [ KType ]; return = KType });
+             (ctrl, KArrow (KType, KType));
              (alpha, KType);
              (beta, KType);
              (charly, KType);
@@ -202,7 +195,7 @@ let gift =
        });
     (let s = TermIdent.fresh "s" in
      let alpha = TyIdent.fresh "'a" in
-     let ty_slice = Ty.(app slice [ v alpha ]) in
+     let ty_slice = Ty.(app slice (v alpha)) in
      let statements, expression =
        Statement.decl "s0" (Expression.indexing s slice 0) @@ fun s0 ->
        Statement.decl "s1" (Expression.indexing s slice 1) @@ fun s1 ->
@@ -230,7 +223,7 @@ let gift =
      let key = TermIdent.fresh "key" in
      let alpha = TyIdent.fresh "'a" in
      (* let ty_alpha = Ty.(v alpha) in *)
-     let ty_slice = Ty.(app slice [ v alpha ]) in
+     let ty_slice = Ty.(app slice (v alpha)) in
      let statements, expression = ([], Expression.(v s lxor v key)) in
      KnFundecl
        {
@@ -242,9 +235,9 @@ let gift =
        });
     (let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let ty_col_alpha = Ty.(app col [ ty_alpha ]) in
-     let ty_cols_rows = Ty.(app col [ app row [ ty_alpha ] ]) in
-     let ty_rows_cols = Ty.(app row [ ty_col_alpha ]) in
+     let ty_col_alpha = Ty.(app col ty_alpha) in
+     let ty_cols_rows = Ty.(app col (app row ty_alpha)) in
+     let ty_rows_cols = Ty.(app row ty_col_alpha) in
      let state = TermIdent.fresh "state" in
      let index icol irow =
        Expression.(e_indexing (indexing state col icol) row irow)
@@ -275,9 +268,9 @@ let gift =
        });
     (let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let ty_row_alpha = Ty.(app row [ ty_alpha ]) in
-     let ty_row_cols = Ty.(app row [ app col [ ty_alpha ] ]) in
-     let ty_col_rows = Ty.(app col [ ty_row_alpha ]) in
+     let ty_row_alpha = Ty.(app row ty_alpha) in
+     let ty_row_cols = Ty.(app row (app col ty_alpha)) in
+     let ty_col_rows = Ty.(app col ty_row_alpha) in
      let state = TermIdent.fresh "state" in
      let index icol irow =
        Expression.(e_indexing (indexing state row irow) col icol)
@@ -309,7 +302,7 @@ let gift =
     (let rows = TermIdent.fresh "rows" in
      let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let ty_rows = Ty.(app row [ ty_alpha ]) in
+     let ty_rows = Ty.(app row ty_alpha) in
      let statements, expression = ([], Expression.v rows) in
      KnFundecl
        {
@@ -322,7 +315,7 @@ let gift =
     (let rows = TermIdent.fresh "rows" in
      let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let ty_rows = Ty.(app row [ ty_alpha ]) in
+     let ty_rows = Ty.(app row ty_alpha) in
      let index index = Expression.indexing rows row index in
      let statements, expression =
        Statement.cstr "rows" ty_rows [ index 3; index 0; index 1; index 2 ]
@@ -339,7 +332,7 @@ let gift =
     (let rows = TermIdent.fresh "rows" in
      let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let ty_rows = Ty.(app row [ ty_alpha ]) in
+     let ty_rows = Ty.(app row ty_alpha) in
      let index index = Expression.indexing rows row index in
      let statements, expression =
        Statement.cstr "rows" ty_rows [ index 2; index 3; index 0; index 1 ]
@@ -356,7 +349,7 @@ let gift =
     (let rows = TermIdent.fresh "rows" in
      let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let ty_rows = Ty.(app row [ ty_alpha ]) in
+     let ty_rows = Ty.(app row ty_alpha) in
      let index index = Expression.indexing rows row index in
      let statements, expression =
        Statement.cstr "rows" ty_rows [ index 1; index 2; index 3; index 0 ]
@@ -372,7 +365,7 @@ let gift =
        });
     (let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let ty_cols_rows = Ty.(app col [ app row [ ty_alpha ] ]) in
+     let ty_cols_rows = Ty.(app col (app row ty_alpha)) in
      let cols = TermIdent.fresh "cols" in
      let statements, expression =
        ( [],
@@ -390,7 +383,7 @@ let gift =
        });
     (let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let ty_cols_rows = Ty.(app col [ app row [ ty_alpha ] ]) in
+     let ty_cols_rows = Ty.(app col (app row ty_alpha)) in
      let cols = TermIdent.fresh "cols" in
      let statements, expression =
        ( [],
@@ -408,7 +401,7 @@ let gift =
        });
     (let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let ty_cols_rows = Ty.(app col [ app row [ ty_alpha ] ]) in
+     let ty_cols_rows = Ty.(app col (app row ty_alpha)) in
      let cols = TermIdent.fresh "cols" in
      let statements, expression =
        ( [],
@@ -426,7 +419,7 @@ let gift =
        });
     (let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let ty_cols_rows = Ty.(app col [ app row [ ty_alpha ] ]) in
+     let ty_cols_rows = Ty.(app col @@ app row ty_alpha) in
      let cols = TermIdent.fresh "cols" in
      let statements, expression =
        ( [],
@@ -445,7 +438,7 @@ let gift =
     (let cols = TermIdent.fresh "cols" in
      let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let ty_col_alpha = Ty.(app col [ ty_alpha ]) in
+     let ty_col_alpha = Ty.(app col ty_alpha) in
      let index index = Expression.indexing cols col index in
      let statements, expression =
        Statement.cstr "cols" ty_col_alpha [ index 3; index 2; index 1; index 0 ]
@@ -461,9 +454,9 @@ let gift =
        });
     (let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let ty_cols_rows = Ty.(app col [ app row [ ty_alpha ] ]) in
+     let ty_cols_rows = Ty.(app col @@ app row ty_alpha) in
      let ty_fn_row_cols__row_cols = Ty.(fn [] [ ty_cols_rows ] ty_cols_rows) in
-     let ty_slice = Ty.(app slice [ ty_fn_row_cols__row_cols ]) in
+     let ty_slice = Ty.(app slice ty_fn_row_cols__row_cols) in
      let statements, expression =
        Statement.cstr "slice" ty_slice
          Expression.
@@ -484,11 +477,11 @@ let gift =
      let key = TermIdent.fresh "key" in
      let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let _ty_slice = Ty.(app slice [ v alpha ]) in
-     let ty_state = Ty.(app state []) in
-     let ty_cols_rows = Ty.(app col [ app row [ ty_alpha ] ]) in
+     let _ty_slice = Ty.(app slice @@ v alpha) in
+     let ty_state = Ty.(eapp state) in
+     let ty_cols_rows = Ty.(app col @@ app row ty_alpha) in
      let ty_fn_row_cols__row_cols = Ty.(fn [] [ ty_cols_rows ] ty_cols_rows) in
-     let ty_slice = Ty.(app slice [ ty_fn_row_cols__row_cols ]) in
+     let ty_slice = Ty.(app slice ty_fn_row_cols__row_cols) in
      let statements, expression =
        Statement.cstr "permbits" ty_slice
          Expression.
@@ -513,8 +506,8 @@ let gift =
        });
     (let vstate = TermIdent.fresh "state" in
      let vkeys = TermIdent.fresh "keys" in
-     let ty_state = Ty.(app state []) in
-     let ty_keys = Ty.(app keys []) in
+     let ty_state = Ty.(eapp state) in
+     let ty_keys = Ty.(eapp keys) in
      let expression =
        List.init 28 Fun.id
        |> List.fold_left

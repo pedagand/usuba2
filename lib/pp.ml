@@ -7,13 +7,8 @@ let pp_builtin format = function
 
 let rec pp_kind format = function
   | KType -> Format.fprintf format "*"
-  | KArrow { parameters; return } ->
-      let pp_list =
-        Format.pp_print_list
-          ~pp_sep:(fun format () -> Format.pp_print_string format ",")
-          pp_kind
-      in
-      Format.fprintf format "(%a) => %a" pp_list parameters pp_kind return
+  | KArrow (parameters, return) ->
+      Format.fprintf format "(%a) => %a" pp_kind parameters pp_kind return
 
 let pp_tyvars format ty_vars =
   match ty_vars with
@@ -41,12 +36,12 @@ let pp_tyvars' format ty_vars =
 let rec pp_ty format = function
   | TyBool -> Format.fprintf format "bool"
   | TyApp { name; ty_args } ->
-      Format.fprintf format "%a%a" pp_ty_args ty_args TyDeclIdent.pp name
+      Format.fprintf format "%a%a" pp_ty_opt_args ty_args TyDeclIdent.pp name
   | TyFun { ty_vars; parameters; return_type } ->
       Format.fprintf format "%a(%a) -> %a" pp_tyvars' ty_vars pp_tys parameters
         pp_ty return_type
   | TyVarApp { name; ty_args } ->
-      Format.fprintf format "%a%a" pp_ty_args ty_args TyIdent.pp name
+      Format.fprintf format "%a%a" pp_ty_opt_args ty_args TyIdent.pp name
   | TyTuple { size; ty } -> Format.fprintf format "%a tuple<%u>" pp_ty ty size
 
 and pp_tys format =
@@ -60,6 +55,12 @@ and pp_ty_args format ty_args =
   | (TyFun _ as ty) :: [] -> Format.fprintf format "(%a) " pp_ty ty
   | ty :: [] -> Format.fprintf format "%a " pp_ty ty
   | _ :: _ as ty_args -> Format.fprintf format "(%a) " pp_tys ty_args
+
+and pp_ty_opt_args format ty_args =
+  match ty_args with
+  | None -> ()
+  | Some (TyFun _ as ty) -> Format.fprintf format "(%a) " pp_ty ty
+  | Some ty -> Format.fprintf format "%a " pp_ty ty
 
 let pp_op fmt format = function
   | Unot expression -> Format.fprintf format "! %a" fmt expression

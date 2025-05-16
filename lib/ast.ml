@@ -26,7 +26,7 @@ let app = FnIdent.fresh "@app"*)
 
 (* type tykind = KType | KArrow of { parameters : tykind list; return : tykind } *)
 
-type tykind = KType | KArrow of { parameters : tykind list; return : tykind }
+type tykind = KType | KArrow of (tykind * tykind)
 type builtin = BCirc | BAntiCirc | BPure
 
 type signature = {
@@ -36,8 +36,8 @@ type signature = {
 }
 
 and ty =
-  | TyApp of { name : TyDeclIdent.t; ty_args : ty list }
-  | TyVarApp of { name : TyIdent.t; ty_args : ty list }
+  | TyApp of { name : TyDeclIdent.t; ty_args : ty option }
+  | TyVarApp of { name : TyIdent.t; ty_args : ty option }
   | TyTuple of { size : int; ty : ty }
   | TyFun of signature
   | TyBool

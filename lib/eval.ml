@@ -6,6 +6,8 @@ let rec find_fold_map f acc = function
       | Either.Left acc -> find_fold_map f acc q
       | Right _ as r -> r)
 
+let err fmt = Printf.ksprintf failwith fmt
+
 module Value = struct
   type t = VBool of bool | Varray of t Array.t | VFunction of Ast.FnIdent.t
 
@@ -46,13 +48,65 @@ module Types = Map.Make (Ast.TyDeclIdent)
 module Functions = Map.Make (Ast.FnIdent)
 module Variables = Map.Make (Ast.TermIdent)
 
-let err fmt = Printf.ksprintf failwith fmt
+module Ty = struct
+  let rec instanciate map = function
+    | Ast.TyVarApp { name; ty_args = Some ty } -> (
+        let ty_args = instanciate map ty in
+        let ident =
+          List.find_map
+            (fun (tyident, e_ty) ->
+              match Ast.TyIdent.equal name tyident with
+              | true -> (
+                  (* Since name is a type constructor, we expect TyDeclIdent *)
+                  match e_ty with
+                  | Either.Left tydeclident -> Some tydeclident
+                  | Either.Right _ty ->
+                      err "tyinstance: expected TyDeclIdent found ty")
+              | false -> None)
+            map
+        in
+        match ident with
+        | None -> Ast.TyVarApp { name; ty_args = Some ty_args }
+        | Some ident -> Ast.TyApp { name = ident; ty_args = Some ty_args })
+    | TyVarApp { name; ty_args = None } as t -> (
+        let ty =
+          List.find_map
+            (fun (tyident, e_ty) ->
+              match Ast.TyIdent.equal name tyident with
+              | true -> (
+                  (* Since name is a type constructor, we expect TyDeclIdent *)
+                  match e_ty with
+                  | Either.Left _ ->
+                      err "tyinstance: expected ty found tydeclident"
+                  | Either.Right ty -> Some ty)
+              | false -> None)
+            map
+        in
+        match ty with None -> t | Some ty -> ty)
+    | TyFun { ty_vars; parameters; return_type } ->
+        let map =
+          List.filter
+            (fun (id, _) -> not @@ List.exists (Ast.TyIdent.equal id) ty_vars)
+            map
+        in
+        let parameters = List.map (instanciate map) parameters in
+        let return_type = instanciate map return_type in
+        TyFun { ty_vars; parameters; return_type }
+    | TyApp { name; ty_args = Some ty } ->
+        let ty_args = instanciate map ty in
+        Ast.TyApp { name; ty_args = Some ty_args }
+    | TyTuple { size; ty } ->
+        let ty = instanciate map ty in
+        TyTuple { size; ty }
+    | (TyApp { name = _; ty_args = None } | TyBool) as ty -> ty
+end
 
 module Env = struct
   type t = {
-    type_decls : Ast.ty Types.t;
+    type_decls : (Ast.kasumi_type_decl * Ast.ty) Types.t;
     fn_decls : Ast.kasumi_function_decl Functions.t;
     variables : (Value.t * Ast.ty) Variables.t;
+    type_instances : (Ast.TyIdent.t * (Ast.TyDeclIdent.t, Ast.ty) Either.t) list;
   }
 
   let empty =
@@ -60,18 +114,38 @@ module Env = struct
       type_decls = Types.empty;
       fn_decls = Functions.empty;
       variables = Variables.empty;
+      type_instances = [];
     }
 
-  let ty_canon tydecl env = Types.find tydecl env.type_decls
+  let instanciate ty env = Ty.instanciate env.type_instances ty
+  let ty_canon tydecl env = snd @@ Types.find tydecl env.type_decls
 
   let rec canonical_type ty env =
     match ty with
     | Ast.TyApp { name; ty_args = _ } ->
-        canonical_type (Types.find name env.type_decls) env
+        canonical_type (snd @@ Types.find name env.type_decls) env
     | TyTuple { size; ty } ->
         let ty = canonical_type ty env in
         Ast.TyTuple { size; ty }
     | (TyVarApp _ | TyFun _ | TyBool) as ty -> ty
+
+  let ty_arity ty env =
+    match ty with
+    | Ast.TyApp { name; _ } ->
+        let decl, _ = Types.find name env.type_decls in
+        if decl.ty_vars = [] then 0 else 1
+    | Ast.TyVarApp _ -> err "ty_arity: can not compute arity of tyvarapp"
+    | Ast.TyTuple _ -> 1
+    | TyFun _ | TyBool -> 0
+
+  let partially_applied ty env =
+    let arity = ty_arity ty env in
+    match ty with
+    | Ast.TyApp { name; ty_args } ->
+        if List.length (Option.to_list ty_args) <> arity then Some name
+        else None
+    | Ast.TyVarApp _ -> err "ty_arity: can not compute arity of tyvarapp"
+    | Ast.TyTuple _ | TyFun _ | TyBool -> None
 
   let add_binding term variable env =
     let variables = Variables.add term variable env.variables in
@@ -217,20 +291,33 @@ and eval_statement env = function
       | TyVarApp _ | TyApp _ -> assert false)
   | SLetPLus { variable = _; expression = _; ands = _ } -> failwith ""
 
-and eval env (fn_decl : Ast.kasumi_function_decl) _ty_args args =
+and eval env (fn_decl : Ast.kasumi_function_decl) ty_args args =
   let Ast.
         {
           fn_name = _;
-          ty_vars = _;
+          ty_vars;
           parameters;
           return_type = _;
           body = { statements; expression };
         } =
     fn_decl
   in
+  let type_instances =
+    List.map2
+      (fun (tyident, kind) ty ->
+        match kind with
+        | Ast.KType -> (tyident, Either.Right ty)
+        | KArrow _ -> (
+            match Env.partially_applied ty env with
+            | None -> err "@eval: expected type-constructor found type"
+            | Some typedeclident -> (tyident, Either.Left typedeclident)))
+      ty_vars ty_args
+  in
+  let env = { env with type_instances } in
   let variables =
     List.fold_left2
       (fun variables (term, ty) value ->
+        let ty = Env.instanciate ty env in
         Variables.add term (value, ty) variables)
       Variables.empty parameters args
   in
@@ -248,11 +335,14 @@ let add_fndecl env (fn_decl : Ast.kasumi_function_decl) =
 let add_typedecl env (type_decl : Ast.kasumi_type_decl) =
   let ty =
     match type_decl.definition with
-    | TyApp { name; ty_args = _ } -> Types.find name env.Env.type_decls
+    | TyApp { name; ty_args = _ } -> snd @@ Types.find name env.Env.type_decls
     | (TyTuple _ | TyFun _ | TyBool) as ty -> ty
     | TyVarApp _ -> assert false
   in
-  { env with type_decls = Types.add type_decl.ty_name ty env.type_decls }
+  {
+    env with
+    type_decls = Types.add type_decl.ty_name (type_decl, ty) env.type_decls;
+  }
 
 let eval_node fn_name ty_args args env = function
   | Ast.KnFundecl function_decl -> (

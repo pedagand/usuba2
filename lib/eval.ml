@@ -25,22 +25,39 @@ let mapn f lists =
 
 let err fmt = Printf.ksprintf failwith fmt
 
+module Cty = struct
+  type signature = {
+    ty_vars : Ast.TyIdent.t list;
+    parameters : t list;
+    return_type : t;
+  }
+
+  and t = TyTuple of { size : int; ty : t } | TyFun of signature | TyBool
+end
+
 module Value = struct
   type t = VBool of bool | Varray of t Array.t | VFunction of Ast.FnIdent.t
 
   let true' = VBool true
   let false' = VBool false
 
-  let rec map2 f lhs rhs =
+  let rec map2' f lhs rhs =
     match (lhs, rhs) with
     | VBool lhs, VBool rhs -> VBool (f lhs rhs)
+    | Varray lhs, Varray rhs -> Varray (Array.map2 (map2' f) lhs rhs)
+    | VBool _, Varray _ | Varray _, VBool _ | VFunction _, _ | _, VFunction _ ->
+        assert false
+
+  let rec map2 f lhs rhs =
+    match (lhs, rhs) with
+    | (VBool _ as lhs), (VBool _ as rhs) -> f lhs rhs
     | Varray lhs, Varray rhs -> Varray (Array.map2 (map2 f) lhs rhs)
     | VBool _, Varray _ | Varray _, VBool _ | VFunction _, _ | _, VFunction _ ->
         assert false
 
-  let rec map f = function
+  let rec map' f = function
     | VBool b -> VBool (f b)
-    | Varray a -> Varray (Array.map (map f) a)
+    | Varray a -> Varray (Array.map (map' f) a)
     | VFunction _ -> assert false
 
   let get i = function
@@ -64,6 +81,10 @@ module Value = struct
     | Ast.TyTuple { size; ty = _ } -> Varray (Array.init size (Fun.const value))
     | Ast.TyBool | TyFun _ -> value
     | Ast.TyApp _ | TyVarApp _ -> assert false
+
+  let tabulate size f =
+    let array = Array.init size f in
+    Varray array
 end
 
 module Types = Map.Make (Ast.TyDeclIdent)
@@ -327,22 +348,22 @@ and eval_builin env ty_args args = function
 and eval_op env = function
   | Ast.Unot expr ->
       let value, ty = eval_expression env expr in
-      (Value.map not value, ty)
+      (Value.map' not value, ty)
   | BAnd (lhs, rhs) ->
       let lvalue, lty = eval_expression env lhs in
       let rvalue, rty = eval_expression env rhs in
       let () = assert (lty = rty) in
-      (Value.map2 ( && ) lvalue rvalue, lty)
+      (Value.map2' ( && ) lvalue rvalue, lty)
   | BOr (lhs, rhs) ->
       let lvalue, lty = eval_expression env lhs in
       let rvalue, rty = eval_expression env rhs in
       let () = assert (lty = rty) in
-      (Value.map2 ( || ) lvalue rvalue, lty)
+      (Value.map2' ( || ) lvalue rvalue, lty)
   | BXor (lhs, rhs) ->
       let lvalue, lty = eval_expression env lhs in
       let rvalue, rty = eval_expression env rhs in
       let () = assert (lty = rty) in
-      (Value.map2 ( <> ) lvalue rvalue, lty)
+      (Value.map2' ( <> ) lvalue rvalue, lty)
 
 and eval_statement env = function
   | Ast.StDeclaration { variable; expression } ->

@@ -72,31 +72,32 @@ module Statement = struct
     (StConstructor { variable; ty; expressions } :: statements, finale)
 end
 
+let app = FnIdent.fresh "app"
+let map2 = FnIdent.fresh "map2"
+let row = TyDeclIdent.fresh "row"
+let col = TyDeclIdent.fresh "col"
+let keys = TyDeclIdent.fresh "keys"
+let slice = TyDeclIdent.fresh "slice"
+let state = TyDeclIdent.fresh "state"
+let subcells = FnIdent.fresh "subcells"
+let add_round_key = FnIdent.fresh "add_round_key"
+let transpose = FnIdent.fresh "transpose"
+let reindex_cols_row = FnIdent.fresh "reindex_cols_row"
+let col_reverse = FnIdent.fresh "col_reverse"
+let rev_rotate_0 = FnIdent.fresh "rev_rotate_0"
+let rev_rotate_1 = FnIdent.fresh "rev_rotate_1"
+let rev_rotate_2 = FnIdent.fresh "rev_rotate_2"
+let rev_rotate_3 = FnIdent.fresh "rev_rotate_3"
+let permbits = FnIdent.fresh "permbits"
+let row_ror_0 = FnIdent.fresh "row_ror_0"
+let row_ror_1 = FnIdent.fresh "row_ror_1"
+let row_ror_2 = FnIdent.fresh "row_ror_2"
+let row_ror_3 = FnIdent.fresh "row_ror_3"
+let fxor = FnIdent.fresh "fxor"
+let round = FnIdent.fresh "round"
+let fngift = FnIdent.fresh "gift"
+
 let gift =
-  let app = FnIdent.fresh "app" in
-  let map2 = FnIdent.fresh "map2" in
-  let row = TyDeclIdent.fresh "row" in
-  let col = TyDeclIdent.fresh "col" in
-  let keys = TyDeclIdent.fresh "keys" in
-  let slice = TyDeclIdent.fresh "slice" in
-  let state = TyDeclIdent.fresh "state" in
-  let subcells = FnIdent.fresh "subcells" in
-  let add_round_key = FnIdent.fresh "add_round_key" in
-  let transpose = FnIdent.fresh "transpose" in
-  let reindex_cols_row = FnIdent.fresh "reindex_cols_row" in
-  let col_reverse = FnIdent.fresh "col_reverse" in
-  let rev_rotate_0 = FnIdent.fresh "rev_rotate_0" in
-  let rev_rotate_1 = FnIdent.fresh "rev_rotate_1" in
-  let rev_rotate_2 = FnIdent.fresh "rev_rotate_2" in
-  let rev_rotate_3 = FnIdent.fresh "rev_rotate_3" in
-  let permbits = FnIdent.fresh "permbits" in
-  let row_ror_0 = FnIdent.fresh "row_ror_0" in
-  let row_ror_1 = FnIdent.fresh "row_ror_1" in
-  let row_ror_2 = FnIdent.fresh "row_ror_2" in
-  let row_ror_3 = FnIdent.fresh "row_ror_3" in
-  let fxor = FnIdent.fresh "fxor" in
-  let round = FnIdent.fresh "round" in
-  let gift = FnIdent.fresh "gift" in
   [
     (let alpha = TyIdent.fresh "'a" in
      KnTypedecl
@@ -523,7 +524,7 @@ let gift =
      in
      KnFundecl
        {
-         fn_name = gift;
+         fn_name = fngift;
          ty_vars = [];
          parameters = [ (vstate, ty_state); (vkeys, ty_keys) ];
          return_type = ty_state;

@@ -30,7 +30,7 @@ type tykind = KType | KArrow of (tykind * tykind)
 type builtin = BCirc | BAntiCirc | BPure
 
 type signature = {
-  ty_vars : TyIdent.t list;
+  ty_vars : (TyIdent.t * tykind) list;
   parameters : ty list;
   return_type : ty;
 }

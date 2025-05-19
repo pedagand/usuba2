@@ -38,7 +38,7 @@ let rec pp_ty format = function
   | TyApp { name; ty_args } ->
       Format.fprintf format "%a%a" pp_ty_opt_args ty_args TyDeclIdent.pp name
   | TyFun { ty_vars; parameters; return_type } ->
-      Format.fprintf format "%a(%a) -> %a" pp_tyvars' ty_vars pp_tys parameters
+      Format.fprintf format "%a(%a) -> %a" pp_tyvars ty_vars pp_tys parameters
         pp_ty return_type
   | TyVarApp { name; ty_args } ->
       Format.fprintf format "%a%a" pp_ty_opt_args ty_args TyIdent.pp name
@@ -82,13 +82,13 @@ let rec pp_expression format = function
         indexing
   | EOp op -> pp_op pp_expression format op
   | EBuiltinCall { builtin; ty_args; args } ->
-      Format.fprintf format "%a%a(%a)" pp_builtin builtin pp_ty_args ty_args
+      Format.fprintf format "%a[%a](%a)" pp_builtin builtin pp_ty_args ty_args
         pp_expressions args
   | EFunctionCall { fn_name; ty_args; args } ->
       let pp_either =
         Format.pp_print_either ~left:FnIdent.pp ~right:TermIdent.pp
       in
-      Format.fprintf format "%a%a(%a)" pp_either fn_name pp_ty_args ty_args
+      Format.fprintf format "%a[%a](%a)" pp_either fn_name pp_ty_args ty_args
         pp_expressions args
   | SLetPLus
       {

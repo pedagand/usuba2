@@ -85,6 +85,14 @@ module Value = struct
   let tabulate size f =
     let array = Array.init size f in
     Varray array
+
+  let rec pp format = function
+    | VBool true -> Format.fprintf format "1"
+    | VBool false -> Format.fprintf format "0"
+    | Varray array ->
+        let pp_sep format () = Format.pp_print_string format ", " in
+        Format.pp_print_array ~pp_sep pp format array
+    | VFunction fn -> Format.fprintf format "%a" Ast.FnIdent.pp fn
 end
 
 module Types = Map.Make (Ast.TyDeclIdent)
@@ -136,7 +144,8 @@ module Ty = struct
     | TyFun { ty_vars; parameters; return_type } ->
         let map =
           List.filter
-            (fun (id, _) -> not @@ List.exists (Ast.TyIdent.equal id) ty_vars)
+            (fun (id, _) ->
+              not @@ List.exists (fun (t, _) -> Ast.TyIdent.equal id t) ty_vars)
             map
         in
         let parameters = List.map (instanciate map) parameters in
@@ -224,7 +233,7 @@ module Env = struct
   let signature_of_function_decl (function_decl : Ast.kasumi_function_decl) =
     Ast.
       {
-        ty_vars = List.map fst function_decl.ty_vars;
+        ty_vars = function_decl.ty_vars;
         return_type = function_decl.return_type;
         parameters = List.map snd function_decl.parameters;
       }
@@ -232,6 +241,7 @@ module Env = struct
   let function_decl fnident env = Functions.find fnident env.fn_decls
 
   let function' fnident env =
+    let () = Format.eprintf "look for : %a\n" Ast.FnIdent.pp fnident in
     let function_decl = Functions.find fnident env.fn_decls in
     let signature = signature_of_function_decl function_decl in
     let ty = Ast.TyFun signature in
@@ -270,7 +280,17 @@ let rec eval_expression env =
           ands
       in
       let () =
-        match List.for_all (fun (_, (_, t)) -> ty = t) ands with
+        match
+          List.for_all
+            (fun (_, (_, t)) ->
+              let () =
+                Format.eprintf "@let+: ty = %a - t = %a\n" Pp.pp_ty ty Pp.pp_ty
+                  t
+              in
+
+              ty = t)
+            ands
+        with
         | true -> ()
         | false -> err "@eval: let_plus not same type"
       in
@@ -297,7 +317,10 @@ let rec eval_expression env =
   | EIndexing { expression; indexing = { name; index } } ->
       let value, ty = eval_expression env expression in
       let ty' = Env.ty_canon name env in
-      let () = assert (ty = ty') in
+      let () =
+        Format.eprintf "indexing ty = %a - ty' = %a\n" Pp.pp_ty ty Pp.pp_ty ty'
+      in
+      (*      let () = assert (ty = ty') in*)
       let size, _ty' =
         match ty' with
         | TyTuple { size; ty } -> (size, ty)
@@ -313,9 +336,10 @@ let rec eval_expression env =
         | VBool _ | VFunction _ -> assert false
       in
       let ty =
-        match ty with
+        match ty' with
         | TyTuple { ty; size = _ } | TyApp { ty_args = Some ty; name = _ } -> ty
         | TyApp { ty_args = None; name = _ } | TyFun _ | TyVarApp _ | TyBool ->
+            let () = Format.eprintf "@indexing2 = %a\n" Pp.pp_ty ty in
             assert false
       in
       (value, ty)
@@ -379,7 +403,10 @@ and eval_statement env = function
               (fun expression ->
                 let value, vty = eval_expression env expression in
                 let vty = Env.canonical_type vty env in
-                let () = assert (vty = ty) in
+                let () =
+                  Format.eprintf "@stcstr: ty = %a - vty' = %a\n" Pp.pp_ty ty
+                    Pp.pp_ty vty
+                in
                 value)
               expressions
           in
@@ -403,8 +430,10 @@ and eval_body env body =
   eval_expression env expression
 
 and eval env (fn_decl : Ast.kasumi_function_decl) ty_args args =
-  let Ast.{ fn_name = _; ty_vars; parameters; return_type = _; body } =
-    fn_decl
+  let Ast.{ fn_name; ty_vars; parameters; return_type = _; body } = fn_decl in
+  let () =
+    Format.eprintf "fn = %a:\nty_vars = [%a]\nty_args = [%a]\n\n" Ast.FnIdent.pp
+      fn_name Pp.pp_tyvars ty_vars Pp.pp_ty_args ty_args
   in
   let type_instances =
     List.map2

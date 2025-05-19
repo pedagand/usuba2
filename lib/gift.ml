@@ -418,7 +418,7 @@ let gift =
      in
      KnFundecl
        {
-         fn_name = rev_rotate_3;
+         fn_name = rev_rotate_2;
          ty_vars = [ (alpha, KType) ];
          parameters = [ (cols, ty_cols_rows) ];
          return_type = ty_cols_rows;
@@ -436,7 +436,7 @@ let gift =
      in
      KnFundecl
        {
-         fn_name = rev_rotate_1;
+         fn_name = rev_rotate_3;
          ty_vars = [ (alpha, KType) ];
          parameters = [ (cols, ty_cols_rows) ];
          return_type = ty_cols_rows;
@@ -484,10 +484,12 @@ let gift =
      let key = TermIdent.fresh "key" in
      let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
-     let _ty_slice = Ty.(app slice @@ v alpha) in
      let ty_state = Ty.(eapp state) in
      let ty_cols_rows = Ty.(app col @@ app row ty_alpha) in
-     let ty_fn_row_cols__row_cols = Ty.(fn [] [ ty_cols_rows ] ty_cols_rows) in
+     let ty_fn_row_cols__row_cols =
+       Ty.(fn [ (alpha, KType) ] [ ty_cols_rows ] ty_cols_rows)
+     in
+     let ty_cols_rows_bool = Ty.(app col @@ app row bool) in
      let ty_slice = Ty.(app slice ty_fn_row_cols__row_cols) in
      let statements, expression =
        Statement.cstr "permbits" ty_slice
@@ -496,17 +498,21 @@ let gift =
              fv rev_rotate_0; fv rev_rotate_1; fv rev_rotate_2; fv rev_rotate_3;
            ]
        @@ fun permbits ->
-       Statement.decl "state" Expression.(fn_call subcells [] [ v s ])
+       Statement.decl "state"
+         Expression.(fn_call subcells [ ty_cols_rows_bool ] [ v s ])
        @@ fun state ->
        Statement.decl "state"
-         Expression.(fn_call app [] [ v permbits; v state ])
+         Expression.(
+           fn_call app Ty.[ eapp slice; bool; bool ] [ v permbits; v state ])
        @@ fun state ->
-       ([], Expression.(fn_call add_round_key [] [ v state; v key ]))
+       ( [],
+         Expression.(
+           fn_call add_round_key [ ty_cols_rows_bool ] [ v state; v key ]) )
      in
      KnFundecl
        {
          fn_name = round;
-         ty_vars = [ (alpha, KType) ];
+         ty_vars = [];
          parameters = [ (s, ty_state); (key, ty_state) ];
          return_type = ty_state;
          body = { statements; expression };

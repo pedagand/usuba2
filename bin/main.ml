@@ -1,3 +1,6 @@
+let () = Printexc.print_backtrace stderr
+let () = Printexc.record_backtrace true
+
 module RowsCols = struct
   let tabulate f =
     Usuba2.Eval.Value.tabulate 4 @@ fun c ->
@@ -143,32 +146,46 @@ let spec =
 let pos_args = Fun.flip Queue.add texts
 let usage = Printf.sprintf "%s [-k <keyfile>]... PLAINTEXT..." Sys.argv.(0)
 let () = Arg.parse spec pos_args usage
-let () = assert (Queue.length keys = Queue.length texts)
 
-let kps =
-  Seq.map2
-    (fun k t ->
-      let k = Usuba2.Util.Common.file_to_bools k in
-      let t = Usuba2.Util.Common.file_to_bools t in
-      (k, t))
-    (Queue.to_seq keys) (Queue.to_seq texts)
+let eval keys texts =
+  let () = assert (Queue.length keys = Queue.length texts) in
+  let kps =
+    Seq.map2
+      (fun k t ->
+        let k = Usuba2.Util.Common.file_to_bools k in
+        let t = Usuba2.Util.Common.file_to_bools t in
+        (k, t))
+      (Queue.to_seq keys) (Queue.to_seq texts)
+  in
 
-let kps =
-  Seq.map
-    (fun (k, t) ->
-      let state = Gift.spec_tabulate t in
-      let keys = Gift.uvconsts k in
-      (state, keys))
-    kps
+  let kps =
+    Seq.map
+      (fun (k, t) ->
+        let state = Gift.spec_tabulate t in
+        let keys = Gift.uvconsts k in
+        (state, keys))
+      kps
+  in
 
-let () =
-  Seq.iter
-    (fun (state, keys) ->
-      let keys = Array.of_list keys in
-      let () = assert (Array.length keys = 28) in
-      let v =
-        Usuba2.Eval.eval Usuba2.Gift.gift Usuba2.Gift.fngift []
-          [ state; Varray keys ]
-      in
-      ignore v)
-    kps
+  let () =
+    Seq.iter
+      (fun (state, keys) ->
+        let keys = Array.of_list keys in
+        let () = assert (Array.length keys = 28) in
+        let v =
+          Usuba2.Eval.eval Usuba2.Gift.gift Usuba2.Gift.fngift []
+            [ state; Varray keys ]
+        in
+        ignore v)
+      kps
+  in
+  ()
+
+let print module' = Format.printf "%a\n" Usuba2.Pp.pp_module module'
+
+let main () =
+  match Queue.is_empty texts with
+  | true -> print Usuba2.Gift.gift
+  | false -> eval keys texts
+
+let () = main ()

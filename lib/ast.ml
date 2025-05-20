@@ -54,7 +54,7 @@ type expression =
   | ETrue
   | EFalse
   | EVar of TermIdent.t
-  | EFunVar of FnIdent.t
+  | EFunVar of FnIdent.t * ty list option
   | EIndexing of { expression : expression; indexing : indexing }
   | EOp of expression op
   | EBuiltinCall of {

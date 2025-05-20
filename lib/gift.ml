@@ -33,8 +33,8 @@ module Expression = struct
   let ( lor ) lhs rhs = EOp (BOr (lhs, rhs))
   let ( lxor ) lhs rhs = EOp (BXor (lhs, rhs))
 
-  let ( |> ) e fn_name =
-    EFunctionCall { fn_name = Either.left fn_name; ty_args = []; args = [ e ] }
+  let ( |> ) e ty_args fn_name =
+    EFunctionCall { fn_name = Either.left fn_name; ty_args; args = [ e ] }
 
   let let_plus variable expression ands k =
     let variable = TermIdent.fresh variable in
@@ -56,7 +56,8 @@ module Expression = struct
 
   let lnot expr = EOp (Unot expr)
   let v s = EVar s
-  let fv s = EFunVar s
+  let fv s = EFunVar (s, None)
+  let fv_t s tys = EFunVar (s, Some tys)
   let vars idents = List.map v idents
 end
 
@@ -374,11 +375,12 @@ let gift =
      let ty_alpha = Ty.(v alpha) in
      let ty_cols_rows = Ty.(app col (app row ty_alpha)) in
      let cols = TermIdent.fresh "cols" in
+     let ( |> ) e fn_ident = Expression.( |> ) e [ ty_alpha ] fn_ident in
+
      let statements, expression =
        ( [],
-         Expression.(
-           v cols |> col_reverse |> transpose |> row_ror_1 |> reindex_cols_row)
-       )
+         Expression.v cols |> col_reverse |> transpose |> row_ror_1
+         |> reindex_cols_row )
      in
      KnFundecl
        {
@@ -392,11 +394,12 @@ let gift =
      let ty_alpha = Ty.(v alpha) in
      let ty_cols_rows = Ty.(app col (app row ty_alpha)) in
      let cols = TermIdent.fresh "cols" in
+     let ( |> ) e fn_ident = Expression.( |> ) e [ ty_alpha ] fn_ident in
+
      let statements, expression =
        ( [],
-         Expression.(
-           v cols |> col_reverse |> transpose |> row_ror_2 |> reindex_cols_row)
-       )
+         Expression.v cols |> col_reverse |> transpose |> row_ror_2
+         |> reindex_cols_row )
      in
      KnFundecl
        {
@@ -410,11 +413,12 @@ let gift =
      let ty_alpha = Ty.(v alpha) in
      let ty_cols_rows = Ty.(app col (app row ty_alpha)) in
      let cols = TermIdent.fresh "cols" in
+     let ( |> ) e fn_ident = Expression.( |> ) e [ ty_alpha ] fn_ident in
+
      let statements, expression =
        ( [],
-         Expression.(
-           v cols |> col_reverse |> transpose |> row_ror_3 |> reindex_cols_row)
-       )
+         Expression.v cols |> col_reverse |> transpose |> row_ror_3
+         |> reindex_cols_row )
      in
      KnFundecl
        {
@@ -428,11 +432,11 @@ let gift =
      let ty_alpha = Ty.(v alpha) in
      let ty_cols_rows = Ty.(app col @@ app row ty_alpha) in
      let cols = TermIdent.fresh "cols" in
+     let ( |> ) e fn_ident = Expression.( |> ) e [ ty_alpha ] fn_ident in
      let statements, expression =
        ( [],
-         Expression.(
-           v cols |> col_reverse |> transpose |> row_ror_0 |> reindex_cols_row)
-       )
+         Expression.v cols |> col_reverse |> transpose |> row_ror_0
+         |> reindex_cols_row )
      in
      KnFundecl
        {
@@ -459,7 +463,7 @@ let gift =
          return_type = ty_col_alpha;
          body = { statements; expression };
        });
-    (let alpha = TyIdent.fresh "'a" in
+    (*   (let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
      let ty_cols_rows = Ty.(app col @@ app row ty_alpha) in
      let ty_fn_row_cols__row_cols = Ty.(fn [] [ ty_cols_rows ] ty_cols_rows) in
@@ -479,23 +483,23 @@ let gift =
          parameters = [];
          return_type = ty_slice;
          body = { statements; expression };
-       });
+       });*)
     (let s = TermIdent.fresh "s" in
      let key = TermIdent.fresh "key" in
-     let alpha = TyIdent.fresh "'a" in
-     let ty_alpha = Ty.(v alpha) in
+     (*     let ty_alpha = Ty.(v alpha) in*)
      let ty_state = Ty.(eapp state) in
-     let ty_cols_rows = Ty.(app col @@ app row ty_alpha) in
-     let ty_fn_row_cols__row_cols =
-       Ty.(fn [ (alpha, KType) ] [ ty_cols_rows ] ty_cols_rows)
-     in
+     let ty_cols_rows = Ty.(app col @@ app row bool) in
+     let ty_fn_row_cols__row_cols = Ty.(fn [] [ ty_cols_rows ] ty_cols_rows) in
      let ty_cols_rows_bool = Ty.(app col @@ app row bool) in
      let ty_slice = Ty.(app slice ty_fn_row_cols__row_cols) in
      let statements, expression =
        Statement.cstr "permbits" ty_slice
          Expression.
            [
-             fv rev_rotate_0; fv rev_rotate_1; fv rev_rotate_2; fv rev_rotate_3;
+             fv_t rev_rotate_0 [ Ty.bool ];
+             fv_t rev_rotate_1 [ Ty.bool ];
+             fv_t rev_rotate_2 [ Ty.bool ];
+             fv_t rev_rotate_3 [ Ty.bool ];
            ]
        @@ fun permbits ->
        Statement.decl "state"

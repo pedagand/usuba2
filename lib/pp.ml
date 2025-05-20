@@ -76,7 +76,13 @@ let rec pp_expression format = function
   | ETrue -> Format.fprintf format "1"
   | EFalse -> Format.fprintf format "0"
   | EVar id -> Format.fprintf format "%a" TermIdent.pp id
-  | EFunVar id -> Format.fprintf format "%a" FnIdent.pp id
+  | EFunVar (id, tys) ->
+      let pp_none _format () = () in
+      let pp_option =
+        Format.pp_print_option ~none:pp_none @@ fun format tys ->
+        Format.fprintf format "[%a]" pp_tys tys
+      in
+      Format.fprintf format "%a%a" FnIdent.pp id pp_option tys
   | EIndexing { expression; indexing } ->
       Format.fprintf format "%a[%a]" pp_expression expression pp_indexing
         indexing
@@ -123,7 +129,9 @@ and pp_statement format = function
         pp_expressions expressions
 
 and pp_statements format =
-  Format.pp_print_list ~pp_sep:Format.pp_print_newline pp_statement format
+  Format.pp_print_list
+    ~pp_sep:(fun format () -> Format.fprintf format "\n  ")
+    pp_statement format
 
 let pp_function_decl format decl =
   let {
@@ -141,7 +149,7 @@ let pp_function_decl format decl =
       (fun format (id, expression) ->
         Format.fprintf format "%a: %a" TermIdent.pp id pp_ty expression)
   in
-  Format.fprintf format "def %a%a(%a) -> %a =%a%a%a%a" pp_tyvars ty_vars
+  Format.fprintf format "def %a%a(%a) -> %a =%a  %a%a  %a" pp_tyvars ty_vars
     FnIdent.pp fn_name pp_args parameters pp_ty return_type
     Format.pp_print_newline () pp_statements statements Format.pp_print_newline
     () pp_expression expression

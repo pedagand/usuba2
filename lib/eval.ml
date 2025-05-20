@@ -1,3 +1,7 @@
+module Types = Map.Make (Ast.TyDeclIdent)
+module Functions = Map.Make (Ast.FnIdent)
+module Variables = Map.Make (Ast.TermIdent)
+
 let rec find_fold_map f acc = function
   | [] -> Either.left acc
   | t :: q -> (
@@ -36,7 +40,10 @@ module Cty = struct
 end
 
 module Value = struct
-  type t = VBool of bool | Varray of t Array.t | VFunction of Ast.FnIdent.t
+  type t =
+    | VBool of bool
+    | Varray of t Array.t
+    | VFunction of Ast.FnIdent.t * Ast.ty list option
 
   let true' = VBool true
   let false' = VBool false
@@ -66,7 +73,7 @@ module Value = struct
     | VFunction _ -> assert false
 
   let as_function = function
-    | VFunction fn_ident -> Some fn_ident
+    | VFunction (fn_ident, e) -> Some (fn_ident, e)
     | VBool _ | Varray _ -> None
 
   let rec make_pure_nested ty value =
@@ -92,14 +99,29 @@ module Value = struct
     | Varray array ->
         let pp_sep format () = Format.pp_print_string format ", " in
         Format.pp_print_array ~pp_sep pp format array
-    | VFunction fn -> Format.fprintf format "%a" Ast.FnIdent.pp fn
+    | VFunction (fn, tys) ->
+        let pp_none _format () = () in
+        let pp_option =
+          Format.pp_print_option ~none:pp_none @@ fun format tys ->
+          Format.fprintf format "[%a]" Pp.pp_tys tys
+        in
+        Format.fprintf format "%a%a" Ast.FnIdent.pp fn pp_option tys
 end
 
-module Types = Map.Make (Ast.TyDeclIdent)
-module Functions = Map.Make (Ast.FnIdent)
-module Variables = Map.Make (Ast.TermIdent)
-
 module Ty = struct
+  let are_same_ty_ctsr lhs rhs =
+    match (lhs, rhs) with
+    | ( Ast.TyApp { name = lhs; ty_args = _ },
+        Ast.TyApp { name = rhs; ty_args = _ } ) ->
+        Ast.TyDeclIdent.equal lhs rhs
+    | TyVarApp { name = lhs; ty_args = _ }, TyVarApp { name = rhs; ty_args = _ }
+      ->
+        Ast.TyIdent.equal lhs rhs
+    | TyTuple { size = lhs; ty = _ }, TyTuple { size = rhs; ty = _ } ->
+        Int.equal lhs rhs
+    | TyBool, TyBool -> true
+    | _, _ -> false
+
   let substitute ty = function
     | Ast.TyVarApp { name; ty_args = _ } ->
         Ast.TyVarApp { name; ty_args = Some ty }
@@ -141,16 +163,7 @@ module Ty = struct
             map
         in
         match ty with None -> t | Some ty -> ty)
-    | TyFun { ty_vars; parameters; return_type } ->
-        let map =
-          List.filter
-            (fun (id, _) ->
-              not @@ List.exists (fun (t, _) -> Ast.TyIdent.equal id t) ty_vars)
-            map
-        in
-        let parameters = List.map (instanciate map) parameters in
-        let return_type = instanciate map return_type in
-        TyFun { ty_vars; parameters; return_type }
+    | TyFun signature -> TyFun (instanciate_signature map signature)
     | TyApp { name; ty_args = Some ty } ->
         let ty_args = instanciate map ty in
         Ast.TyApp { name; ty_args = Some ty_args }
@@ -158,6 +171,18 @@ module Ty = struct
         let ty = instanciate map ty in
         TyTuple { size; ty }
     | (TyApp { name = _; ty_args = None } | TyBool) as ty -> ty
+
+  and instanciate_signature map =
+   fun { ty_vars; parameters; return_type } ->
+    let map =
+      List.filter
+        (fun (id, _) ->
+          not @@ List.exists (fun (t, _) -> Ast.TyIdent.equal id t) ty_vars)
+        map
+    in
+    let parameters = List.map (instanciate map) parameters in
+    let return_type = instanciate map return_type in
+    { ty_vars; parameters; return_type }
 
   let ty_nested = function
     | Ast.TyApp { ty_args = Some ty; name = _ }
@@ -240,12 +265,15 @@ module Env = struct
 
   let function_decl fnident env = Functions.find fnident env.fn_decls
 
-  let function' fnident env =
+  let sig_function fnident env =
     let () = Format.eprintf "look for : %a\n" Ast.FnIdent.pp fnident in
     let function_decl = Functions.find fnident env.fn_decls in
     let signature = signature_of_function_decl function_decl in
+    (fnident, signature)
+
+  let function' fnident env =
+    let value, signature = sig_function fnident env in
     let ty = Ast.TyFun signature in
-    let value = Value.VFunction fnident in
     (value, ty)
 
   let value termid env = Variables.find termid env.variables
@@ -257,16 +285,35 @@ let rec eval_expression env =
   | Ast.ETrue -> (Value.true', Ast.TyBool)
   | EFalse -> (Value.false', Ast.TyBool)
   | EVar term -> Env.value term env
-  | EFunVar fn -> Env.function' fn env
+  | EFunVar (fn, tys) ->
+      let fn_ident, signature = Env.sig_function fn env in
+      let signature =
+        match tys with
+        | None -> signature
+        | Some tys ->
+            let type_mapping = instanciate_types env signature.ty_vars tys in
+            Ty.instanciate_signature type_mapping signature
+      in
+      let ty = Ast.TyFun signature in
+      let value = Value.VFunction (fn_ident, tys) in
+      (value, ty)
   | EBuiltinCall { builtin; ty_args; args } ->
       eval_builin env ty_args args builtin
   | EFunctionCall { fn_name; ty_args; args } ->
-      let fn_ident =
+      let fn_ident, ty_args =
         match fn_name with
-        | Either.Left fn -> fn
+        | Either.Left fn -> (fn, ty_args)
         | Either.Right termid ->
-            let value, _ = Env.value termid env in
-            Option.get @@ Value.as_function value
+            let value, _s = Env.value termid env in
+            let fn_ident, tys = Option.get @@ Value.as_function value in
+            let ty_args =
+              match tys with
+              | None -> ty_args
+              | Some tys ->
+                  let () = assert (ty_args = []) in
+                  tys
+            in
+            (fn_ident, ty_args)
       in
       let fn_decl = Env.function_decl fn_ident env in
       let args = List.map (fst $ eval_expression env) args in
@@ -287,8 +334,7 @@ let rec eval_expression env =
                 Format.eprintf "@let+: ty = %a - t = %a\n" Pp.pp_ty ty Pp.pp_ty
                   t
               in
-
-              ty = t)
+              Ty.are_same_ty_ctsr ty t)
             ands
         with
         | true -> ()
@@ -429,23 +475,24 @@ and eval_body env body =
   let env = List.fold_left eval_statement env statements in
   eval_expression env expression
 
+and instanciate_types env ty_vars ty_args =
+  List.map2
+    (fun (tyident, kind) ty ->
+      match kind with
+      | Ast.KType -> (tyident, Either.Right ty)
+      | KArrow _ -> (
+          match Env.partially_applied ty env with
+          | None -> err "@eval: expected type-constructor found type"
+          | Some typedeclident -> (tyident, Either.Left typedeclident)))
+    ty_vars ty_args
+
 and eval env (fn_decl : Ast.kasumi_function_decl) ty_args args =
   let Ast.{ fn_name; ty_vars; parameters; return_type = _; body } = fn_decl in
   let () =
     Format.eprintf "fn = %a:\nty_vars = [%a]\nty_args = [%a]\n\n" Ast.FnIdent.pp
       fn_name Pp.pp_tyvars ty_vars Pp.pp_ty_args ty_args
   in
-  let type_instances =
-    List.map2
-      (fun (tyident, kind) ty ->
-        match kind with
-        | Ast.KType -> (tyident, Either.Right ty)
-        | KArrow _ -> (
-            match Env.partially_applied ty env with
-            | None -> err "@eval: expected type-constructor found type"
-            | Some typedeclident -> (tyident, Either.Left typedeclident)))
-      ty_vars ty_args
-  in
+  let type_instances = instanciate_types env ty_vars ty_args in
   let env = { env with type_instances } in
   let variables =
     List.fold_left2

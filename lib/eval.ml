@@ -76,6 +76,8 @@ module Value = struct
     | VFunction (fn_ident, e) -> Some (fn_ident, e)
     | VBool _ | Varray _ -> None
 
+  let as_bool = function VBool s -> Some s | VFunction _ | Varray _ -> None
+
   let rec make_pure_nested ty value =
     match ty with
     | Ast.TyTuple { size; ty } ->
@@ -98,7 +100,7 @@ module Value = struct
     | VBool false -> Format.fprintf format "0"
     | Varray array ->
         let pp_sep format () = Format.pp_print_string format ", " in
-        Format.pp_print_array ~pp_sep pp format array
+        Format.fprintf format "[%a]" (Format.pp_print_array ~pp_sep pp) array
     | VFunction (fn, tys) ->
         let pp_none _format () = () in
         let pp_option =

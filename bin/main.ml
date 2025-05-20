@@ -5,6 +5,10 @@ module RowsCols = struct
   let tabulate f =
     Usuba2.Eval.Value.tabulate 4 @@ fun c ->
     Usuba2.Eval.Value.tabulate 4 @@ fun r -> f (r, c)
+
+  let lookup rc (r, c) =
+    let value = Usuba2.Eval.Value.get c rc in
+    Usuba2.Eval.Value.get r value
 end
 
 module Gift = struct
@@ -111,6 +115,28 @@ module Gift = struct
     let index = 15 - ((r * 4) + c) in
     VBool (List.nth bools index)
 
+  let bools_of_rows_cols rows_cols =
+    List.rev @@ List.init 16
+    @@ fun index ->
+    let r = index / 4 in
+    let c = index mod 4 in
+    RowsCols.lookup rows_cols (r, c)
+
+  let to_slice spec =
+    let slices =
+      List.init 4 @@ fun zindex ->
+      let zslice = bools_of_rows_cols spec in
+      List.map
+        (fun z ->
+          z
+          |> Usuba2.Eval.Value.get zindex
+          |> Usuba2.Eval.Value.as_bool |> Option.get)
+        zslice
+    in
+    match slices with
+    | [ s0; s1; s2; s3 ] -> (s0, s1, s2, s3)
+    | _ -> assert false
+
   let uvs key =
     key |> precompute_keys
     |> List.map (fun (u, v) -> (slice_of_bools u, slice_of_bools v))
@@ -131,7 +157,47 @@ module Gift = struct
         | _ -> assert false)
       [ us; vs; bottom; consts ]
 
-  (*    List.map2 (RowsCols.map2 (fun (u, v) const -> (u, v, const))) uv consts*)
+  let transpose_inverse_block (s0, s1, s2, s3) =
+    let ( .%() ) = List.nth in
+    let ( lsl ) b n =
+      let b = Bool.to_int b in
+      b lsl n
+    in
+
+    let half_length = 8 in
+    List.init half_length (fun i ->
+        let i = 2 * i in
+        let b0 = s3.%(i) in
+        let b4 = s3.%(i + 1) in
+
+        let b1 = s2.%(i) in
+        let b5 = s2.%(i + 1) in
+
+        let b2 = s1.%(i) in
+        let b6 = s1.%(i + 1) in
+
+        let b3 = s0.%(i) in
+        let b7 = s0.%(i + 1) in
+
+        let s =
+          (b0 lsl 7) + (b1 lsl 6) + (b2 lsl 5) + (b3 lsl 4) + (b4 lsl 3)
+          + (b5 lsl 2) + (b6 lsl 1) + Bool.to_int b7
+        in
+
+        Char.chr s)
+
+  let transpose_inverse block =
+    let block = transpose_inverse_block block in
+    [ block ]
+
+  let pp =
+    List.iter (fun cipher ->
+        let () =
+          List.iter (fun c -> Format.eprintf "%02x " @@ Char.code c) cipher
+        in
+        print_newline ())
+
+  (*    List.map2 (RowsCols.map2 (fun (u, v) const -> (u, v, const))) uv consts *)
 end
 
 let keys = Queue.create ()
@@ -167,25 +233,26 @@ let eval keys texts =
       kps
   in
 
-  let () =
-    Seq.iter
-      (fun (state, keys) ->
-        let keys = Array.of_list keys in
-        let () = assert (Array.length keys = 28) in
-        let v =
-          Usuba2.Eval.eval Usuba2.Gift.gift Usuba2.Gift.fngift []
-            [ state; Varray keys ]
-        in
-        ignore v)
-      kps
-  in
-  ()
+  Seq.find_map
+    (fun (state, keys) ->
+      let keys = Array.of_list keys in
+      let () = assert (Array.length keys = 28) in
+
+      Usuba2.Eval.eval Usuba2.Gift.gift Usuba2.Gift.fngift []
+        [ state; Varray keys ])
+    kps
 
 let print module' = Format.printf "%a\n" Usuba2.Pp.pp_module module'
 
 let main () =
   match Queue.is_empty texts with
   | true -> print Usuba2.Gift.gift
-  | false -> eval keys texts
+  | false -> (
+      match eval keys texts with
+      | None -> Printf.eprintf "evaluation None\n"
+      | Some (value, _) ->
+          let slices = Gift.to_slice value in
+          let chars = Gift.transpose_inverse slices in
+          Gift.pp chars)
 
 let () = main ()

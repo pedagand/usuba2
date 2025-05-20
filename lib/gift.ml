@@ -463,27 +463,6 @@ let gift =
          return_type = ty_col_alpha;
          body = { statements; expression };
        });
-    (*   (let alpha = TyIdent.fresh "'a" in
-     let ty_alpha = Ty.(v alpha) in
-     let ty_cols_rows = Ty.(app col @@ app row ty_alpha) in
-     let ty_fn_row_cols__row_cols = Ty.(fn [] [ ty_cols_rows ] ty_cols_rows) in
-     let ty_slice = Ty.(app slice ty_fn_row_cols__row_cols) in
-     let statements, expression =
-       Statement.cstr "slice" ty_slice
-         Expression.
-           [
-             fv rev_rotate_0; fv rev_rotate_1; fv rev_rotate_2; fv rev_rotate_3;
-           ]
-       @@ fun s -> ([], Expression.v s)
-     in
-     KnFundecl
-       {
-         fn_name = permbits;
-         ty_vars = [ (alpha, KType) ];
-         parameters = [];
-         return_type = ty_slice;
-         body = { statements; expression };
-       });*)
     (let s = TermIdent.fresh "s" in
      let key = TermIdent.fresh "key" in
      (*     let ty_alpha = Ty.(v alpha) in*)

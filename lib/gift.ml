@@ -36,7 +36,7 @@ module Expression = struct
   let ( |> ) e ty_args fn_name =
     EFunctionCall { fn_name = Either.left fn_name; ty_args; args = [ e ] }
 
-  let let_plus variable expression ands k =
+  let let_plus variable ty_arg ty_ret expression ands k =
     let variable = TermIdent.fresh variable in
     let ands =
       List.map
@@ -49,6 +49,8 @@ module Expression = struct
     SLetPLus
       {
         variable;
+        ty_arg;
+        ty_ret;
         expression;
         ands;
         body = { statements; expression = expression' };
@@ -75,6 +77,7 @@ end
 
 let app = FnIdent.fresh "app"
 let map2 = FnIdent.fresh "map2"
+let map = FnIdent.fresh "map"
 let row = TyDeclIdent.fresh "row"
 let col = TyDeclIdent.fresh "col"
 let keys = TyDeclIdent.fresh "keys"
@@ -125,7 +128,7 @@ let gift =
       {
         ty_vars = [];
         ty_name = state;
-        definition = Ty.(app slice (app col (app row bool)));
+        definition = Ty.(app col (app row (app slice bool)));
       };
     KnTypedecl
       { ty_vars = []; ty_name = keys; definition = Ty.(tuple 28 @@ eapp state) };
@@ -141,7 +144,11 @@ let gift =
      let fs = TermIdent.fresh "fs" in
      let xs = TermIdent.fresh "xs" in
      let expression =
-       Expression.let_plus "f" Expression.(v fs) Expression.[ ("x", v xs) ]
+       Expression.let_plus "f"
+         Ty.(v ctrl)
+         ty_beta
+         Expression.(v fs)
+         Expression.[ ("x", v xs) ]
        @@ fun f ands ->
        let x = match ands with [] -> assert false | x :: _ -> x in
        ([], Expression.(term_call f [] [ v x ]))
@@ -152,6 +159,29 @@ let gift =
          ty_vars =
            [ (ctrl, KArrow (KType, KType)); (alpha, KType); (beta, KType) ];
          parameters = [ (fs, ty_ctrl_fn); (xs, ty_ctrl_alpha) ];
+         return_type = ty_ctrl_beta;
+         body = { statements = []; expression };
+       });
+    (let alpha = TyIdent.fresh "'a" in
+     let beta = TyIdent.fresh "'b" in
+     let ctrl = TyIdent.fresh "#t" in
+     let ty_alpha = Ty.(v alpha) in
+     let ty_beta = Ty.(v beta) in
+     let ty_ctrl_alpha = Ty.(varapp ctrl ty_alpha) in
+     let ty_ctrl_beta = Ty.(varapp ctrl ty_beta) in
+     let ty_fn = Ty.(fn [] [ ty_alpha ] ty_beta) in
+     let f = TermIdent.fresh "f" in
+     let xs = TermIdent.fresh "xs" in
+     let expression =
+       Expression.let_plus "x" Ty.(v ctrl) ty_beta Expression.(v xs) []
+       @@ fun x _ -> ([], Expression.term_call f [] Expression.[ v x ])
+     in
+     KnFundecl
+       {
+         fn_name = map;
+         ty_vars =
+           [ (ctrl, KArrow (KType, KType)); (alpha, KType); (beta, KType) ];
+         parameters = [ (f, ty_fn); (xs, ty_ctrl_alpha) ];
          return_type = ty_ctrl_beta;
          body = { statements = []; expression };
        });
@@ -170,7 +200,11 @@ let gift =
      let xs = TermIdent.fresh "xs" in
      let ys = TermIdent.fresh "ys" in
      let expression =
-       Expression.let_plus "x" Expression.(v xs) Expression.[ ("y", v ys) ]
+       Expression.let_plus "x"
+         Ty.(v ctrl)
+         ty_charly
+         Expression.(v xs)
+         Expression.[ ("y", v ys) ]
        @@ fun x ands ->
        let y = match ands with [] -> assert false | t :: _ -> t in
        ([], Expression.term_call f [] Expression.[ v x; v y ])
@@ -246,7 +280,7 @@ let gift =
      let ty_col_alpha = Ty.(app col ty_alpha) in
      let ty_cols_rows = Ty.(app col (app row ty_alpha)) in
      let ty_rows_cols = Ty.(app row ty_col_alpha) in
-     let state = TermIdent.fresh "state" in
+     let state = TermIdent.fresh "s" in
      let index icol irow =
        Expression.(e_indexing (indexing state col icol) row irow)
      in
@@ -279,7 +313,7 @@ let gift =
      let ty_row_alpha = Ty.(app row ty_alpha) in
      let ty_row_cols = Ty.(app row (app col ty_alpha)) in
      let ty_col_rows = Ty.(app col ty_row_alpha) in
-     let state = TermIdent.fresh "state" in
+     let state = TermIdent.fresh "s" in
      let index icol irow =
        Expression.(e_indexing (indexing state row irow) col icol)
      in
@@ -470,19 +504,23 @@ let gift =
      let ty_cols_rows = Ty.(app col @@ app row bool) in
      let ty_fn_row_cols__row_cols = Ty.(fn [] [ ty_cols_rows ] ty_cols_rows) in
      let ty_cols_rows_bool = Ty.(app col @@ app row bool) in
+     let ty_cols_rows_partial = Ty.(app col @@ eapp row) in
      let ty_slice = Ty.(app slice ty_fn_row_cols__row_cols) in
      let statements, expression =
        Statement.cstr "permbits" ty_slice
          Expression.
            [
-             fv_t rev_rotate_0 [ Ty.bool ];
              fv_t rev_rotate_1 [ Ty.bool ];
              fv_t rev_rotate_2 [ Ty.bool ];
              fv_t rev_rotate_3 [ Ty.bool ];
+             fv_t rev_rotate_0 [ Ty.bool ];
            ]
        @@ fun permbits ->
        Statement.decl "state"
-         Expression.(fn_call subcells [ ty_cols_rows_bool ] [ v s ])
+         Expression.(
+           fn_call map
+             [ ty_cols_rows_partial; Ty.(app slice bool); Ty.(app slice bool) ]
+             [ fv subcells; v s ])
        @@ fun state ->
        Statement.decl "state"
          Expression.(
@@ -505,7 +543,7 @@ let gift =
      let ty_state = Ty.(eapp state) in
      let ty_keys = Ty.(eapp keys) in
      let expression =
-       List.init 28 Fun.id
+       List.init 1 Fun.id
        |> List.fold_left
             (fun acc i ->
               Expression.(fn_call round [] [ acc; indexing vkeys keys i ]))

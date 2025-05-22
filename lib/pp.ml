@@ -99,6 +99,8 @@ let rec pp_expression format = function
   | SLetPLus
       {
         variable;
+        ty_arg;
+        ty_ret;
         expression;
         ands;
         body = { statements; expression = expression' };
@@ -110,10 +112,10 @@ let rec pp_expression format = function
             Format.fprintf format "and+ %a = %a" TermIdent.pp id pp_expression
               expression)
       in
-      Format.fprintf format "let+ %a = %a %a in%a%a%a%a" TermIdent.pp variable
-        pp_expression expression pp_ands ands pp_statements statements
-        pp_expression expression Format.pp_print_newline () pp_expression
-        expression'
+      Format.fprintf format "let+[%a][%a] %a = %a %a in%a%a%a%a" pp_ty ty_arg
+        pp_ty ty_ret TermIdent.pp variable pp_expression expression pp_ands ands
+        pp_statements statements pp_expression expression
+        Format.pp_print_newline () pp_expression expression'
 
 and pp_expressions format =
   Format.pp_print_list

@@ -153,7 +153,7 @@ module Gift = struct
     in
     Usuba2.Eval.mapn
       (function
-        | [ u; v; b; c ] -> Usuba2.Eval.Value.Varray [| u; v; b; c |]
+        | [ u; v; b; c ] -> Usuba2.Eval.Value.Varray [| v; u; b; c |]
         | _ -> assert false)
       [ us; vs; bottom; consts ]
 
@@ -190,23 +190,32 @@ module Gift = struct
     let block = transpose_inverse_block block in
     [ block ]
 
-  let pp =
+  let pp format =
     List.iter (fun cipher ->
         let () =
-          List.iter (fun c -> Format.eprintf "%02x " @@ Char.code c) cipher
+          List.iter
+            (fun c -> Format.fprintf format "%02x " @@ Char.code c)
+            cipher
         in
         print_newline ())
+
+  let pp_value format value =
+    let slices = to_slice value in
+    let chars = transpose_inverse slices in
+    pp format chars
 
   (*    List.map2 (RowsCols.map2 (fun (u, v) const -> (u, v, const))) uv consts *)
 end
 
 let keys = Queue.create ()
 let texts = Queue.create ()
+let debug = ref false
 
 let spec =
   Arg.align
     [
       ("-k", Arg.String (Fun.flip Queue.add keys), "<keyfile> path to the key");
+      ("-d", Arg.Set debug, " Debug mode");
     ]
 
 let pos_args = Fun.flip Queue.add texts
@@ -214,6 +223,19 @@ let usage = Printf.sprintf "%s [-k <keyfile>]... PLAINTEXT..." Sys.argv.(0)
 let () = Arg.parse spec pos_args usage
 
 let eval keys texts =
+  let debug =
+    match !debug with
+    | false -> None
+    | true ->
+        Option.some @@ fun termid (value, _ty) ->
+        let (_, name) : _ * string = Obj.magic termid in
+        let pp =
+          if name = "state" then Gift.pp_value else Usuba2.Eval.Value.pp
+        in
+        Format.(
+          fprintf err_formatter "%a = %a\n%!" Usuba2.Ast.TermIdent.pp termid pp
+            value)
+  in
   let () = assert (Queue.length keys = Queue.length texts) in
   let kps =
     Seq.map2
@@ -238,7 +260,7 @@ let eval keys texts =
       let keys = Array.of_list keys in
       let () = assert (Array.length keys = 28) in
 
-      Usuba2.Eval.eval Usuba2.Gift.gift Usuba2.Gift.fngift []
+      Usuba2.Eval.eval ?debug Usuba2.Gift.gift Usuba2.Gift.fngift []
         [ state; Varray keys ])
     kps
 
@@ -251,8 +273,11 @@ let main () =
       match eval keys texts with
       | None -> Printf.eprintf "evaluation None\n"
       | Some (value, _) ->
+          let () =
+            Format.(fprintf err_formatter "%a\n" Usuba2.Eval.Value.pp value)
+          in
           let slices = Gift.to_slice value in
           let chars = Gift.transpose_inverse slices in
-          Gift.pp chars)
+          Gift.pp Format.err_formatter chars)
 
 let () = main ()

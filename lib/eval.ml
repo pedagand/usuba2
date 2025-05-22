@@ -62,6 +62,14 @@ module Value = struct
     | VBool _, Varray _ | Varray _, VBool _ | VFunction _, _ | _, VFunction _ ->
         assert false
 
+  let as_array = function
+    | Varray array -> Some array
+    | VBool _ | VFunction _ -> None
+
+  let as_function = function
+    | VFunction (fn_ident, e) -> Some (fn_ident, e)
+    | VBool _ | Varray _ -> None
+
   let rec map' f = function
     | VBool b -> VBool (f b)
     | Varray a -> Varray (Array.map (map' f) a)
@@ -72,11 +80,20 @@ module Value = struct
     | VBool _ as v -> if i = 0 then v else assert false
     | VFunction _ -> assert false
 
-  let as_function = function
-    | VFunction (fn_ident, e) -> Some (fn_ident, e)
-    | VBool _ | Varray _ -> None
-
   let as_bool = function VBool s -> Some s | VFunction _ | Varray _ -> None
+
+  let rec mapn' level f values =
+    match level with
+    | 0 -> f values
+    | level ->
+        let first = List.nth values 0 in
+        let length = first |> as_array |> Option.get |> Array.length in
+        let array = Array.init length (fun i -> mapn'' level i f values) in
+        Varray array
+
+  and mapn'' level i f values =
+    let values = List.map (fun value -> get i value) values in
+    mapn' (level - 1) f values
 
   let rec make_pure_nested ty value =
     match ty with
@@ -186,6 +203,32 @@ module Ty = struct
     let return_type = instanciate map return_type in
     { ty_vars; parameters; return_type }
 
+  let rec ty_app_diff depth partial total =
+    match (partial, total) with
+    | ( Ast.TyApp { name = pname; ty_args = pty_args },
+        Ast.TyApp { name = tname; ty_args = tty_args } ) ->
+        if Ast.TyDeclIdent.equal pname tname then
+          match (pty_args, tty_args) with
+          | None, None -> None
+          | None, Some t | Some t, None -> Some (t, depth)
+          | Some p, Some t -> ty_app_diff (depth + 1) p t
+        else None
+    | ( Ast.TyVarApp { name = pname; ty_args = pty_args },
+        Ast.TyVarApp { name = tname; ty_args = tty_args } ) ->
+        if Ast.TyIdent.equal pname tname then
+          match (pty_args, tty_args) with
+          | None, None -> None
+          | None, Some t | Some t, None -> Some (t, depth)
+          | Some p, Some t -> ty_app_diff (depth + 1) p t
+        else None
+    | TyTuple { size = psize; ty = pty }, TyTuple { size = tsize; ty = tty } ->
+        if psize = tsize then ty_app_diff (depth + 1) pty tty else None
+    | TyFun _, TyFun _ -> None
+    | TyBool, TyBool -> None
+    | _, _ -> None
+
+  let ty_app_diff = ty_app_diff 0
+
   let ty_nested = function
     | Ast.TyApp { ty_args = Some ty; name = _ }
     | TyVarApp { ty_args = Some ty; name = _ }
@@ -199,14 +242,18 @@ end
 
 module Env = struct
   type t = {
+    debug : (Variables.key -> Value.t * Ast.ty -> unit) option;
+    current_function : Ast.FnIdent.t option;
     type_decls : (Ast.kasumi_type_decl * Ast.ty) Types.t;
     fn_decls : Ast.kasumi_function_decl Functions.t;
     variables : (Value.t * Ast.ty) Variables.t;
     type_instances : (Ast.TyIdent.t * (Ast.TyDeclIdent.t, Ast.ty) Either.t) list;
   }
 
-  let empty =
+  let empty ~debug =
     {
+      debug;
+      current_function = None;
       type_decls = Types.empty;
       fn_decls = Functions.empty;
       variables = Variables.empty;
@@ -242,12 +289,13 @@ module Env = struct
     | Ast.TyFun _ -> 0
     | Ast.TyApp _ | TyVarApp _ -> assert false
 
-  let partially_applied ty env =
+  let rec partially_applied ty env =
     let arity = ty_arity ty env in
     match ty with
-    | Ast.TyApp { name; ty_args } ->
-        if List.length (Option.to_list ty_args) <> arity then Some name
-        else None
+    | Ast.TyApp { name; ty_args } -> (
+        match ty_args with
+        | None -> if arity <> 0 then Some name else None
+        | Some ty -> partially_applied ty env)
     | Ast.TyVarApp _ -> err "ty_arity: can not compute arity of tyvarapp"
     | Ast.TyTuple _ | TyFun _ | TyBool -> None
 
@@ -255,6 +303,7 @@ module Env = struct
     let variables = Variables.add term variable env.variables in
     { env with variables }
 
+  let iter_bindings f env = Variables.iter f env.variables
   let clear_variables env = { env with variables = Variables.empty }
 
   let signature_of_function_decl (function_decl : Ast.kasumi_function_decl) =
@@ -268,7 +317,7 @@ module Env = struct
   let function_decl fnident env = Functions.find fnident env.fn_decls
 
   let sig_function fnident env =
-    let () = Format.eprintf "look for : %a\n" Ast.FnIdent.pp fnident in
+    (*    let () = Format.eprintf "look for : %a\n" Ast.FnIdent.pp fnident in*)
     let function_decl = Functions.find fnident env.fn_decls in
     let signature = signature_of_function_decl function_decl in
     (fnident, signature)
@@ -278,8 +327,38 @@ module Env = struct
     let ty = Ast.TyFun signature in
     (value, ty)
 
-  let value termid env = Variables.find termid env.variables
+  let value termid env =
+    match Variables.find_opt termid env.variables with
+    | None ->
+        let current_function =
+          match env.current_function with
+          | None -> String.empty
+          | Some f -> Format.asprintf "%a" Ast.FnIdent.pp f
+        in
+        let () =
+          Format.eprintf "Cannot found : %s - %a\n" current_function
+            Ast.TermIdent.pp termid
+        in
+        raise Not_found
+    | Some e -> e
 end
+
+let debug statement (env : Env.t) =
+  match env.debug with
+  | None -> ()
+  | Some f -> (
+      let current_function =
+        match env.current_function with
+        | None -> String.empty
+        | Some t -> Format.asprintf "%a" Ast.FnIdent.pp t
+      in
+      let () =
+        Format.(
+          fprintf err_formatter "%s - %a\n" current_function Pp.pp_statement
+            statement)
+      in
+      let () = Env.iter_bindings (fun variable value -> f variable value) env in
+      try ignore @@ read_line () with End_of_file -> ())
 
 let rec eval_expression env =
   let ( $ ) g f x = g (f x) in
@@ -321,8 +400,16 @@ let rec eval_expression env =
       let args = List.map (fst $ eval_expression env) args in
       eval env fn_decl ty_args args
   | EOp op -> eval_op env op
-  | SLetPLus { variable; expression; ands; body } ->
-      let ((_, ty) as valuet) = eval_expression' env expression in
+  | SLetPLus { variable; ty_arg; ty_ret; expression; ands; body } ->
+      (* let ty_arg = Env.instanciate ty_arg env in
+      let ty_ret = Env.instanciate ty_ret env in *)
+      let ((_, ty) as valuet) = eval_expression env expression in
+      let () =
+        Format.(
+          fprintf err_formatter "@let+ : tyarg = %a - ty = %a\n" Pp.pp_ty ty_arg
+            Pp.pp_ty ty)
+      in
+      let () = assert (Ty.are_same_ty_ctsr ty_arg ty) in
       let ands =
         List.map
           (fun (term, expression) -> (term, eval_expression' env expression))
@@ -330,45 +417,38 @@ let rec eval_expression env =
       in
       let () =
         match
-          List.for_all
-            (fun (_, (_, t)) ->
-              let () =
-                Format.eprintf "@let+: ty = %a - t = %a\n" Pp.pp_ty ty Pp.pp_ty
-                  t
-              in
-              Ty.are_same_ty_ctsr ty t)
-            ands
+          List.for_all (fun (_, (_, t)) -> Ty.are_same_ty_ctsr ty t) ands
         with
         | true -> ()
         | false -> err "@eval: let_plus not same type"
       in
-      let args = (variable, valuet) :: ands in
-      let nty = Option.get @@ Ty.ty_nested ty in
-      let size = Env.size ty env in
-      let array =
-        Array.init size (fun index ->
+      let ty_elt_map, depth =
+        match Ty.ty_app_diff ty_arg ty with
+        | Some e -> e
+        | None -> err "@eval : ty_app_diff"
+      in
+      let args_names, args_values =
+        List.split @@ ((variable, valuet) :: ands)
+      in
+      let args_values, _ = List.split args_values in
+      let value =
+        Value.mapn' (depth - 1)
+          (fun values ->
             let env = Env.clear_variables env in
             let env =
-              List.fold_left
-                (fun env (ident, (value, _)) ->
-                  let value = Value.get index value in
-                  Env.add_binding ident (value, nty) env)
-                env args
+              List.fold_left2
+                (fun env ident value ->
+                  Env.add_binding ident (value, ty_elt_map) env)
+                env args_names values
             in
-            eval_body env body)
+            fst @@ eval_body env body)
+          args_values
       in
-      let values, types = Array.split array in
-      let value = Value.Varray values in
-      let ty_value = Array.get types 0 in
-      let ty = Ty.substitute ty_value ty in
+      let ty = Ty.substitute ty_ret ty in
       (value, ty)
   | EIndexing { expression; indexing = { name; index } } ->
-      let value, ty = eval_expression env expression in
+      let value, _ty = eval_expression env expression in
       let ty' = Env.ty_canon name env in
-      let () =
-        Format.eprintf "indexing ty = %a - ty' = %a\n" Pp.pp_ty ty Pp.pp_ty ty'
-      in
-      (*      let () = assert (ty = ty') in*)
       let size, _ty' =
         match ty' with
         | TyTuple { size; ty } -> (size, ty)
@@ -387,7 +467,7 @@ let rec eval_expression env =
         match ty' with
         | TyTuple { ty; size = _ } | TyApp { ty_args = Some ty; name = _ } -> ty
         | TyApp { ty_args = None; name = _ } | TyFun _ | TyVarApp _ | TyBool ->
-            let () = Format.eprintf "@indexing2 = %a\n" Pp.pp_ty ty in
+            (*            let () = Format.eprintf "@indexing2 = %a\n" Pp.pp_ty ty in*)
             assert false
       in
       (value, ty)
@@ -450,11 +530,11 @@ and eval_statement env = function
             List.map
               (fun expression ->
                 let value, vty = eval_expression env expression in
-                let vty = Env.canonical_type vty env in
-                let () =
+                let _vty = Env.canonical_type vty env in
+                (*                let () =
                   Format.eprintf "@stcstr: ty = %a - vty' = %a\n" Pp.pp_ty ty
                     Pp.pp_ty vty
-                in
+                in*)
                 value)
               expressions
           in
@@ -472,9 +552,14 @@ and eval_statement env = function
       | TyFun _s -> failwith ""
       | TyVarApp _ | TyApp _ -> assert false)
 
+and eval_statement' env statement =
+  let env = eval_statement env statement in
+  let () = debug statement env in
+  env
+
 and eval_body env body =
   let Ast.{ statements; expression } = body in
-  let env = List.fold_left eval_statement env statements in
+  let env = List.fold_left eval_statement' env statements in
   eval_expression env expression
 
 and instanciate_types env ty_vars ty_args =
@@ -495,7 +580,7 @@ and eval env (fn_decl : Ast.kasumi_function_decl) ty_args args =
       fn_name Pp.pp_tyvars ty_vars Pp.pp_ty_args ty_args
   in
   let type_instances = instanciate_types env ty_vars ty_args in
-  let env = { env with type_instances } in
+  let env = { env with type_instances; current_function = Some fn_name } in
   let variables =
     List.fold_left2
       (fun variables (term, ty) value ->
@@ -538,7 +623,7 @@ let eval_node fn_name ty_args args env = function
       let env = add_typedecl env type_decl in
       Either.left env
 
-let eval ast fn_name ty_args args =
+let eval ?debug ast fn_name ty_args args =
   ast
-  |> find_fold_map (eval_node fn_name ty_args args) Env.empty
+  |> find_fold_map (eval_node fn_name ty_args args) (Env.empty ~debug)
   |> Either.find_right

@@ -64,6 +64,8 @@ type expression =
     }
   | SLetPLus of {
       variable : TermIdent.t;
+      ty_arg : ty;
+      ty_ret : ty;
       expression : expression;
       ands : (TermIdent.t * expression) list;
       body : body;

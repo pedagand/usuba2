@@ -27,16 +27,20 @@ let mapn f lists =
       in
       mapn f lists
 
-let err fmt = Printf.ksprintf failwith fmt
+let err fmt = Format.kasprintf failwith fmt
 
-module Cty = struct
+module TyNormal = struct
   type signature = {
     ty_vars : Ast.TyIdent.t list;
     parameters : t list;
     return_type : t;
   }
 
-  and t = TyTuple of { size : int; ty : t } | TyFun of signature | TyBool
+  and t =
+    | TyTuple of { size : int; ty : t }
+    | TyVar of Ast.TyIdent.t
+    | TyFun of signature
+    | TyBool
 end
 
 module Value = struct
@@ -80,38 +84,6 @@ module Value = struct
     | VBool _ as v -> if i = 0 then v else assert false
     | VFunction _ -> assert false
 
-  let as_bool = function VBool s -> Some s | VFunction _ | Varray _ -> None
-
-  let rec mapn' level f values =
-    match level with
-    | 0 -> f values
-    | level ->
-        let first = List.nth values 0 in
-        let length = first |> as_array |> Option.get |> Array.length in
-        let array = Array.init length (fun i -> mapn'' level i f values) in
-        Varray array
-
-  and mapn'' level i f values =
-    let values = List.map (fun value -> get i value) values in
-    mapn' (level - 1) f values
-
-  let rec make_pure_nested ty value =
-    match ty with
-    | Ast.TyTuple { size; ty } ->
-        Varray (Array.init size (fun _ -> make_pure_nested ty value))
-    | Ast.TyBool | TyFun _ -> value
-    | Ast.TyApp _ | TyVarApp _ -> assert false
-
-  let make_pure ty value =
-    match ty with
-    | Ast.TyTuple { size; ty = _ } -> Varray (Array.init size (Fun.const value))
-    | Ast.TyBool | TyFun _ -> value
-    | Ast.TyApp _ | TyVarApp _ -> assert false
-
-  let tabulate size f =
-    let array = Array.init size f in
-    Varray array
-
   let rec pp format = function
     | VBool true -> Format.fprintf format "1"
     | VBool false -> Format.fprintf format "0"
@@ -125,6 +97,41 @@ module Value = struct
           Format.fprintf format "[%a]" Pp.pp_tys tys
         in
         Format.fprintf format "%a%a" Ast.FnIdent.pp fn pp_option tys
+
+  let as_bool = function VBool s -> Some s | VFunction _ | Varray _ -> None
+
+  let rec mapn' level f values =
+    let () = Format.eprintf "level = %u\n" level in
+    match level with
+    | 0 -> f values
+    | level ->
+        let () =
+          List.iter (fun value -> Format.eprintf "%a\n" pp value) values
+        in
+        let first = List.nth values 0 in
+        let length = first |> as_array |> Option.get |> Array.length in
+        let array = Array.init length (fun i -> mapn'' level i f values) in
+        Varray array
+
+  and mapn'' level i f values =
+    let values = List.map (fun value -> get i value) values in
+    mapn' (level - 1) f values
+
+  let rec make_pure_nested ty value =
+    match ty with
+    | TyNormal.TyTuple { size; ty } ->
+        Varray (Array.init size (fun _ -> make_pure_nested ty value))
+    | TyNormal.TyBool | TyNormal.TyFun _ | TyNormal.TyVar _ -> value
+
+  let make_pure ty value =
+    match ty with
+    | Ast.TyTuple { size; ty = _ } -> Varray (Array.init size (Fun.const value))
+    | Ast.TyBool | TyFun _ -> value
+    | Ast.TyApp _ | TyVarApp _ -> assert false
+
+  let tabulate size f =
+    let array = Array.init size f in
+    Varray array
 end
 
 module Ty = struct
@@ -182,7 +189,7 @@ module Ty = struct
             map
         in
         match ty with None -> t | Some ty -> ty)
-    | TyFun signature -> TyFun (instanciate_signature map signature)
+    | TyFun signature -> TyFun (instanciate_signature instanciate map signature)
     | TyApp { name; ty_args = Some ty } ->
         let ty_args = instanciate map ty in
         Ast.TyApp { name; ty_args = Some ty_args }
@@ -191,7 +198,7 @@ module Ty = struct
         TyTuple { size; ty }
     | (TyApp { name = _; ty_args = None } | TyBool) as ty -> ty
 
-  and instanciate_signature map =
+  and instanciate_signature k map =
    fun { ty_vars; parameters; return_type } ->
     let map =
       List.filter
@@ -199,11 +206,55 @@ module Ty = struct
           not @@ List.exists (fun (t, _) -> Ast.TyIdent.equal id t) ty_vars)
         map
     in
-    let parameters = List.map (instanciate map) parameters in
-    let return_type = instanciate map return_type in
+    let parameters = List.map (k map) parameters in
+    let return_type = k map return_type in
     { ty_vars; parameters; return_type }
 
-  let rec ty_app_diff depth partial total =
+  let rec instanciate_anyway map = function
+    | Ast.TyVarApp { name; ty_args = Some ty } -> (
+        let ty_args = instanciate_anyway map ty in
+        let ident =
+          List.find_map
+            (fun (tyident, e_ty) ->
+              match Ast.TyIdent.equal name tyident with
+              | true -> (
+                  (* Since name is a type constructor, we expect TyDeclIdent *)
+                  match e_ty with
+                  | Either.Left tydeclident -> Some tydeclident
+                  | Either.Right _ty ->
+                      err "tyinstance: expected TyDeclIdent found ty")
+              | false -> None)
+            map
+        in
+        match ident with
+        | None -> Ast.TyVarApp { name; ty_args = Some ty_args }
+        | Some ident -> Ast.TyApp { name = ident; ty_args = Some ty_args })
+    | TyVarApp { name; ty_args = None } as t -> (
+        let ty =
+          List.find_map
+            (fun (tyident, e_ty) ->
+              match Ast.TyIdent.equal name tyident with
+              | true -> (
+                  (* Since name is a type constructor, we expect TyDeclIdent *)
+                  match e_ty with
+                  | Either.Left ty ->
+                      Some (Ast.TyApp { name = ty; ty_args = None })
+                  | Either.Right ty -> Some ty)
+              | false -> None)
+            map
+        in
+        match ty with None -> t | Some ty -> ty)
+    | TyFun signature ->
+        TyFun (instanciate_signature instanciate_anyway map signature)
+    | TyApp { name; ty_args = Some ty } ->
+        let ty_args = instanciate_anyway map ty in
+        Ast.TyApp { name; ty_args = Some ty_args }
+    | TyTuple { size; ty } ->
+        let ty = instanciate map ty in
+        TyTuple { size; ty }
+    | (TyApp { name = _; ty_args = None } | TyBool) as ty -> ty
+
+  (*  let rec ty_app_diff depth partial total =
     match (partial, total) with
     | ( Ast.TyApp { name = pname; ty_args = pty_args },
         Ast.TyApp { name = tname; ty_args = tty_args } ) ->
@@ -225,9 +276,7 @@ module Ty = struct
         if psize = tsize then ty_app_diff (depth + 1) pty tty else None
     | TyFun _, TyFun _ -> None
     | TyBool, TyBool -> None
-    | _, _ -> None
-
-  let ty_app_diff = ty_app_diff 0
+    | _, _ -> None*)
 
   let ty_nested = function
     | Ast.TyApp { ty_args = Some ty; name = _ }
@@ -261,16 +310,54 @@ module Env = struct
     }
 
   let instanciate ty env = Ty.instanciate env.type_instances ty
-  let ty_canon tydecl env = snd @@ Types.find tydecl env.type_decls
+  let instanciate_anyway ty env = Ty.instanciate_anyway env.type_instances ty
+  let ty_def tydecl env = snd @@ Types.find tydecl env.type_decls
 
-  let rec canonical_type ty env =
+  (*  let rec canonical_type ty env =
     match ty with
     | Ast.TyApp { name; ty_args = _ } ->
         canonical_type (snd @@ Types.find name env.type_decls) env
     | TyTuple { size; ty } ->
         let ty = canonical_type ty env in
         Ast.TyTuple { size; ty }
-    | (TyVarApp _ | TyFun _ | TyBool) as ty -> ty
+    | (TyVarApp _ | TyFun _ | TyBool) as ty -> ty*)
+
+  let rec ty_normal ty env =
+    match ty with
+    | Ast.TyApp { name; ty_args = _ } ->
+        let ty = ty_def name env in
+        let ty = ty_normal ty env in
+        (*        let ty_args = Option.map (Fun.flip ty_normal env) ty_args in*)
+        ty
+    | TyVarApp { name; ty_args } -> (
+        match ty_args with
+        | None -> TyNormal.TyVar name
+        | Some _ty_arg ->
+            (* let ty_arg = ty_normal ty_arg env in*)
+            let tydeclname =
+              List.find_map
+                (fun (id, ty) ->
+                  if Ast.TyIdent.equal name id then
+                    match ty with
+                    | Either.Left ty_name -> Some (ty_def ty_name env)
+                    | Either.Right _ ->
+                        (* Try if partial apply*)
+                        None
+                  else None)
+                env.type_instances
+            in
+            let tydeclname = Option.get tydeclname in
+            let tydeclname = ty_normal tydeclname env in
+            tydeclname)
+    | TyTuple { size; ty } ->
+        let ty = ty_normal ty env in
+        TyNormal.TyTuple { size; ty }
+    | TyFun { ty_vars; parameters; return_type } ->
+        let parameters = List.map (Fun.flip ty_normal env) parameters in
+        let return_type = ty_normal return_type env in
+        TyNormal.TyFun
+          { ty_vars = List.map fst ty_vars; parameters; return_type }
+    | TyBool -> TyBool
 
   let ty_arity ty env =
     match ty with
@@ -282,12 +369,11 @@ module Env = struct
     | TyFun _ | TyBool -> 0
 
   let size ty env =
-    let ty = canonical_type ty env in
+    let ty = ty_normal ty env in
     match ty with
-    | Ast.TyTuple { size; _ } -> size
+    | TyNormal.TyTuple { size; _ } -> size
     | TyBool -> 1
-    | Ast.TyFun _ -> 0
-    | Ast.TyApp _ | TyVarApp _ -> assert false
+    | TyNormal.TyFun _ | TyNormal.TyVar _ -> 0
 
   let rec partially_applied ty env =
     let arity = ty_arity ty env in
@@ -302,6 +388,58 @@ module Env = struct
   let add_binding term variable env =
     let variables = Variables.add term variable env.variables in
     { env with variables }
+
+  let rec normal_type_constructor ty env =
+    match ty with
+    | Ast.TyApp { name; ty_args } -> (
+        let ty = ty_def name env in
+        let () = Format.eprintf "type = %a\n" Pp.pp_ty ty in
+        let head, ty_nested = normal_type_constructor ty env in
+        let head =
+          match head with [] -> name :: [] | _ :: _ as head -> head
+        in
+        match ty_args with
+        | None -> (head, ty_nested)
+        | Some ty ->
+            let tail, ty_nested = normal_type_constructor ty env in
+            (head @ tail, ty_nested))
+    | (TyVarApp _ | TyFun _ | TyBool | TyTuple _) as ty -> ([], ty)
+
+  let rec are_same_prefix lhs rhs =
+    match (lhs, rhs) with
+    | [], _ | _, [] -> true
+    | l :: ls, r :: rs ->
+        if Ast.TyDeclIdent.equal l r then are_same_prefix ls rs else false
+
+  let rec remove_prefix eq lhs rhs =
+    match (lhs, rhs) with
+    | [], r | r, [] -> Some r
+    | l :: ls, r :: rs -> if eq l r then remove_prefix eq ls rs else None
+
+  let are_same_ty_ctsr lhs rhs env =
+    match (lhs, rhs) with
+    | Ast.TyApp _, Ast.TyApp _ ->
+        let lhs, _ = normal_type_constructor lhs env in
+        let rhs, _ = normal_type_constructor rhs env in
+        let () =
+          let pp =
+            Format.pp_print_list
+              ~pp_sep:(fun format () -> Format.pp_print_string format ", ")
+              Ast.TyDeclIdent.pp
+          in
+          Format.eprintf "lhs = [%a]\nrhs = [%a]\n" pp lhs pp rhs
+        in
+        are_same_prefix lhs rhs
+    | _, _ -> Ty.are_same_ty_ctsr lhs rhs
+
+  let ty_app_diff lhs rhs env =
+    match (lhs, rhs) with
+    | Ast.TyApp _, Ast.TyApp _ ->
+        let lhs, ly = normal_type_constructor lhs env in
+        let rhs, ry = normal_type_constructor rhs env in
+        Option.map (fun e -> (e, (ly, ry)))
+        @@ remove_prefix Ast.TyDeclIdent.equal lhs rhs
+    | _, _ -> None
 
   let iter_bindings f env = Variables.iter f env.variables
   let clear_variables env = { env with variables = Variables.empty }
@@ -373,7 +511,7 @@ let rec eval_expression env =
         | None -> signature
         | Some tys ->
             let type_mapping = instanciate_types env signature.ty_vars tys in
-            Ty.instanciate_signature type_mapping signature
+            Ty.(instanciate_signature instanciate) type_mapping signature
       in
       let ty = Ast.TyFun signature in
       let value = Value.VFunction (fn_ident, tys) in
@@ -386,6 +524,7 @@ let rec eval_expression env =
         | Either.Left fn -> (fn, ty_args)
         | Either.Right termid ->
             let value, _s = Env.value termid env in
+            let () = Format.eprintf "value = %a\n" Value.pp value in
             let fn_ident, tys = Option.get @@ Value.as_function value in
             let ty_args =
               match tys with
@@ -403,41 +542,50 @@ let rec eval_expression env =
   | SLetPLus { variable; ty_arg; ty_ret; expression; ands; body } ->
       (* let ty_arg = Env.instanciate ty_arg env in
       let ty_ret = Env.instanciate ty_ret env in *)
+      let ty_arg = Env.instanciate_anyway ty_arg env in
       let ((_, ty) as valuet) = eval_expression env expression in
       let () =
         Format.(
           fprintf err_formatter "@let+ : tyarg = %a - ty = %a\n" Pp.pp_ty ty_arg
             Pp.pp_ty ty)
       in
-      let () = assert (Ty.are_same_ty_ctsr ty_arg ty) in
+      let () = assert (Env.are_same_ty_ctsr ty_arg ty env) in
       let ands =
         List.map
-          (fun (term, expression) -> (term, eval_expression' env expression))
+          (fun (term, expression) -> (term, eval_expression env expression))
           ands
       in
       let () =
         match
-          List.for_all (fun (_, (_, t)) -> Ty.are_same_ty_ctsr ty t) ands
+          List.for_all (fun (_, (_, t)) -> Env.are_same_ty_ctsr ty t env) ands
         with
         | true -> ()
         | false -> err "@eval: let_plus not same type"
       in
       let ty_elt_map, depth =
-        match Ty.ty_app_diff ty_arg ty with
-        | Some e -> e
+        match Env.ty_app_diff ty_arg ty env with
+        | Some (diff, (_, ty_elt_map)) -> (ty_elt_map, List.length diff + 1)
         | None -> err "@eval : ty_app_diff"
+      in
+      let () =
+        Format.eprintf "type depth diff %a - %a = %u\n" Pp.pp_ty ty_arg Pp.pp_ty
+          ty depth
       in
       let args_names, args_values =
         List.split @@ ((variable, valuet) :: ands)
       in
       let args_values, _ = List.split args_values in
       let value =
-        Value.mapn' (depth - 1)
+        Value.mapn' depth
           (fun values ->
             let env = Env.clear_variables env in
             let env =
               List.fold_left2
                 (fun env ident value ->
+                  let () =
+                    Format.eprintf "let+env : %a = %a\n" Ast.TermIdent.pp ident
+                      Value.pp value
+                  in
                   Env.add_binding ident (value, ty_elt_map) env)
                 env args_names values
             in
@@ -448,7 +596,7 @@ let rec eval_expression env =
       (value, ty)
   | EIndexing { expression; indexing = { name; index } } ->
       let value, _ty = eval_expression env expression in
-      let ty' = Env.ty_canon name env in
+      let ty' = Env.ty_def name env in
       let size, _ty' =
         match ty' with
         | TyTuple { size; ty } -> (size, ty)
@@ -494,8 +642,8 @@ and eval_builin env ty_args args = function
         | _ :: _ :: _ -> err "@pure : too many args"
       in
       let value, _vty = eval_expression env arg in
-      let ty = Env.canonical_type ty env in
-      (Value.make_pure_nested ty value, ty)
+      let ty_normal = Env.ty_normal ty env in
+      (Value.make_pure_nested ty_normal value, ty)
 
 and eval_op env = function
   | Ast.Unot expr ->
@@ -521,22 +669,37 @@ and eval_statement env = function
   | Ast.StDeclaration { variable; expression } ->
       let value_ty = eval_expression env expression in
       Env.add_binding variable value_ty env
+  | Ast.StLog variables ->
+      let () =
+        List.iter
+          (fun variable ->
+            let value, ty = Env.value variable env in
+            Format.eprintf "log: %a : %a = %a\n" Ast.TermIdent.pp variable
+              Pp.pp_ty ty Value.pp value)
+          variables
+      in
+      env
   | StConstructor { variable; ty; expressions } -> (
-      let ty' = Env.canonical_type ty env in
+      let ty' = Env.ty_normal ty env in
       match ty' with
-      | Ast.TyTuple { size; ty } ->
+      | TyNormal.TyTuple { size; ty = _ } ->
           let () = assert (List.compare_length_with expressions size = 0) in
           let values =
             List.map
               (fun expression ->
-                let value, vty = eval_expression env expression in
-                let _vty = Env.canonical_type vty env in
+                let value, _vty = eval_expression env expression in
+                (*        let _vty = Env.canonical_type vty env in*)
                 (*                let () =
                   Format.eprintf "@stcstr: ty = %a - vty' = %a\n" Pp.pp_ty ty
                     Pp.pp_ty vty
                 in*)
                 value)
               expressions
+          in
+          let ty =
+            match Ty.ty_nested ty with
+            | None -> err "@eval_statement: not a composite type" Pp.pp_ty ty
+            | Some t -> t
           in
           let array = Array.of_list values in
           let value = Value.Varray array in
@@ -550,7 +713,7 @@ and eval_statement env = function
           | [] -> err "cstr(bool): missing args"
           | _ :: _ :: _ -> err "cstr(boo): too many args: expects 1")
       | TyFun _s -> failwith ""
-      | TyVarApp _ | TyApp _ -> assert false)
+      | TyVar _ -> assert false)
 
 and eval_statement' env statement =
   let env = eval_statement env statement in
@@ -599,16 +762,14 @@ let add_fndecl env (fn_decl : Ast.kasumi_function_decl) =
     }
 
 let add_typedecl env (type_decl : Ast.kasumi_type_decl) =
-  let ty =
-    match type_decl.definition with
-    | TyApp { name; ty_args = _ } -> snd @@ Types.find name env.Env.type_decls
-    | (TyTuple _ | TyFun _ | TyBool) as ty -> ty
-    | TyVarApp _ -> assert false
-  in
-  {
-    env with
-    type_decls = Types.add type_decl.ty_name (type_decl, ty) env.type_decls;
-  }
+  Env.
+    {
+      env with
+      type_decls =
+        Types.add type_decl.ty_name
+          (type_decl, type_decl.definition)
+          env.type_decls;
+    }
 
 let eval_node fn_name ty_args args env = function
   | Ast.KnFundecl function_decl -> (

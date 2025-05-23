@@ -46,7 +46,7 @@ let rec pp_ty format = function
 
 and pp_tys format =
   Format.pp_print_list
-    ~pp_sep:(fun format () -> Format.pp_print_char format ',')
+    ~pp_sep:(fun format () -> Format.pp_print_string format ", ")
     pp_ty format
 
 and pp_ty_args format ty_args =
@@ -112,23 +112,24 @@ let rec pp_expression format = function
             Format.fprintf format "and+ %a = %a" TermIdent.pp id pp_expression
               expression)
       in
-      Format.fprintf format "let+[%a][%a] %a = %a %a in%a%a%a%a" pp_ty ty_arg
-        pp_ty ty_ret TermIdent.pp variable pp_expression expression pp_ands ands
-        pp_statements statements pp_expression expression
-        Format.pp_print_newline () pp_expression expression'
+      Format.fprintf format "let+[%a][%a] %a = %a %a in %a { %a %a }" pp_ty
+        ty_arg pp_ty ty_ret TermIdent.pp variable pp_expression expression
+        pp_ands ands pp_statements statements Format.pp_print_newline ()
+        pp_expression expression'
 
 and pp_expressions format =
   Format.pp_print_list
-    ~pp_sep:(fun format () -> Format.pp_print_char format ',')
+    ~pp_sep:(fun format () -> Format.pp_print_string format ", ")
     pp_expression format
 
 and pp_statement format = function
   | StDeclaration { variable; expression } ->
       Format.fprintf format "let %a = %a in" TermIdent.pp variable pp_expression
         expression
+  | StLog _ -> ()
   | StConstructor { variable; ty; expressions } ->
-      Format.fprintf format "let %a = %a {%a} in" TermIdent.pp variable pp_ty ty
-        pp_expressions expressions
+      Format.fprintf format "let %a = %a { %a } in" TermIdent.pp variable pp_ty
+        ty pp_expressions expressions
 
 and pp_statements format =
   Format.pp_print_list

@@ -73,6 +73,10 @@ module Statement = struct
     let variable = TermIdent.fresh variable in
     let statements, finale = k variable in
     (StConstructor { variable; ty; expressions } :: statements, finale)
+
+  let log variables k =
+    let statements, finale = k () in
+    (StLog variables :: statements, finale)
 end
 
 let app = FnIdent.fresh "app"
@@ -314,7 +318,7 @@ let gift =
      let ty_row_cols = Ty.(app row (app col ty_alpha)) in
      let ty_col_rows = Ty.(app col ty_row_alpha) in
      let state = TermIdent.fresh "s" in
-     let index icol irow =
+     let index irow icol =
        Expression.(e_indexing (indexing state row irow) col icol)
      in
      let statements, expression =
@@ -497,7 +501,7 @@ let gift =
          return_type = ty_col_alpha;
          body = { statements; expression };
        });
-    (let s = TermIdent.fresh "s" in
+    (let state' = TermIdent.fresh "state" in
      let key = TermIdent.fresh "key" in
      (*     let ty_alpha = Ty.(v alpha) in*)
      let ty_state = Ty.(eapp state) in
@@ -518,14 +522,21 @@ let gift =
        @@ fun permbits ->
        Statement.decl "state"
          Expression.(
-           fn_call map
-             [ ty_cols_rows_partial; Ty.(app slice bool); Ty.(app slice bool) ]
-             [ fv subcells; v s ])
+           let_plus "slice" ty_cols_rows_partial
+             Ty.(app slice bool)
+             Expression.(v state')
+             []
+           @@ fun expr _ ->
+           ([], fn_call subcells [ Ty.(app slice bool) ] [ v expr ]))
        @@ fun state ->
+       Statement.log [ state ] @@ fun () ->
        Statement.decl "state"
          Expression.(
-           fn_call app Ty.[ eapp slice; bool; bool ] [ v permbits; v state ])
+           fn_call app
+             Ty.[ ty_cols_rows_partial; bool; bool ]
+             [ v permbits; v state ])
        @@ fun state ->
+       Statement.log [ state ] @@ fun () ->
        ( [],
          Expression.(
            fn_call add_round_key [ ty_cols_rows_bool ] [ v state; v key ]) )
@@ -534,7 +545,7 @@ let gift =
        {
          fn_name = round;
          ty_vars = [];
-         parameters = [ (s, ty_state); (key, ty_state) ];
+         parameters = [ (state', ty_state); (key, ty_state) ];
          return_type = ty_state;
          body = { statements; expression };
        });

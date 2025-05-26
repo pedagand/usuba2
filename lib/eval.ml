@@ -628,6 +628,9 @@ and eval_op env = function
   | BXor (lhs, rhs) ->
       let lvalue, lty = eval_expression env lhs in
       let rvalue, rty = eval_expression env rhs in
+      let () =
+        Format.eprintf "lty = %a - rty = %a\n" Pp.pp_ty lty Pp.pp_ty rty
+      in
       let () = assert (lty = rty) in
       (Value.map2' ( <> ) lvalue rvalue, lty)
 

@@ -101,13 +101,13 @@ module Value = struct
   let as_bool = function VBool s -> Some s | VFunction _ | Varray _ -> None
 
   let rec mapn' level f values =
-    let () = Format.eprintf "level = %u\n" level in
+    (*    let () = Format.eprintf "level = %u\n" level in*)
     match level with
     | 0 -> f values
     | level ->
-        let () =
+        (*        let () =
           List.iter (fun value -> Format.eprintf "%a\n" pp value) values
-        in
+        in*)
         let first = List.nth values 0 in
         let length = first |> as_array |> Option.get |> Array.length in
         let array = Array.init length (fun i -> mapn'' level i f values) in
@@ -254,30 +254,6 @@ module Ty = struct
         TyTuple { size; ty }
     | (TyApp { name = _; ty_args = None } | TyBool) as ty -> ty
 
-  (*  let rec ty_app_diff depth partial total =
-    match (partial, total) with
-    | ( Ast.TyApp { name = pname; ty_args = pty_args },
-        Ast.TyApp { name = tname; ty_args = tty_args } ) ->
-        if Ast.TyDeclIdent.equal pname tname then
-          match (pty_args, tty_args) with
-          | None, None -> None
-          | None, Some t | Some t, None -> Some (t, depth)
-          | Some p, Some t -> ty_app_diff (depth + 1) p t
-        else None
-    | ( Ast.TyVarApp { name = pname; ty_args = pty_args },
-        Ast.TyVarApp { name = tname; ty_args = tty_args } ) ->
-        if Ast.TyIdent.equal pname tname then
-          match (pty_args, tty_args) with
-          | None, None -> None
-          | None, Some t | Some t, None -> Some (t, depth)
-          | Some p, Some t -> ty_app_diff (depth + 1) p t
-        else None
-    | TyTuple { size = psize; ty = pty }, TyTuple { size = tsize; ty = tty } ->
-        if psize = tsize then ty_app_diff (depth + 1) pty tty else None
-    | TyFun _, TyFun _ -> None
-    | TyBool, TyBool -> None
-    | _, _ -> None*)
-
   let ty_nested = function
     | Ast.TyApp { ty_args = Some ty; name = _ }
     | TyVarApp { ty_args = Some ty; name = _ }
@@ -313,21 +289,11 @@ module Env = struct
   let instanciate_anyway ty env = Ty.instanciate_anyway env.type_instances ty
   let ty_def tydecl env = snd @@ Types.find tydecl env.type_decls
 
-  (*  let rec canonical_type ty env =
-    match ty with
-    | Ast.TyApp { name; ty_args = _ } ->
-        canonical_type (snd @@ Types.find name env.type_decls) env
-    | TyTuple { size; ty } ->
-        let ty = canonical_type ty env in
-        Ast.TyTuple { size; ty }
-    | (TyVarApp _ | TyFun _ | TyBool) as ty -> ty*)
-
   let rec ty_normal ty env =
     match ty with
     | Ast.TyApp { name; ty_args = _ } ->
         let ty = ty_def name env in
         let ty = ty_normal ty env in
-        (*        let ty_args = Option.map (Fun.flip ty_normal env) ty_args in*)
         ty
     | TyVarApp { name; ty_args } -> (
         match ty_args with
@@ -393,7 +359,7 @@ module Env = struct
     match ty with
     | Ast.TyApp { name; ty_args } -> (
         let ty = ty_def name env in
-        let () = Format.eprintf "type = %a\n" Pp.pp_ty ty in
+        (*        let () = Format.eprintf "type = %a\n" Pp.pp_ty ty in*)
         let head, ty_nested = normal_type_constructor ty env in
         let head =
           match head with [] -> name :: [] | _ :: _ as head -> head
@@ -421,14 +387,14 @@ module Env = struct
     | Ast.TyApp _, Ast.TyApp _ ->
         let lhs, _ = normal_type_constructor lhs env in
         let rhs, _ = normal_type_constructor rhs env in
-        let () =
+        (*        let () =
           let pp =
             Format.pp_print_list
               ~pp_sep:(fun format () -> Format.pp_print_string format ", ")
               Ast.TyDeclIdent.pp
           in
           Format.eprintf "lhs = [%a]\nrhs = [%a]\n" pp lhs pp rhs
-        in
+        in*)
         are_same_prefix lhs rhs
     | _, _ -> Ty.are_same_ty_ctsr lhs rhs
 
@@ -524,7 +490,7 @@ let rec eval_expression env =
         | Either.Left fn -> (fn, ty_args)
         | Either.Right termid ->
             let value, _s = Env.value termid env in
-            let () = Format.eprintf "value = %a\n" Value.pp value in
+            (*            let () = Format.eprintf "value = %a\n" Value.pp value in*)
             let fn_ident, tys = Option.get @@ Value.as_function value in
             let ty_args =
               match tys with
@@ -567,10 +533,10 @@ let rec eval_expression env =
         | Some (diff, (_, ty_elt_map)) -> (ty_elt_map, List.length diff + 1)
         | None -> err "@eval : ty_app_diff"
       in
-      let () =
+      (*      let () =
         Format.eprintf "type depth diff %a - %a = %u\n" Pp.pp_ty ty_arg Pp.pp_ty
           ty depth
-      in
+      in*)
       let args_names, args_values =
         List.split @@ ((variable, valuet) :: ands)
       in
@@ -582,10 +548,10 @@ let rec eval_expression env =
             let env =
               List.fold_left2
                 (fun env ident value ->
-                  let () =
+                  (*                  let () =
                     Format.eprintf "let+env : %a = %a\n" Ast.TermIdent.pp ident
                       Value.pp value
-                  in
+                  in*)
                   Env.add_binding ident (value, ty_elt_map) env)
                 env args_names values
             in
@@ -669,7 +635,8 @@ and eval_statement env = function
   | Ast.StDeclaration { variable; expression } ->
       let value_ty = eval_expression env expression in
       Env.add_binding variable value_ty env
-  | Ast.StLog variables ->
+  | Ast.StLog { message; variables } ->
+      let () = Format.eprintf "%s\n" message in
       let () =
         List.iter
           (fun variable ->
@@ -678,6 +645,7 @@ and eval_statement env = function
               Pp.pp_ty ty Value.pp value)
           variables
       in
+      let () = Format.eprintf "\n" in
       env
   | StConstructor { variable; ty; expressions } -> (
       let ty' = Env.ty_normal ty env in
@@ -738,10 +706,10 @@ and instanciate_types env ty_vars ty_args =
 
 and eval env (fn_decl : Ast.kasumi_function_decl) ty_args args =
   let Ast.{ fn_name; ty_vars; parameters; return_type = _; body } = fn_decl in
-  let () =
+  (*  let () =
     Format.eprintf "fn = %a:\nty_vars = [%a]\nty_args = [%a]\n\n" Ast.FnIdent.pp
       fn_name Pp.pp_tyvars ty_vars Pp.pp_ty_args ty_args
-  in
+  in*)
   let type_instances = instanciate_types env ty_vars ty_args in
   let env = { env with type_instances; current_function = Some fn_name } in
   let variables =

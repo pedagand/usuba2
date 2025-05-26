@@ -74,9 +74,9 @@ module Statement = struct
     let statements, finale = k variable in
     (StConstructor { variable; ty; expressions } :: statements, finale)
 
-  let log variables k =
+  let log message variables k =
     let statements, finale = k () in
-    (StLog variables :: statements, finale)
+    (StLog { message; variables } :: statements, finale)
 end
 
 let app = FnIdent.fresh "app"
@@ -529,17 +529,20 @@ let gift =
            @@ fun expr _ ->
            ([], fn_call subcells [ Ty.(app slice bool) ] [ v expr ]))
        @@ fun state ->
-       Statement.log [ state ] @@ fun () ->
+       Statement.log "after subcells" [ state ] @@ fun () ->
        Statement.decl "state"
          Expression.(
            fn_call app
              Ty.[ ty_cols_rows_partial; bool; bool ]
              [ v permbits; v state ])
        @@ fun state ->
-       Statement.log [ state ] @@ fun () ->
-       ( [],
+       Statement.log "after permbits" [ state ] @@ fun () ->
+       Statement.decl "state"
          Expression.(
-           fn_call add_round_key [ ty_cols_rows_bool ] [ v state; v key ]) )
+           fn_call add_round_key [ ty_cols_rows_bool ] [ v state; v key ])
+       @@ fun state ->
+       Statement.log "after add_round_key" [ state ] @@ fun () ->
+       ([], Expression.v state)
      in
      KnFundecl
        {
@@ -554,7 +557,7 @@ let gift =
      let ty_state = Ty.(eapp state) in
      let ty_keys = Ty.(eapp keys) in
      let expression =
-       List.init 1 Fun.id
+       List.init 2 Fun.id
        |> List.fold_left
             (fun acc i ->
               Expression.(fn_call round [] [ acc; indexing vkeys keys i ]))

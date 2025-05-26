@@ -66,6 +66,28 @@ module Gift = struct
         0x80_04L;
       ]
 
+  let bools_of_rows_cols rows_cols =
+    List.rev @@ List.init 16
+    @@ fun index ->
+    let r = index / 4 in
+    let c = index mod 4 in
+    RowsCols.lookup rows_cols (r, c)
+
+  let to_slice spec =
+    let slices =
+      List.init 4 @@ fun zindex ->
+      let zslice = bools_of_rows_cols spec in
+      List.map
+        (fun z ->
+          z
+          |> Usuba2.Eval.Value.get zindex
+          |> Usuba2.Eval.Value.as_bool |> Option.get)
+        zslice
+    in
+    match slices with
+    | [ s0; s1; s2; s3 ] -> (s0, s1, s2, s3)
+    | _ -> assert false
+
   let spec_tabulate bools =
     RowsCols.tabulate @@ fun (r, c) ->
     Usuba2.Eval.Value.tabulate 4 @@ fun z ->
@@ -115,47 +137,10 @@ module Gift = struct
     let index = 15 - ((r * 4) + c) in
     VBool (List.nth bools index)
 
-  let bools_of_rows_cols rows_cols =
-    List.rev @@ List.init 16
-    @@ fun index ->
-    let r = index / 4 in
-    let c = index mod 4 in
-    RowsCols.lookup rows_cols (r, c)
-
-  let to_slice spec =
-    let slices =
-      List.init 4 @@ fun zindex ->
-      let zslice = bools_of_rows_cols spec in
-      List.map
-        (fun z ->
-          z
-          |> Usuba2.Eval.Value.get zindex
-          |> Usuba2.Eval.Value.as_bool |> Option.get)
-        zslice
-    in
-    match slices with
-    | [ s0; s1; s2; s3 ] -> (s0, s1, s2, s3)
-    | _ -> assert false
-
   let uvs key =
     key |> precompute_keys
     |> List.map (fun (u, v) -> (slice_of_bools u, slice_of_bools v))
     |> List.split
-
-  let uvconsts key =
-    let key = Usuba2.Util.ListUtil.chunks 16 key in
-    let us, vs = uvs key in
-    let bottom = List.map (Usuba2.Eval.Value.map' (Fun.const false)) us in
-    let consts =
-      List.init (List.length us) @@ fun index ->
-      let bconst = List.nth round_constants index in
-      slice_of_bools bconst
-    in
-    Usuba2.Eval.mapn
-      (function
-        | [ u; v; b; c ] -> Usuba2.Eval.Value.Varray [| v; u; b; c |]
-        | _ -> assert false)
-      [ us; vs; bottom; consts ]
 
   let transpose_inverse_block (s0, s1, s2, s3) =
     let ( .%() ) = List.nth in
@@ -197,12 +182,43 @@ module Gift = struct
             (fun c -> Format.fprintf format "%02x " @@ Char.code c)
             cipher
         in
-        print_newline ())
+        Format.fprintf format "\n")
 
   let pp_value format value =
     let slices = to_slice value in
     let chars = transpose_inverse slices in
     pp format chars
+
+  let _cs value =
+    let slices = to_slice value in
+    let chars = transpose_inverse slices in
+    pp Format.err_formatter chars
+
+  let uvconsts key =
+    let key = Usuba2.Util.ListUtil.chunks 16 key in
+    let us, vs = uvs key in
+    let bottom = List.map (Usuba2.Eval.Value.map' (Fun.const false)) us in
+    let consts =
+      List.init (List.length us) @@ fun index ->
+      let bconst = List.nth round_constants index in
+      slice_of_bools bconst
+    in
+    let values =
+      List.map
+        (fun values -> Usuba2.Eval.Value.Varray (Array.of_list values))
+        [ us; vs; bottom; consts ]
+    in
+    let values =
+      Usuba2.Eval.Value.mapn' 3
+        (function
+          | [ u; v; b; c ] ->
+              let v = Usuba2.Eval.Value.Varray [| v; u; b; c |] in
+              (*              let () = Format.eprintf "%a\n" Usuba2.Eval.Value.pp v in*)
+              v
+          | _ -> assert false)
+        values
+    in
+    Usuba2.Eval.Value.as_array values |> Option.get |> Array.to_list
 
   (*    List.map2 (RowsCols.map2 (fun (u, v) const -> (u, v, const))) uv consts *)
 end

@@ -78,7 +78,7 @@ type expression =
 
 and statement =
   | StDeclaration of { variable : TermIdent.t; expression : expression }
-  | StLog of TermIdent.t list
+  | StLog of { message : string; variables : TermIdent.t list }
   | StConstructor of {
       variable : TermIdent.t;
       ty : ty;

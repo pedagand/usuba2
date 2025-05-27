@@ -124,10 +124,6 @@ module Value = struct
           let value =
             Array.init cardinal (fun n ->
                 let index = (cardinal + (n - i)) mod cardinal in
-                let () =
-                  Format.eprintf "index = %d\ncardinal = %d\nn = %d\ni = %u\n\n"
-                    index cardinal n i
-                in
                 values.(index))
           in
           Varray value

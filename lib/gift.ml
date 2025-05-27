@@ -653,10 +653,8 @@ let gift =
      let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
      let ty_rows = Ty.(app row ty_alpha) in
-     let index index = Expression.indexing rows row index in
      let statements, expression =
-       Statement.cstr "rows" ty_rows [ index 3; index 0; index 1; index 2 ]
-       @@ fun rows -> ([], Expression.v rows)
+       ([], Expression.(e_indexing (builin_call BCirc [] [v rows ]) row 1))
      in
      KnFundecl
        {
@@ -670,10 +668,8 @@ let gift =
      let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
      let ty_rows = Ty.(app row ty_alpha) in
-     let index index = Expression.indexing rows row index in
      let statements, expression =
-       Statement.cstr "rows" ty_rows [ index 2; index 3; index 0; index 1 ]
-       @@ fun rows -> ([], Expression.v rows)
+       ([], Expression.(e_indexing (builin_call BCirc [] [v rows ]) row 2))
      in
      KnFundecl
        {
@@ -687,10 +683,8 @@ let gift =
      let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
      let ty_rows = Ty.(app row ty_alpha) in
-     let index index = Expression.indexing rows row index in
      let statements, expression =
-       Statement.cstr "rows" ty_rows [ index 1; index 2; index 3; index 0 ]
-       @@ fun rows -> ([], Expression.v rows)
+       ([], Expression.(e_indexing (builin_call BCirc [] [v rows ]) row 3))
      in
      KnFundecl
        {

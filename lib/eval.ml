@@ -98,6 +98,42 @@ module Value = struct
         in
         Format.fprintf format "%a%a" Ast.FnIdent.pp fn pp_option tys
 
+  let anticirc = function
+    | (VBool _ | VFunction _) as e -> Varray (Array.make 1 e)
+    | Varray values as cir0 ->
+        let cardinal = Array.length values in
+        let circs =
+          Array.init (cardinal - 1) @@ fun i ->
+          let i = i + 1 in
+          let value =
+            Array.init cardinal (fun n ->
+                let index = (n + i) mod cardinal in
+                values.(index))
+          in
+          Varray value
+        in
+        Varray (Array.append [| cir0 |] circs)
+
+  let circ = function
+    | (VBool _ | VFunction _) as e -> Varray (Array.make 1 e)
+    | Varray values as cir0 ->
+        let cardinal = Array.length values in
+        let circs =
+          Array.init (cardinal - 1) @@ fun i ->
+          let i = i + 1 in
+          let value =
+            Array.init cardinal (fun n ->
+                let index = (cardinal + (n - i)) mod cardinal in
+                let () =
+                  Format.eprintf "index = %d\ncardinal = %d\nn = %d\ni = %u\n\n"
+                    index cardinal n i
+                in
+                values.(index))
+          in
+          Varray value
+        in
+        Varray (Array.append [| cir0 |] circs)
+
   let as_bool = function VBool s -> Some s | VFunction _ | Varray _ -> None
 
   let rec mapn' level f values =
@@ -135,6 +171,12 @@ module Value = struct
 end
 
 module Ty = struct
+  let self_apply = function
+    | Ast.TyApp { name; _ } as ty -> Ast.TyApp { name; ty_args = Some ty }
+    | TyVarApp { name; _ } as ty -> Ast.TyVarApp { name; ty_args = Some ty }
+    | TyTuple { size; _ } as ty -> Ast.TyTuple { size; ty }
+    | (TyFun _ | TyBool) as ty -> Ast.TyTuple { size = 1; ty }
+
   let are_same_ty_ctsr lhs rhs =
     match (lhs, rhs) with
     | ( Ast.TyApp { name = lhs; ty_args = _ },
@@ -597,8 +639,40 @@ and eval_expression' env expression' =
   (value, ty)
 
 and eval_builin env ty_args args = function
-  | Ast.BCirc -> failwith ""
-  | BAntiCirc -> failwith ""
+  | Ast.BCirc ->
+      (*      let _ty =
+        match ty_args with
+        | t :: [] -> t
+        | [] -> err "@pure : missing type args"
+        | _ :: _ :: _ -> err "@pure : too many ty args"
+      in*)
+      let arg =
+        match args with
+        | t :: [] -> t
+        | [] -> err "@circ : missing arg"
+        | _ :: _ :: _ -> err "@circ : too many args"
+      in
+      let value, vty = eval_expression env arg in
+      let value = Value.circ value in
+      let ty = Ty.self_apply vty in
+      (value, ty)
+  | BAntiCirc ->
+      (*      let _ty =
+        match ty_args with
+        | t :: [] -> t
+        | [] -> err "@pure : missing type args"
+        | _ :: _ :: _ -> err "@pure : too many ty args"
+      in*)
+      let arg =
+        match args with
+        | t :: [] -> t
+        | [] -> err "@anticirc : missing arg"
+        | _ :: _ :: _ -> err "@anticirc : too many args"
+      in
+      let value, vty = eval_expression env arg in
+      let value = Value.anticirc value in
+      let ty = Ty.self_apply vty in
+      (value, ty)
   | BPure ->
       let ty =
         match ty_args with

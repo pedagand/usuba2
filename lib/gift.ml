@@ -704,12 +704,15 @@ let gift =
      let ty_alpha = Ty.(v alpha) in
      let ty_cols_rows = Ty.(app col (app row ty_alpha)) in
      let cols = TermIdent.fresh "cols" in
-     let ( |> ) e fn_ident = Expression.( |> ) e [ ty_alpha ] fn_ident in
 
      let statements, expression =
-       ( [],
-         Expression.v cols |> col_reverse |> transpose |> row_ror_1
-         |> reindex_cols_row )
+       let cols = Expression.v cols in
+       let cols = Expression.fn_call col_reverse [ ty_alpha ] [ cols ] in
+       let cols = Expression.fn_call transpose [ ty_alpha ] [ cols ] in
+       let cols = Expression.builin_call BCirc [] [ cols ] in
+       let cols = Expression.e_indexing cols row 1 in
+       let cols = Expression.fn_call reindex_cols_row [ ty_alpha ] [ cols ] in
+       ([], cols)
      in
      KnFundecl
        {
@@ -723,12 +726,15 @@ let gift =
      let ty_alpha = Ty.(v alpha) in
      let ty_cols_rows = Ty.(app col (app row ty_alpha)) in
      let cols = TermIdent.fresh "cols" in
-     let ( |> ) e fn_ident = Expression.( |> ) e [ ty_alpha ] fn_ident in
 
      let statements, expression =
-       ( [],
-         Expression.v cols |> col_reverse |> transpose |> row_ror_2
-         |> reindex_cols_row )
+       let cols = Expression.v cols in
+       let cols = Expression.fn_call col_reverse [ ty_alpha ] [ cols ] in
+       let cols = Expression.fn_call transpose [ ty_alpha ] [ cols ] in
+       let cols = Expression.builin_call BCirc [] [ cols ] in
+       let cols = Expression.e_indexing cols row 2 in
+       let cols = Expression.fn_call reindex_cols_row [ ty_alpha ] [ cols ] in
+       ([], cols)
      in
      KnFundecl
        {
@@ -742,12 +748,15 @@ let gift =
      let ty_alpha = Ty.(v alpha) in
      let ty_cols_rows = Ty.(app col (app row ty_alpha)) in
      let cols = TermIdent.fresh "cols" in
-     let ( |> ) e fn_ident = Expression.( |> ) e [ ty_alpha ] fn_ident in
 
      let statements, expression =
-       ( [],
-         Expression.v cols |> col_reverse |> transpose |> row_ror_3
-         |> reindex_cols_row )
+       let cols = Expression.v cols in
+       let cols = Expression.fn_call col_reverse [ ty_alpha ] [ cols ] in
+       let cols = Expression.fn_call transpose [ ty_alpha ] [ cols ] in
+       let cols = Expression.builin_call BCirc [] [ cols ] in
+       let cols = Expression.e_indexing cols row 3 in
+       let cols = Expression.fn_call reindex_cols_row [ ty_alpha ] [ cols ] in
+       ([], cols)
      in
      KnFundecl
        {
@@ -761,11 +770,15 @@ let gift =
      let ty_alpha = Ty.(v alpha) in
      let ty_cols_rows = Ty.(app col @@ app row ty_alpha) in
      let cols = TermIdent.fresh "cols" in
-     let ( |> ) e fn_ident = Expression.( |> ) e [ ty_alpha ] fn_ident in
+     (*     let ( _|> ) e fn_ident = Expression.( |> ) e [ ty_alpha ] fn_ident in*)
      let statements, expression =
-       ( [],
-         Expression.v cols |> col_reverse |> transpose |> row_ror_0
-         |> reindex_cols_row )
+       let cols = Expression.v cols in
+       let cols = Expression.fn_call col_reverse [ ty_alpha ] [ cols ] in
+       let cols = Expression.fn_call transpose [ ty_alpha ] [ cols ] in
+       let cols = Expression.builin_call BCirc [] [ cols ] in
+       let cols = Expression.e_indexing cols row 0 in
+       let cols = Expression.fn_call reindex_cols_row [ ty_alpha ] [ cols ] in
+       ([], cols)
      in
      KnFundecl
        {

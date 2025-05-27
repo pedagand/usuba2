@@ -355,7 +355,7 @@ let gift =
      let ty_col_row = Ty.(app col @@ app row ty_alpha) in
      let ty_col_row_slice_a = Ty.(app col @@ app row @@ ty_slice) in
      let ty_slice_col_row_a = Ty.(app slice @@ app col @@ app row ty_alpha) in
-     let index icol irow islice =
+     let index irow icol islice =
        Expression.(
          e_indexing
            (e_indexing (indexing colsrow col icol) row irow)
@@ -490,9 +490,143 @@ let gift =
     (let slice' = TermIdent.fresh "slice" in
      let alpha = TyIdent.fresh "'a" in
      let ty_alpha = Ty.(v alpha) in
+     let ty_slice_alpha = Ty.(app slice ty_alpha) in
+     let ty_row_slice_alpha = Ty.(app row ty_slice_alpha) in
      let ty_col_row_slice_a = Ty.(app col @@ app row @@ app slice ty_alpha) in
      let ty_slice_col_row_a = Ty.(app slice @@ app col @@ app row ty_alpha) in
-     let statements, expression = ([], Expression.v slice') in
+     let index irow icol islice =
+       Expression.(
+         e_indexing
+           (e_indexing (indexing slice' slice islice) col icol)
+           row irow)
+     in
+     let statements, expression =
+       Statement.decl "b0" (index 0 0 0) @@ fun b0 ->
+       Statement.decl "b1" (index 0 0 1) @@ fun b1 ->
+       Statement.decl "b2" (index 0 0 2) @@ fun b2 ->
+       Statement.decl "b3" (index 0 0 3) @@ fun b3 ->
+       Statement.decl "b4" (index 0 1 0) @@ fun b4 ->
+       Statement.decl "b5" (index 0 1 1) @@ fun b5 ->
+       Statement.decl "b6" (index 0 1 2) @@ fun b6 ->
+       Statement.decl "b7" (index 0 1 3) @@ fun b7 ->
+       Statement.decl "b8" (index 0 2 0) @@ fun b8 ->
+       Statement.decl "b9" (index 0 2 1) @@ fun b9 ->
+       Statement.decl "b10" (index 0 2 2) @@ fun b10 ->
+       Statement.decl "b11" (index 0 2 3) @@ fun b11 ->
+       Statement.decl "b12" (index 0 3 0) @@ fun b12 ->
+       Statement.decl "b13" (index 0 3 1) @@ fun b13 ->
+       Statement.decl "b14" (index 0 3 2) @@ fun b14 ->
+       Statement.decl "b15" (index 0 3 3) @@ fun b15 ->
+       Statement.decl "b16" (index 1 0 0) @@ fun b16 ->
+       Statement.decl "b17" (index 1 0 1) @@ fun b17 ->
+       Statement.decl "b18" (index 1 0 2) @@ fun b18 ->
+       Statement.decl "b19" (index 1 0 3) @@ fun b19 ->
+       Statement.decl "b20" (index 1 1 0) @@ fun b20 ->
+       Statement.decl "b21" (index 1 1 1) @@ fun b21 ->
+       Statement.decl "b22" (index 1 1 2) @@ fun b22 ->
+       Statement.decl "b23" (index 1 1 3) @@ fun b23 ->
+       Statement.decl "b24" (index 1 2 0) @@ fun b24 ->
+       Statement.decl "b25" (index 1 2 1) @@ fun b25 ->
+       Statement.decl "b26" (index 1 2 2) @@ fun b26 ->
+       Statement.decl "b27" (index 1 2 3) @@ fun b27 ->
+       Statement.decl "b28" (index 1 3 0) @@ fun b28 ->
+       Statement.decl "b29" (index 1 3 1) @@ fun b29 ->
+       Statement.decl "b30" (index 1 3 2) @@ fun b30 ->
+       Statement.decl "b31" (index 1 3 3) @@ fun b31 ->
+       Statement.decl "b32" (index 2 0 0) @@ fun b32 ->
+       Statement.decl "b33" (index 2 0 1) @@ fun b33 ->
+       Statement.decl "b34" (index 2 0 2) @@ fun b34 ->
+       Statement.decl "b35" (index 2 0 3) @@ fun b35 ->
+       Statement.decl "b36" (index 2 1 0) @@ fun b36 ->
+       Statement.decl "b37" (index 2 1 1) @@ fun b37 ->
+       Statement.decl "b38" (index 2 1 2) @@ fun b38 ->
+       Statement.decl "b39" (index 2 1 3) @@ fun b39 ->
+       Statement.decl "b40" (index 2 2 0) @@ fun b40 ->
+       Statement.decl "b41" (index 2 2 1) @@ fun b41 ->
+       Statement.decl "b42" (index 2 2 2) @@ fun b42 ->
+       Statement.decl "b43" (index 2 2 3) @@ fun b43 ->
+       Statement.decl "b44" (index 2 3 0) @@ fun b44 ->
+       Statement.decl "b45" (index 2 3 1) @@ fun b45 ->
+       Statement.decl "b46" (index 2 3 2) @@ fun b46 ->
+       Statement.decl "b47" (index 2 3 3) @@ fun b47 ->
+       Statement.decl "b48" (index 3 0 0) @@ fun b48 ->
+       Statement.decl "b49" (index 3 0 1) @@ fun b49 ->
+       Statement.decl "b50" (index 3 0 2) @@ fun b50 ->
+       Statement.decl "b51" (index 3 0 3) @@ fun b51 ->
+       Statement.decl "b52" (index 3 1 0) @@ fun b52 ->
+       Statement.decl "b53" (index 3 1 1) @@ fun b53 ->
+       Statement.decl "b54" (index 3 1 2) @@ fun b54 ->
+       Statement.decl "b55" (index 3 1 3) @@ fun b55 ->
+       Statement.decl "b56" (index 3 2 0) @@ fun b56 ->
+       Statement.decl "b57" (index 3 2 1) @@ fun b57 ->
+       Statement.decl "b58" (index 3 2 2) @@ fun b58 ->
+       Statement.decl "b59" (index 3 2 3) @@ fun b59 ->
+       Statement.decl "b60" (index 3 3 0) @@ fun b60 ->
+       Statement.decl "b61" (index 3 3 1) @@ fun b61 ->
+       Statement.decl "b62" (index 3 3 2) @@ fun b62 ->
+       Statement.decl "b63" (index 3 3 3) @@ fun b63 ->
+       Statement.cstr "s0" ty_slice_alpha Expression.[ v b0; v b1; v b2; v b3 ]
+       @@ fun s0 ->
+       Statement.cstr "s1" ty_slice_alpha Expression.[ v b4; v b5; v b6; v b7 ]
+       @@ fun s1 ->
+       Statement.cstr "s2" ty_slice_alpha
+         Expression.[ v b8; v b9; v b10; v b11 ]
+       @@ fun s2 ->
+       Statement.cstr "s3" ty_slice_alpha
+         Expression.[ v b12; v b13; v b14; v b15 ]
+       @@ fun s3 ->
+       Statement.cstr "s4" ty_slice_alpha
+         Expression.[ v b16; v b17; v b18; v b19 ]
+       @@ fun s4 ->
+       Statement.cstr "s5" ty_slice_alpha
+         Expression.[ v b20; v b21; v b22; v b23 ]
+       @@ fun s5 ->
+       Statement.cstr "s6" ty_slice_alpha
+         Expression.[ v b24; v b25; v b26; v b27 ]
+       @@ fun s6 ->
+       Statement.cstr "s7" ty_slice_alpha
+         Expression.[ v b28; v b29; v b30; v b31 ]
+       @@ fun s7 ->
+       Statement.cstr "s8" ty_slice_alpha
+         Expression.[ v b32; v b33; v b34; v b35 ]
+       @@ fun s8 ->
+       Statement.cstr "s9" ty_slice_alpha
+         Expression.[ v b36; v b37; v b38; v b39 ]
+       @@ fun s9 ->
+       Statement.cstr "s10" ty_slice_alpha
+         Expression.[ v b40; v b41; v b42; v b43 ]
+       @@ fun s10 ->
+       Statement.cstr "s11" ty_slice_alpha
+         Expression.[ v b44; v b45; v b46; v b47 ]
+       @@ fun s11 ->
+       Statement.cstr "s12" ty_slice_alpha
+         Expression.[ v b48; v b49; v b50; v b51 ]
+       @@ fun s12 ->
+       Statement.cstr "s13" ty_slice_alpha
+         Expression.[ v b52; v b53; v b54; v b55 ]
+       @@ fun s13 ->
+       Statement.cstr "s14" ty_slice_alpha
+         Expression.[ v b56; v b57; v b58; v b59 ]
+       @@ fun s14 ->
+       Statement.cstr "s15" ty_slice_alpha
+         Expression.[ v b60; v b61; v b62; v b63 ]
+       @@ fun s15 ->
+       Statement.cstr "c0" ty_row_slice_alpha
+         Expression.[ v s0; v s4; v s8; v s12 ]
+       @@ fun c0 ->
+       Statement.cstr "c1" ty_row_slice_alpha
+         Expression.[ v s1; v s5; v s9; v s13 ]
+       @@ fun c1 ->
+       Statement.cstr "c2" ty_row_slice_alpha
+         Expression.[ v s2; v s6; v s10; v s14 ]
+       @@ fun c2 ->
+       Statement.cstr "c3" ty_row_slice_alpha
+         Expression.[ v s3; v s7; v s11; v s15 ]
+       @@ fun c3 ->
+       Statement.cstr "cs" ty_col_row_slice_a
+         Expression.[ v c0; v c1; v c2; v c3 ]
+       @@ fun cs -> ([], Expression.v cs)
+     in
 
      KnFundecl
        {
@@ -689,9 +823,17 @@ let gift =
        Statement.log "after subcells" [ state ] @@ fun () ->
        Statement.decl "state"
          Expression.(
+           fn_call reindex_rowcol_slice Ty.[ bool ] Expression.[ v state ])
+       @@ fun state ->
+       Statement.decl "state"
+         Expression.(
            fn_call app
              Ty.[ ty_cols_rows_partial; bool; bool ]
              [ v permbits; v state ])
+       @@ fun state ->
+       Statement.decl "state"
+         Expression.(
+           fn_call reindex_slice_rowcol Ty.[ bool ] Expression.[ v state ])
        @@ fun state ->
        Statement.log "after permbits" [ state ] @@ fun () ->
        Statement.decl "state" Expression.(v state lxor v key) @@ fun state ->
@@ -711,7 +853,7 @@ let gift =
      let ty_state = Ty.(eapp state) in
      let ty_keys = Ty.(eapp keys) in
      let expression =
-       List.init 2 Fun.id
+       List.init 1 Fun.id
        |> List.fold_left
             (fun acc i ->
               Expression.(fn_call round [] [ acc; indexing vkeys keys i ]))

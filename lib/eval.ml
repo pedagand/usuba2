@@ -325,6 +325,11 @@ module Env = struct
           { ty_vars = List.map fst ty_vars; parameters; return_type }
     | TyBool -> TyBool
 
+  let ty_equal lhs rhs env =
+    let lhs = ty_normal lhs env in
+    let rhs = ty_normal rhs env in
+    lhs = rhs
+
   let ty_arity ty env =
     match ty with
     | Ast.TyApp { name; _ } ->
@@ -627,11 +632,14 @@ and eval_op env = function
       (Value.map2' ( || ) lvalue rvalue, lty)
   | BXor (lhs, rhs) ->
       let lvalue, lty = eval_expression env lhs in
-      let rvalue, rty = eval_expression env rhs in
-      let () =
-        Format.eprintf "lty = %a - rty = %a\n" Pp.pp_ty lty Pp.pp_ty rty
-      in
-      let () = assert (lty = rty) in
+      let rvalue, _rty = eval_expression env rhs in
+(*      let () =
+        if Env.ty_equal lty rty env then
+          let () =
+            Format.eprintf "lty = %a - rty = %a\n%!" Pp.pp_ty lty Pp.pp_ty rty
+          in
+          assert false
+      in*)
       (Value.map2' ( <> ) lvalue rvalue, lty)
 
 and eval_statement env = function

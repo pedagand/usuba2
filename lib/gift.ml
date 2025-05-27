@@ -320,7 +320,7 @@ let gift =
      let ty_row_cols = Ty.(app row (app col ty_alpha)) in
      let ty_col_rows = Ty.(app col ty_row_alpha) in
      let state = TermIdent.fresh "s" in
-     let index irow icol =
+     let index icol irow =
        Expression.(e_indexing (indexing state row irow) col icol)
      in
      let statements, expression =
@@ -805,10 +805,10 @@ let gift =
        Statement.cstr "permbits" ty_slice
          Expression.
            [
+             fv_t rev_rotate_0 [ Ty.bool ];
              fv_t rev_rotate_1 [ Ty.bool ];
              fv_t rev_rotate_2 [ Ty.bool ];
              fv_t rev_rotate_3 [ Ty.bool ];
-             fv_t rev_rotate_0 [ Ty.bool ];
            ]
        @@ fun permbits ->
        Statement.decl "state"
@@ -853,7 +853,7 @@ let gift =
      let ty_state = Ty.(eapp state) in
      let ty_keys = Ty.(eapp keys) in
      let expression =
-       List.init 1 Fun.id
+       List.init 28 Fun.id
        |> List.fold_left
             (fun acc i ->
               Expression.(fn_call round [] [ acc; indexing vkeys keys i ]))

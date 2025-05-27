@@ -633,7 +633,7 @@ and eval_op env = function
   | BXor (lhs, rhs) ->
       let lvalue, lty = eval_expression env lhs in
       let rvalue, _rty = eval_expression env rhs in
-(*      let () =
+      (*      let () =
         if Env.ty_equal lty rty env then
           let () =
             Format.eprintf "lty = %a - rty = %a\n%!" Pp.pp_ty lty Pp.pp_ty rty

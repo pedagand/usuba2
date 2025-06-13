@@ -654,7 +654,7 @@ let gift =
      let ty_alpha = Ty.(v alpha) in
      let ty_rows = Ty.(app row ty_alpha) in
      let statements, expression =
-       ([], Expression.(e_indexing (builin_call BCirc [] [v rows ]) row 1))
+       ([], Expression.(e_indexing (builin_call BCirc [] [ v rows ]) row 1))
      in
      KnFundecl
        {
@@ -669,7 +669,7 @@ let gift =
      let ty_alpha = Ty.(v alpha) in
      let ty_rows = Ty.(app row ty_alpha) in
      let statements, expression =
-       ([], Expression.(e_indexing (builin_call BCirc [] [v rows ]) row 2))
+       ([], Expression.(e_indexing (builin_call BCirc [] [ v rows ]) row 2))
      in
      KnFundecl
        {
@@ -684,7 +684,7 @@ let gift =
      let ty_alpha = Ty.(v alpha) in
      let ty_rows = Ty.(app row ty_alpha) in
      let statements, expression =
-       ([], Expression.(e_indexing (builin_call BCirc [] [v rows ]) row 3))
+       ([], Expression.(e_indexing (builin_call BCirc [] [ v rows ]) row 3))
      in
      KnFundecl
        {

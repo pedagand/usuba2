@@ -46,7 +46,7 @@ type lterm =
     }
   | LConstructor of { terms : term list }
   | LOperator of lterm operator
-  | LRange of { ty : ty; lterm : lterm }
+  | LRange of { ty : TyDeclIdent.t list; term : term }
 
 and term =
   | TFalse

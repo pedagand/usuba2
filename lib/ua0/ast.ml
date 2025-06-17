@@ -15,20 +15,56 @@ end
 module TermIdent = Ident ()
 module LTermIdent = Ident ()
 module TyIdent = Ident ()
+module TyDeclIdent = Ident ()
+module FnIdent = Ident ()
 
-type ty = TyBool | TyVar of TyIdent.t | TyTuple of { size : int; ty : ty }
+type ty =
+  | TyBool
+  | TyVar of TyIdent.t
+  | TyTuple of { size : int; ty : ty }
+  | TyApp of { name : TyDeclIdent.t; ty : ty }
+  | TyFun of signature
+
+and signature = {
+  tyvars : TyIdent.t list;
+  parameters : ty list;
+  return_type : ty;
+}
+
+type 'a operator =
+  | ONot of 'a
+  | OXor of ('a * 'a)
+  | OAnd of ('a * 'a)
+  | OOr of ('a * 'a)
 
 type lterm =
-  | LTLetPlus of {
+  | LLetPlus of {
       variable : TermIdent.t;
       lterm : lterm;
       ands : (TermIdent.t * lterm) list;
       term : term;
     }
+  | LConstructor of { terms : term list }
+  | LOperator of lterm operator
+  | LRange of { ty : ty; lterm : lterm }
 
 and term =
   | TFalse
   | TTrue
   | TVar of TermIdent.t
-  | TLet of { variable : TermIdent.t; term : term }
-  | Tlookup of { lterm : lterm; index : int }
+  | TLet of { variable : TermIdent.t; term : term; k : term }
+  | TLookup of { lterm : lterm; index : int }
+  | TThunk of { lterm : lterm }
+
+type fn_declaration = {
+  fn_name : FnIdent.t;
+  tyvars : TyIdent.t list;
+  parameters : (TermIdent.t * ty) list;
+  return_type : ty;
+  body : term;
+}
+
+(* Type decl only create alias. *)
+type ty_declaration = { tyvar : TyIdent.t; name : TyDeclIdent.t; size : int }
+type node = NFun of fn_declaration | NTy of ty_declaration
+type module' = node list

@@ -44,7 +44,7 @@ type lterm =
       ands : (TermIdent.t * lterm) list;
       term : term;
     }
-  | LConstructor of { terms : term list }
+  | LConstructor of { ty : TyDeclIdent.t; terms : term list }
   | LOperator of lterm operator
   | LRange of { ty : TyDeclIdent.t list; term : term }
 
@@ -55,6 +55,11 @@ and term =
   | TLet of { variable : TermIdent.t; term : term; k : term }
   | TLookup of { lterm : lterm; index : int }
   | TThunk of { lterm : lterm }
+  | TFnCall of {
+      fn_name : (FnIdent.t, TermIdent.t) Either.t;
+      ty_resolve : ty list;
+      args : term list;
+    }
 
 type fn_declaration = {
   fn_name : FnIdent.t;

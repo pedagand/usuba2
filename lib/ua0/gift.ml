@@ -90,6 +90,44 @@ let transpose, node_transpose =
   in
   (transpose, node)
 
+let reindex_row_cols, node_reindex_row_cols =
+  let reindex_row_cols = FnIdent.fresh "reindex_row_cols" in
+  let alpha = TyIdent.fresh "'a" in
+  let ty_row_col_alpha = Ty.(app row @@ app col @@ v alpha) in
+  let ty_col_row_alpha = Ty.(app col @@ app row @@ v alpha) in
+  let trows = TermIdent.fresh "rows" in
+  let index i j =
+    LTerm.(
+      Term.(
+        let lterm = range [ row ] (v trows) in
+        let first_dim = lterm.%(i) in
+        let lterm = range [ row ] first_dim in
+        lterm.%(j)))
+  in
+  let body =
+    LTerm.(
+      Term.(
+        funk
+          (cstr col
+             [
+               funk (cstr row [ index 0 0; index 1 0; index 2 0; index 3 0 ]);
+               funk (cstr row [ index 0 1; index 1 1; index 2 1; index 3 1 ]);
+               funk (cstr row [ index 0 2; index 1 2; index 2 2; index 3 2 ]);
+               funk (cstr row [ index 0 3; index 1 3; index 2 3; index 3 3 ]);
+             ])))
+  in
+  let node =
+    NFun
+      {
+        fn_name = reindex_row_cols;
+        tyvars = [ alpha ];
+        parameters = [ (trows, ty_row_col_alpha) ];
+        return_type = ty_col_row_alpha;
+        body;
+      }
+  in
+  (reindex_row_cols, node)
+
 let col_reverse, node_col_reverse =
   let col_reverse = FnIdent.fresh "col_reverse" in
   let alpha = TyIdent.fresh "'a" in
@@ -174,6 +212,7 @@ let ast =
     NTy { tyvar = TyIdent.fresh "'a"; name = slice; size = 4 };
     NTy { tyvar = TyIdent.fresh "'a"; name = keys; size = 28 };
     node_col_reverse;
+    node_reindex_row_cols;
     node_transpose;
     node_subcells;
     node_round;

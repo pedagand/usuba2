@@ -100,6 +100,142 @@ let transpose, node_transpose =
   in
   (transpose, node)
 
+let reindex_colrow_slice, node_reindex_colrow_slice =
+  let fn_name = FnIdent.fresh "reindex_colrow_slice" in
+  let alpha = TyIdent.fresh "'a" in
+  let ty_alpha = Ty.v alpha in
+  let ty_src = Ty.(app col @@ app row @@ app slice ty_alpha) in
+  let ty_dst = Ty.(app slice @@ app col @@ app row ty_alpha) in
+  let cols = TermIdent.fresh "cols" in
+  let i i j k =
+    LTerm.(
+      Term.(
+        let lterm = range [ col ] (v cols) in
+        let first_dim = lterm.%(i) in
+        let lterm = range [ row ] first_dim in
+        let second_dim = lterm.%(j) in
+        (range [ slice ] second_dim).%(k)))
+  in
+  let body =
+    LTerm.(
+      Term.(
+        funk
+          (cstr slice
+             [
+               funk
+                 (cstr col
+                    [
+                      funk (cstr row [ i 0 0 0; i 0 1 0; i 0 2 0; i 0 3 0 ]);
+                      funk (cstr row [ i 1 0 0; i 1 1 0; i 1 2 0; i 1 3 0 ]);
+                      funk (cstr row [ i 2 0 0; i 2 1 0; i 2 2 0; i 2 3 0 ]);
+                      funk (cstr row [ i 3 0 0; i 3 1 0; i 3 2 0; i 3 3 0 ]);
+                    ]);
+               funk
+                 (cstr col
+                    [
+                      funk (cstr row [ i 0 0 1; i 0 1 1; i 0 2 1; i 0 3 1 ]);
+                      funk (cstr row [ i 1 0 1; i 1 1 1; i 1 2 1; i 1 3 1 ]);
+                      funk (cstr row [ i 2 0 1; i 2 1 1; i 2 2 1; i 2 3 1 ]);
+                      funk (cstr row [ i 3 0 1; i 3 1 1; i 3 2 1; i 3 3 1 ]);
+                    ]);
+               funk
+                 (cstr col
+                    [
+                      funk (cstr row [ i 0 0 2; i 0 1 2; i 0 2 2; i 0 3 2 ]);
+                      funk (cstr row [ i 1 0 2; i 1 1 2; i 1 2 2; i 1 3 2 ]);
+                      funk (cstr row [ i 2 0 2; i 2 1 2; i 2 2 2; i 2 3 2 ]);
+                      funk (cstr row [ i 3 0 2; i 3 1 2; i 3 2 2; i 3 3 2 ]);
+                    ]);
+               funk
+                 (cstr col
+                    [
+                      funk (cstr row [ i 0 0 3; i 0 1 3; i 0 2 3; i 0 3 3 ]);
+                      funk (cstr row [ i 1 0 3; i 1 1 3; i 1 2 3; i 1 3 3 ]);
+                      funk (cstr row [ i 2 0 3; i 2 1 3; i 2 2 3; i 2 3 3 ]);
+                      funk (cstr row [ i 3 0 3; i 3 1 3; i 3 2 3; i 3 3 3 ]);
+                    ]);
+             ])))
+  in
+  let node =
+    NFun
+      {
+        fn_name;
+        tyvars = [ alpha ];
+        parameters = [ (cols, ty_src) ];
+        return_type = ty_dst;
+        body;
+      }
+  in
+  (fn_name, node)
+
+let reindex_slice_colrow, node_reindex_slice_colrow =
+  let fn_name = FnIdent.fresh "reindex_slice_colrow" in
+  let alpha = TyIdent.fresh "'a" in
+  let ty_alpha = Ty.v alpha in
+  let ty_src = Ty.(app slice @@ app col @@ app row ty_alpha) in
+  let ty_dst = Ty.(app col @@ app row @@ app slice ty_alpha) in
+  let cols = TermIdent.fresh "cols" in
+  let i c s r =
+    LTerm.(
+      Term.(
+        let lterm = range [ slice ] (v cols) in
+        let first_dim = lterm.%(s) in
+        let lterm = range [ col ] first_dim in
+        let second_dim = lterm.%(c) in
+        (range [ row ] second_dim).%(r)))
+  in
+  let body =
+    LTerm.(
+      Term.(
+        funk
+          (cstr col
+             [
+               funk
+                 (cstr row
+                    [
+                      funk (cstr slice [ i 0 0 0; i 0 1 0; i 0 2 0; i 0 3 0 ]);
+                      funk (cstr slice [ i 1 0 0; i 1 1 0; i 1 2 0; i 1 3 0 ]);
+                      funk (cstr slice [ i 2 0 0; i 2 1 0; i 2 2 0; i 2 3 0 ]);
+                      funk (cstr slice [ i 3 0 0; i 3 1 0; i 3 2 0; i 3 3 0 ]);
+                    ]);
+               funk
+                 (cstr row
+                    [
+                      funk (cstr slice [ i 0 0 1; i 0 1 1; i 0 2 1; i 0 3 1 ]);
+                      funk (cstr slice [ i 1 0 1; i 1 1 1; i 1 2 1; i 1 3 1 ]);
+                      funk (cstr slice [ i 2 0 1; i 2 1 1; i 2 2 1; i 2 3 1 ]);
+                      funk (cstr slice [ i 3 0 1; i 3 1 1; i 3 2 1; i 3 3 1 ]);
+                    ]);
+               funk
+                 (cstr row
+                    [
+                      funk (cstr slice [ i 0 0 2; i 0 1 2; i 0 2 2; i 0 3 2 ]);
+                      funk (cstr slice [ i 1 0 2; i 1 1 2; i 1 2 2; i 1 3 2 ]);
+                      funk (cstr slice [ i 2 0 2; i 2 1 2; i 2 2 2; i 2 3 2 ]);
+                      funk (cstr slice [ i 3 0 2; i 3 1 2; i 3 2 2; i 3 3 2 ]);
+                    ]);
+               funk
+                 (cstr row
+                    [
+                      funk (cstr slice [ i 0 0 3; i 0 1 3; i 0 2 3; i 0 3 3 ]);
+                      funk (cstr slice [ i 1 0 3; i 1 1 3; i 1 2 3; i 1 3 3 ]);
+                      funk (cstr slice [ i 2 0 3; i 2 1 3; i 2 2 3; i 2 3 3 ]);
+                      funk (cstr slice [ i 3 0 3; i 3 1 3; i 3 2 3; i 3 3 3 ]);
+                    ]);
+             ])))
+  in
+  let node =
+    NFun
+      {
+        fn_name;
+        tyvars = [ alpha ];
+        parameters = [ (cols, ty_src) ];
+        return_type = ty_dst;
+        body;
+      }
+  in
+  (fn_name, node)
+
 let reindex_row_cols, node_reindex_row_cols =
   let reindex_row_cols = FnIdent.fresh "reindex_row_cols" in
   let alpha = TyIdent.fresh "'a" in
@@ -111,7 +247,7 @@ let reindex_row_cols, node_reindex_row_cols =
       Term.(
         let lterm = range [ row ] (v trows) in
         let first_dim = lterm.%(i) in
-        let lterm = range [ row ] first_dim in
+        let lterm = range [ col ] first_dim in
         lterm.%(j)))
   in
   let body =
@@ -195,8 +331,6 @@ let rev_rotate0, node_rev_rotate0 = rev_rotate_n 0
 let rev_rotate1, node_rev_rotate1 = rev_rotate_n 1
 let rev_rotate2, node_rev_rotate2 = rev_rotate_n 2
 let rev_rotate3, node_rev_rotate3 = rev_rotate_n 3
-let reindex_col_row_slice, node_reindex_col_row_slice = failwith ""
-let reindex_slice_col_row, node_reindex_slice_col_row = failwith ""
 
 let subcells, node_subcells =
   let subcells = FnIdent.fresh "subcell" in
@@ -271,7 +405,7 @@ let round, node_round =
                let_plus "slice" (range [ col; row ] (v state)) []
                @@ fun slice _ -> fn_call subcells [ ty_slice_bool ] [ v slice ]))
         @@ fun state ->
-        let' "state" (fn_call reindex_slice_col_row [ Ty.bool ] [ v state ])
+        let' "state" (fn_call reindex_slice_colrow [ Ty.bool ] [ v state ])
         @@ fun state ->
         let' "state"
           (funk
@@ -282,7 +416,7 @@ let round, node_round =
                let xs = match xs with t :: _ -> t | _ -> assert false in
                v_call f [ Ty.bool ] [ v xs ] ))
         @@ fun state ->
-        let' "state" (fn_call reindex_col_row_slice [ Ty.bool ] [ v state ])
+        let' "state" (fn_call reindex_colrow_slice [ Ty.bool ] [ v state ])
         @@ fun state ->
         let ty_range = [ col; row; slice ] in
         funk

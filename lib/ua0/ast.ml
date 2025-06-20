@@ -45,16 +45,18 @@ type lterm =
       term : term;
     }
   | LConstructor of { ty : TyDeclIdent.t; terms : term list }
-  | LOperator of lterm operator
   | LRange of { ty : TyDeclIdent.t list; term : term }
+  | LCirc of lterm
 
 and term =
   | TFalse
   | TTrue
   | TVar of TermIdent.t
+  | TFn of FnIdent.t
   | TLet of { variable : TermIdent.t; term : term; k : term }
   | TLookup of { lterm : lterm; index : int }
   | TThunk of { lterm : lterm }
+  | TOperator of term operator
   | TFnCall of {
       fn_name : (FnIdent.t, TermIdent.t) Either.t;
       ty_resolve : ty list;

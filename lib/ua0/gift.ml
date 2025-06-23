@@ -4,7 +4,6 @@ module Ty = struct
   let bool = TyBool
   let v v = TyVar v
   let app name ty = TyApp { name; ty }
-  let tuple size ty = TyTuple { size; ty }
 
   let fn tyvars parameters return_type =
     TyFun { tyvars; parameters; return_type }

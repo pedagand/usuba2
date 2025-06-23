@@ -21,7 +21,6 @@ module FnIdent = Ident ()
 type ty =
   | TyBool
   | TyVar of TyIdent.t
-  | TyTuple of { size : int; ty : ty }
   | TyApp of { name : TyDeclIdent.t; ty : ty }
   | TyFun of signature
 

@@ -43,6 +43,11 @@ module Env = struct
     | None -> err "type %a not in env" Ast.TyDeclIdent.pp name
     | Some e -> e
 
+  let fn_declaration name env =
+    match Functions.find_opt name env.functions with
+    | None -> err "function %a not in env" Ast.FnIdent.pp name
+    | Some e -> e
+
   let rec range acc prefix ty env =
     match prefix with
     | [] -> Value.Ty.lty (List.rev acc) ty
@@ -62,6 +67,7 @@ module Env = struct
     decl.size
 
   let clear_variables env = { env with variables = Variables.empty }
+  let clear_tyvariables env = { env with type_variables = TyVariables.empty }
 
   let rec of_ty env ty =
     match ty with
@@ -87,6 +93,25 @@ module Env = struct
         parameters = List.map (of_ty env) parameters;
         return_type = of_ty env return_type;
       }
+
+  let init_tyvariables types env =
+    let env = { env with type_variables = TyVariables.empty } in
+    let type_variables =
+      List.fold_left
+        (fun tyvars (tyvar, ty) ->
+          let ty = of_ty env ty in
+          TyVariables.add tyvar ty tyvars)
+        TyVariables.empty types
+    in
+    { env with type_variables }
+
+  let init_variables parameters values env =
+    let env = clear_variables env in
+    List.fold_left2
+      (fun env (term, ty) value ->
+        let ty = of_ty env ty in
+        bind_variable term value ty env)
+      env parameters values
 
   let lookup variable env =
     match Variables.find_opt variable env.variables with
@@ -143,9 +168,37 @@ and eval_term env = function
       let env = Env.bind_variable variable value ty env in
       eval_term env k
   | TOperator op -> eval_op env op
-  | TLookup _ -> failwith ""
-  | TThunk _ -> failwith ""
-  | TFnCall _ -> failwith ""
+  | TThunk { lterm } ->
+      let value, lty = eval_lterm env lterm in
+      let ty = Value.Ty.to_ty lty in
+      (value, ty)
+  | TLookup { lterm; index } ->
+      let value, lty' = eval_lterm env lterm in
+      let ty =
+        match Value.Ty.(elt @@ to_ty lty') with
+        | None -> err "lookup: not a tuple type"
+        | Some ty -> ty
+      in
+      let value = Value.get index value in
+      (value, ty)
+  | TFnCall { fn_name; ty_resolve; args } ->
+      let args = List.map (fun term -> fst @@ eval_term env term) args in
+      let fnident =
+        match fn_name with
+        | Either.Left fnident -> fnident
+        | Right termident ->
+            let value, _ = Env.lookup termident env in
+            let e =
+              match Value.as_function value with
+              | None ->
+                  err "id %a is not a function pointer" Ast.TermIdent.pp
+                    termident
+              | Some (e, _) -> e
+            in
+            e
+      in
+      let fn_decl = Env.fn_declaration fnident env in
+      eval env fn_decl ty_resolve args
 
 and eval_lterm env = function
   | Ast.LLetPlus { variable; lterm; ands; term } ->
@@ -226,23 +279,25 @@ and eval_lterm env = function
       let lty = Value.Ty.lty [] lty in
       (value, lty)
 
-let _eval _env (fn : Ast.fn_declaration) _ty_args _args =
-  let Ast.{ fn_name = _; tyvars = _; parameters = _; return_type = _; body = _ }
-      =
-    fn
-  in
-  failwith ""
+and eval env (fn : Ast.fn_declaration) ty_args args =
+  let Ast.{ fn_name = _; tyvars; parameters; return_type = _; body } = fn in
+  let types = List.combine tyvars ty_args in
+  let env = Env.init_tyvariables types env in
+  let env = Env.init_variables parameters args env in
+  eval_term env body
 
-let eval_node fn_name _ty_args _args env = function
+let eval_node fn_name ty_args args env = function
   | Ast.NTy tydel ->
       let env = Env.add_types tydel env in
-      Either.right env
+      Either.left env
   | Ast.NFun fn_decl -> (
       match Ast.FnIdent.equal fn_name fn_decl.fn_name with
       | false ->
           let env = Env.add_function fn_decl env in
           Either.left env
-      | true -> failwith "")
+      | true ->
+          let value = eval env fn_decl ty_args args in
+          Either.right value)
 
 let eval ast fn_name ty_args args =
   ast

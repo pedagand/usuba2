@@ -66,6 +66,7 @@ module Ty = struct
 
   let view = function Lty { t; _ } -> t
   let nest = function Lty { t; _ } -> List.length t
+  let elt = function TNamedTuple { ty; _ } -> Some ty | TBool | TFun _ -> None
 
   let rec remove_prefix ctsrs ty =
     match ctsrs with

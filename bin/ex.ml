@@ -3,18 +3,18 @@ let () = Printexc.record_backtrace true
 
 module RowsCols = struct
   let tabulate f =
-    Usuba2.Eval.Value.tabulate 4 @@ fun c ->
-    Usuba2.Eval.Value.tabulate 4 @@ fun r -> f (r, c)
+    Ex.Eval.Value.tabulate 4 @@ fun c ->
+    Ex.Eval.Value.tabulate 4 @@ fun r -> f (r, c)
 
   let lookup rc (r, c) =
-    let value = Usuba2.Eval.Value.get c rc in
-    Usuba2.Eval.Value.get r value
+    let value = Ex.Eval.Value.get c rc in
+    Ex.Eval.Value.get r value
 end
 
 module Gift = struct
   let round_constants =
     List.map
-      (Usuba2.Util.Bits.of_int ~pad:16)
+      (Ex.Util.Bits.of_int ~pad:16)
       [
         0x80_01L;
         0x80_03L;
@@ -79,9 +79,7 @@ module Gift = struct
       let zslice = bools_of_rows_cols spec in
       List.map
         (fun z ->
-          z
-          |> Usuba2.Eval.Value.get zindex
-          |> Usuba2.Eval.Value.as_bool |> Option.get)
+          z |> Ex.Eval.Value.get zindex |> Ex.Eval.Value.as_bool |> Option.get)
         zslice
     in
     match slices with
@@ -90,7 +88,7 @@ module Gift = struct
 
   let spec_tabulate bools =
     RowsCols.tabulate @@ fun (r, c) ->
-    Usuba2.Eval.Value.tabulate 4 @@ fun z ->
+    Ex.Eval.Value.tabulate 4 @@ fun z ->
     let bit_index = 63 - ((16 * r) + (c * 4) + z) in
     let bool = List.nth bools bit_index in
     VBool bool
@@ -195,9 +193,9 @@ module Gift = struct
     pp Format.err_formatter chars
 
   let uvconsts key =
-    let key = Usuba2.Util.ListUtil.chunks 16 key in
+    let key = Ex.Util.ListUtil.chunks 16 key in
     let us, vs = uvs key in
-    let bottom = List.map (Usuba2.Eval.Value.map' (Fun.const false)) us in
+    let bottom = List.map (Ex.Eval.Value.map' (Fun.const false)) us in
     let consts =
       List.init (List.length us) @@ fun index ->
       let bconst = List.nth round_constants index in
@@ -205,20 +203,20 @@ module Gift = struct
     in
     let values =
       List.map
-        (fun values -> Usuba2.Eval.Value.Varray (Array.of_list values))
+        (fun values -> Ex.Eval.Value.Varray (Array.of_list values))
         [ us; vs; bottom; consts ]
     in
     let values =
-      Usuba2.Eval.Value.mapn' 3
+      Ex.Eval.Value.mapn' 3
         (function
           | [ u; v; b; c ] ->
-              let v = Usuba2.Eval.Value.Varray [| v; u; b; c |] in
-              (*              let () = Format.eprintf "%a\n" Usuba2.Eval.Value.pp v in*)
+              let v = Ex.Eval.Value.Varray [| v; u; b; c |] in
+              (*              let () = Format.eprintf "%a\n" Ex.Eval.Value.pp v in*)
               v
           | _ -> assert false)
         values
     in
-    Usuba2.Eval.Value.as_array values |> Option.get |> Array.to_list
+    Ex.Eval.Value.as_array values |> Option.get |> Array.to_list
 
   (*    List.map2 (RowsCols.map2 (fun (u, v) const -> (u, v, const))) uv consts *)
 end
@@ -245,19 +243,17 @@ let eval keys texts =
     | true ->
         Option.some @@ fun termid (value, _ty) ->
         let (_, name) : _ * string = Obj.magic termid in
-        let pp =
-          if name = "state" then Gift.pp_value else Usuba2.Eval.Value.pp
-        in
+        let pp = if name = "state" then Gift.pp_value else Ex.Eval.Value.pp in
         Format.(
-          fprintf err_formatter "%a = %a\n%!" Usuba2.Ast.TermIdent.pp termid pp
+          fprintf err_formatter "%a = %a\n%!" Ex.Ast.TermIdent.pp termid pp
             value)
   in
   let () = assert (Queue.length keys = Queue.length texts) in
   let kps =
     Seq.map2
       (fun k t ->
-        let k = Usuba2.Util.Common.file_to_bools k in
-        let t = Usuba2.Util.Common.file_to_bools t in
+        let k = Ex.Util.Common.file_to_bools k in
+        let t = Ex.Util.Common.file_to_bools t in
         (k, t))
       (Queue.to_seq keys) (Queue.to_seq texts)
   in
@@ -276,21 +272,20 @@ let eval keys texts =
       let keys = Array.of_list keys in
       let () = assert (Array.length keys = 28) in
 
-      Usuba2.Eval.eval ?debug Usuba2.Gift.gift Usuba2.Gift.fngift []
-        [ state; Varray keys ])
+      Ex.Eval.eval ?debug Ex.Gift.gift Ex.Gift.fngift [] [ state; Varray keys ])
     kps
 
-let print module' = Format.printf "%a\n" Usuba2.Pp.pp_module module'
+let print module' = Format.printf "%a\n" Ex.Pp.pp_module module'
 
 let main () =
   match Queue.is_empty texts with
-  | true -> print Usuba2.Gift.gift
+  | true -> print Ex.Gift.gift
   | false -> (
       match eval keys texts with
       | None -> Printf.eprintf "evaluation None\n"
       | Some (value, _) ->
           let () =
-            Format.(fprintf err_formatter "%a\n" Usuba2.Eval.Value.pp value)
+            Format.(fprintf err_formatter "%a\n" Ex.Eval.Value.pp value)
           in
           let slices = Gift.to_slice value in
           let chars = Gift.transpose_inverse slices in

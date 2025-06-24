@@ -1,4 +1,11 @@
 (executable
- (public_name usuba2)
- (name main)
- (libraries usuba2))
+ (public_name ex)
+ (name ex)
+ (modules ex)
+ (libraries ex ua0))
+
+(executable
+ (public_name ua0)
+ (name ua0)
+ (modules ua0)
+ (libraries ex ua0))

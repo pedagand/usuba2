@@ -6,6 +6,8 @@ let rec find_fold_map f acc = function
       | Either.Left acc -> find_fold_map f acc q
       | Right _ as r -> r)
 
+let err fmt = Format.kasprintf failwith fmt
+
 module Env = struct
   module Functions = Map.Make (Ast.FnIdent)
   module Types = Map.Make (Ast.TyDeclIdent)
@@ -36,12 +38,30 @@ module Env = struct
   let bind_variable variable value ty env =
     { env with variables = Variables.add variable (value, ty) env.variables }
 
-  let err fmt = Format.kasprintf failwith fmt
-
   let type_declaration name env =
     match Types.find_opt name env.types with
     | None -> err "type %a not in env" Ast.TyDeclIdent.pp name
     | Some e -> e
+
+  let rec range acc prefix ty env =
+    match prefix with
+    | [] -> Value.Ty.lty (List.rev acc) ty
+    | t :: q ->
+        let name, size, ty =
+          match ty with
+          | Value.Ty.TNamedTuple { name; size; ty } -> (name, size, ty)
+          | TBool | TFun _ -> err "Not a named tuple."
+        in
+        let () = assert (Ast.TyDeclIdent.equal name t) in
+        range ((name, size) :: acc) q ty env
+
+  let range prefix = range [] prefix
+
+  let cstr_log name env =
+    let decl = type_declaration name env in
+    decl.size
+
+  let clear_variables env = { env with variables = Variables.empty }
 
   let rec of_ty env ty =
     match ty with
@@ -93,23 +113,23 @@ let rec eval_op env = function
       let value = Value.not value in
       (value, ty)
   | OXor (lhs, rhs) ->
-      let lvalue, lty = eval_term env lhs in
+      let lvalue, lty' = eval_term env lhs in
       let rvalue, rty = eval_term env rhs in
-      let () = assert (Value.Ty.(is_bool lty && is_bool rty)) in
+      let () = assert (Value.Ty.(is_bool lty' && is_bool rty)) in
       let value = Value.( lxor ) lvalue rvalue in
-      (value, lty)
+      (value, lty')
   | OAnd (lhs, rhs) ->
-      let lvalue, lty = eval_term env lhs in
+      let lvalue, lty' = eval_term env lhs in
       let rvalue, rty = eval_term env rhs in
-      let () = assert (Value.Ty.(is_bool lty && is_bool rty)) in
+      let () = assert (Value.Ty.(is_bool lty' && is_bool rty)) in
       let value = Value.( land ) lvalue rvalue in
-      (value, lty)
+      (value, lty')
   | OOr (lhs, rhs) ->
-      let lvalue, lty = eval_term env lhs in
+      let lvalue, lty' = eval_term env lhs in
       let rvalue, rty = eval_term env rhs in
-      let () = assert (Value.Ty.(is_bool lty && is_bool rty)) in
+      let () = assert (Value.Ty.(is_bool lty' && is_bool rty)) in
       let value = Value.( lor ) lvalue rvalue in
-      (value, lty)
+      (value, lty')
 
 and eval_term env = function
   | Ast.TFalse -> (Value.VBool false, Value.Ty.TBool)
@@ -122,10 +142,89 @@ and eval_term env = function
       let value, ty = eval_term env term in
       let env = Env.bind_variable variable value ty env in
       eval_term env k
+  | TOperator op -> eval_op env op
   | TLookup _ -> failwith ""
   | TThunk _ -> failwith ""
-  | TOperator op -> eval_op env op
   | TFnCall _ -> failwith ""
+
+and eval_lterm env = function
+  | Ast.LLetPlus { variable; lterm; ands; term } ->
+      let vvalue, vty = eval_lterm env lterm in
+      let iprefix = Value.Ty.view vty in
+      let prefix = List.map fst iprefix in
+      let ands =
+        List.map
+          (fun (variable, lterm) ->
+            let value, aty = eval_lterm env lterm in
+            let () =
+              match Value.Ty.lcstreq vty aty with
+              | true -> ()
+              | false -> err "let+: ands not same constructor"
+            in
+            (variable, (value, aty)))
+          ands
+      in
+      let ands = (variable, (vvalue, vty)) :: ands in
+      let values = vvalue :: List.map (fun (_, (v, _)) -> v) ands in
+      let args =
+        List.map
+          (fun (name, (_, lty)) ->
+            let ty =
+              Option.get @@ Value.Ty.remove_prefix prefix (Value.Ty.to_ty lty)
+            in
+            (name, ty))
+          ands
+      in
+
+      let level = Value.Ty.nest vty in
+      let ret = ref None in
+      let value =
+        Value.mapn' level
+          (fun values ->
+            let env = Env.clear_variables env in
+            let env =
+              List.fold_left2
+                (fun env (indent, ty) value ->
+                  Env.bind_variable indent value ty env)
+                env args values
+            in
+            let value, ty = eval_term env term in
+            let () = if Option.is_none !ret then ret := Some ty in
+            value)
+          values
+      in
+      let ty_e = Option.get !ret in
+      let lty = Value.Ty.lty iprefix ty_e in
+      (value, lty)
+  | LConstructor { ty; terms } ->
+      let cstr_log = Env.cstr_log ty env in
+      let () = assert (List.compare_length_with terms cstr_log = 0) in
+      let eterms, etypes = terms |> List.map (eval_term env) |> List.split in
+      let ty_elt =
+        match etypes with
+        | [] -> err "Constructor with no args is forbidden"
+        | t :: _ -> t
+      in
+      let ty = Value.Ty.named_tuple ty cstr_log ty_elt in
+      let lty = Value.Ty.lty [] ty in
+      let v = Value.VArray (Array.of_list eterms) in
+      (v, lty)
+  | LRange { ty; term } ->
+      let value, t = eval_term env term in
+      let lty = Env.range ty t env in
+      (value, lty)
+  | LCirc lterm ->
+      let value, lty' = eval_lterm env lterm in
+      let value = Value.circ value in
+      let wrapper =
+        match Value.Ty.prefix lty' with
+        | None -> err "Not a tuple type"
+        | Some prefix -> prefix
+      in
+      let size = Env.cstr_log wrapper env in
+      let lty = Value.Ty.(named_tuple wrapper size (to_ty lty')) in
+      let lty = Value.Ty.lty [] lty in
+      (value, lty)
 
 let _eval _env (fn : Ast.fn_declaration) _ty_args _args =
   let Ast.{ fn_name = _; tyvars = _; parameters = _; return_type = _; body = _ }

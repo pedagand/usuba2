@@ -331,11 +331,64 @@ let rev_rotate1, node_rev_rotate1 = rev_rotate_n 1
 let rev_rotate2, node_rev_rotate2 = rev_rotate_n 2
 let rev_rotate3, node_rev_rotate3 = rev_rotate_n 3
 
+let colrow_not, node_colrow_not =
+  let fn_name = FnIdent.fresh "colrow_not" in
+  let ty = Ty.(app col @@ app row bool) in
+  let tlhs = TermIdent.fresh "lhs" in
+  let body =
+    LTerm.(
+      Term.(
+        let rng = [ col; row ] in
+        funk (let_plus "l" (range rng (v tlhs)) [] @@ fun l _ -> lnot (v l))))
+  in
+  let node =
+    NFun
+      {
+        fn_name;
+        tyvars = [];
+        parameters = [ (tlhs, ty) ];
+        return_type = ty;
+        body;
+      }
+  in
+  (fn_name, node)
+
+let colrow_bin name bin =
+  let fn_name = FnIdent.fresh name in
+  let ty = Ty.(app col @@ app row bool) in
+  let tlhs = TermIdent.fresh "lhs" in
+  let trhs = TermIdent.fresh "rhs" in
+  let body =
+    LTerm.(
+      Term.(
+        let rng = [ col; row ] in
+        funk
+          ( let_plus "l" (range rng (v tlhs)) [ ("r", range rng (v trhs)) ]
+          @@ fun l ands ->
+            let r = List.hd ands in
+            bin (v l) (v r) )))
+  in
+  let node =
+    NFun
+      {
+        fn_name;
+        tyvars = [];
+        parameters = [ (tlhs, ty); (trhs, ty) ];
+        return_type = ty;
+        body;
+      }
+  in
+  (fn_name, node)
+
+let colrow_xor, node_colrow_xor = colrow_bin "colrow_xor" Term.( lxor )
+let colrow_and, node_colrow_and = colrow_bin "colrow_and" Term.( land )
+let colrow_or, node_colrow_or = colrow_bin "colrow_or" Term.( lor )
+
 let subcells, node_subcells =
-  let subcells = FnIdent.fresh "subcell" in
+  let subcells = FnIdent.fresh "subcells" in
   let alpha = TyIdent.fresh "'a" in
   let ty_alpha = Ty.v alpha in
-  let ty_slice = Ty.(app slice @@ ty_alpha) in
+  let ty_slice = Ty.(app slice ty_alpha) in
   let ty_fn = Ty.(fn [] [ ty_alpha ] ty_alpha) in
   let ty_fn2 = Ty.(fn [] [ ty_alpha; ty_alpha ] ty_alpha) in
   let tslice = TermIdent.fresh "slice" in
@@ -402,7 +455,15 @@ let round, node_round =
           (funk
              LTerm.(
                let_plus "slice" (range [ col; row ] (v state)) []
-               @@ fun slice _ -> fn_call subcells [ ty_slice_bool ] [ v slice ]))
+               @@ fun slice _ ->
+               fn_call subcells [ ty_slice_bool ]
+                 [
+                   vfn colrow_and;
+                   vfn colrow_or;
+                   vfn colrow_xor;
+                   vfn colrow_not;
+                   v slice;
+                 ]))
         @@ fun state ->
         let' "state" (fn_call reindex_slice_colrow [ Ty.bool ] [ v state ])
         @@ fun state ->
@@ -469,6 +530,10 @@ let ast =
     NTy { tyvar = TyIdent.fresh "'a"; name = col; size = 4 };
     NTy { tyvar = TyIdent.fresh "'a"; name = slice; size = 4 };
     NTy { tyvar = TyIdent.fresh "'a"; name = keys; size = 28 };
+    node_colrow_xor;
+    node_colrow_and;
+    node_colrow_or;
+    node_colrow_not;
     node_col_reverse;
     node_reindex_row_cols;
     node_transpose;

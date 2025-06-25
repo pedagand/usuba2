@@ -32,7 +32,7 @@ module Term = struct
   let true' = TTrue
   let false' = TFalse
   let v variable = TVar variable
-  let vfn fn = TFn fn
+  let vfn tyresolve fn_ident = TFn { fn_ident; tyresolve }
 
   (* haha *)
   let funk lterm = TThunk { lterm }
@@ -331,6 +331,22 @@ let rev_rotate1, node_rev_rotate1 = rev_rotate_n 1
 let rev_rotate2, node_rev_rotate2 = rev_rotate_n 2
 let rev_rotate3, node_rev_rotate3 = rev_rotate_n 3
 
+let fnnot, node_fnnot =
+  let fn_name = FnIdent.fresh "fnnot" in
+  let e = TermIdent.fresh "lhs" in
+  let body = Term.(lnot (v e)) in
+  let node =
+    NFun
+      {
+        fn_name;
+        tyvars = [];
+        parameters = [ (e, Ty.bool) ];
+        return_type = Ty.bool;
+        body;
+      }
+  in
+  (fn_name, node)
+
 let colrow_not, node_colrow_not =
   let fn_name = FnIdent.fresh "colrow_not" in
   let ty = Ty.(app col @@ app row bool) in
@@ -348,6 +364,24 @@ let colrow_not, node_colrow_not =
         tyvars = [];
         parameters = [ (tlhs, ty) ];
         return_type = ty;
+        body;
+      }
+  in
+  (fn_name, node)
+
+let bin name bin =
+  let fn_name = FnIdent.fresh name in
+  let lhs = TermIdent.fresh "lhs" in
+  let rhs = TermIdent.fresh "rhs" in
+  let body = Term.(bin (v lhs) (v rhs)) in
+
+  let node =
+    NFun
+      {
+        fn_name;
+        tyvars = [];
+        parameters = Ty.[ (lhs, bool); (rhs, bool) ];
+        return_type = Ty.bool;
         body;
       }
   in
@@ -383,6 +417,9 @@ let colrow_bin name bin =
 let colrow_xor, node_colrow_xor = colrow_bin "colrow_xor" Term.( lxor )
 let colrow_and, node_colrow_and = colrow_bin "colrow_and" Term.( land )
 let colrow_or, node_colrow_or = colrow_bin "colrow_or" Term.( lor )
+let fnxor, node_fnxor = bin "fnxor" Term.( lxor )
+let fnand, node_fnand = bin "fnand" Term.( land )
+let fnor, node_fnor = bin "fnor" Term.( lor )
 
 let subcells, node_subcells =
   let subcells = FnIdent.fresh "subcells" in
@@ -445,10 +482,10 @@ let round, node_round =
           (funk
              (cstr slice
                 [
-                  vfn rev_rotate1;
-                  vfn rev_rotate2;
-                  vfn rev_rotate2;
-                  vfn rev_rotate0;
+                  vfn [ Ty.bool ] rev_rotate1;
+                  vfn [ Ty.bool ] rev_rotate2;
+                  vfn [ Ty.bool ] rev_rotate3;
+                  vfn [ Ty.bool ] rev_rotate0;
                 ]))
         @@ fun permbits ->
         let' "state"
@@ -458,25 +495,25 @@ let round, node_round =
                @@ fun slice _ ->
                fn_call subcells [ ty_slice_bool ]
                  [
-                   vfn colrow_and;
-                   vfn colrow_or;
-                   vfn colrow_xor;
-                   vfn colrow_not;
+                   vfn [] fnand;
+                   vfn [] fnor;
+                   vfn [] fnxor;
+                   vfn [] fnnot;
                    v slice;
                  ]))
         @@ fun state ->
-        let' "state" (fn_call reindex_slice_colrow [ Ty.bool ] [ v state ])
+        let' "state" (fn_call reindex_colrow_slice [ Ty.bool ] [ v state ])
         @@ fun state ->
         let' "state"
           (funk
              ( let_plus "f"
-                 (range [ col; row ] (v permbits))
-                 [ ("slice", range [ col; row ] (v state)) ]
+                 (range [ slice ] (v permbits))
+                 [ ("slice", range [ slice ] (v state)) ]
              @@ fun f xs ->
                let xs = match xs with t :: _ -> t | _ -> assert false in
                v_call f [ Ty.bool ] [ v xs ] ))
         @@ fun state ->
-        let' "state" (fn_call reindex_colrow_slice [ Ty.bool ] [ v state ])
+        let' "state" (fn_call reindex_slice_colrow [ Ty.bool ] [ v state ])
         @@ fun state ->
         let ty_range = [ col; row; slice ] in
         funk
@@ -530,12 +567,14 @@ let ast =
     NTy { tyvar = TyIdent.fresh "'a"; name = col; size = 4 };
     NTy { tyvar = TyIdent.fresh "'a"; name = slice; size = 4 };
     NTy { tyvar = TyIdent.fresh "'a"; name = keys; size = 28 };
-    node_colrow_xor;
-    node_colrow_and;
-    node_colrow_or;
-    node_colrow_not;
+    node_fnand;
+    node_fnxor;
+    node_fnor;
+    node_fnnot;
     node_col_reverse;
     node_reindex_row_cols;
+    node_reindex_slice_colrow;
+    node_reindex_colrow_slice;
     node_transpose;
     node_rev_rotate0;
     node_rev_rotate1;

@@ -15,6 +15,7 @@ module Env = struct
   module TyVariables = Map.Make (Ast.TyIdent)
 
   type t = {
+    current_function : Ast.FnIdent.t option;
     types : Ast.ty_declaration Types.t;
     functions : Ast.fn_declaration Functions.t;
     variables : (Value.t * Value.Ty.ty) Variables.t;
@@ -23,6 +24,7 @@ module Env = struct
 
   let init =
     {
+      current_function = None;
       functions = Functions.empty;
       types = Types.empty;
       variables = Variables.empty;
@@ -57,7 +59,13 @@ module Env = struct
           | Value.Ty.TNamedTuple { name; size; ty } -> (name, size, ty)
           | TBool | TFun _ -> err "Not a named tuple."
         in
-        let () = assert (Ast.TyDeclIdent.equal name t) in
+        let () =
+          match Ast.TyDeclIdent.equal name t with
+          | true -> ()
+          | false ->
+              err "range prefix = %a - ty = %a" Ast.TyDeclIdent.pp t
+                Ast.TyDeclIdent.pp name
+        in
         range ((name, size) :: acc) q ty env
 
   let range prefix = range [] prefix
@@ -81,7 +89,12 @@ module Env = struct
         Value.Ty.TFun signature
     | TyVar variable -> (
         match TyVariables.find_opt variable env.type_variables with
-        | None -> err "Undefinied ty_variable : %a" Ast.TyIdent.pp variable
+        | None -> (
+            match env.current_function with
+            | None -> err "Undefinied ty_variable : %a" Ast.TyIdent.pp variable
+            | Some fn ->
+                err "%a : Undefinied ty_variable : %a" Ast.FnIdent.pp fn
+                  Ast.TyIdent.pp variable)
         | Some ty -> ty)
 
   and of_signature signature env =
@@ -118,12 +131,22 @@ module Env = struct
     | Some e -> e
     | None -> err "variable %a not in env" Ast.TermIdent.pp variable
 
-  let signature fn_name env =
+  let signature fn_name tyresolve env =
     match Functions.find_opt fn_name env.functions with
     | Some fn_decl ->
+        let env =
+          List.fold_left2
+            (fun env tyvar ty ->
+              let ty = of_ty env ty in
+              {
+                env with
+                type_variables = TyVariables.add tyvar ty env.type_variables;
+              })
+            env fn_decl.tyvars tyresolve
+        in
         Value.Ty.
           {
-            tyvars = fn_decl.tyvars;
+            tyvars = [];
             parameters =
               List.map (fun (_, ty) -> of_ty env ty) fn_decl.parameters;
             return_type = of_ty env fn_decl.return_type;
@@ -160,9 +183,9 @@ and eval_term env = function
   | Ast.TFalse -> (Value.VBool false, Value.Ty.TBool)
   | TTrue -> (Value.VBool true, Value.Ty.TBool)
   | TVar variable -> Env.lookup variable env
-  | TFn fn ->
-      let signature = Env.signature fn env in
-      (Value.VFunction (fn, None), Value.Ty.TFun signature)
+  | TFn { fn_ident; tyresolve } ->
+      let signature = Env.signature fn_ident tyresolve env in
+      (Value.VFunction (fn_ident, tyresolve), Value.Ty.TFun signature)
   | TLet { variable; term; k } ->
       let value, ty = eval_term env term in
       let env = Env.bind_variable variable value ty env in
@@ -191,8 +214,8 @@ and eval_term env = function
             let e =
               match Value.as_function value with
               | None ->
-                  err "id %a is not a function pointer" Ast.TermIdent.pp
-                    termident
+                  err "id %a is not a function pointer: %a" Ast.TermIdent.pp
+                    termident Value.pp value
               | Some (e, _) -> e
             in
             e
@@ -205,6 +228,13 @@ and eval_lterm env = function
       let vvalue, vty = eval_lterm env lterm in
       let iprefix = Value.Ty.view vty in
       let prefix = List.map fst iprefix in
+      let () =
+        Format.eprintf "prefix = [%a] \n%!"
+          (Format.pp_print_list
+             ~pp_sep:(fun format () -> Format.fprintf format ", ")
+             Ast.TyDeclIdent.pp)
+          prefix
+      in
       let ands =
         List.map
           (fun (variable, lterm) ->
@@ -218,12 +248,17 @@ and eval_lterm env = function
           ands
       in
       let ands = (variable, (vvalue, vty)) :: ands in
-      let values = vvalue :: List.map (fun (_, (v, _)) -> v) ands in
+      let values = List.map (fun (_, (v, _)) -> v) ands in
       let args =
         List.map
-          (fun (name, (_, lty)) ->
+          (fun (name, (_v, lty)) ->
             let ty =
-              Option.get @@ Value.Ty.remove_prefix prefix (Value.Ty.to_ty lty)
+              match Value.Ty.remove_prefix prefix (Value.Ty.to_ty lty) with
+              | Some ty -> ty
+              | None ->
+                  err "Wrong prefix prefix = [%a] - ty = \n"
+                    (Format.pp_print_list Ast.TyDeclIdent.pp)
+                    prefix
             in
             (name, ty))
           ands
@@ -246,7 +281,9 @@ and eval_lterm env = function
             value)
           values
       in
-      let ty_e = Option.get !ret in
+      let ty_e =
+        match !ret with None -> err "option is empty" | Some ty -> ty
+      in
       let lty = Value.Ty.lty iprefix ty_e in
       (value, lty)
   | LConstructor { ty; terms } ->
@@ -280,10 +317,23 @@ and eval_lterm env = function
       (value, lty)
 
 and eval env (fn : Ast.fn_declaration) ty_args args =
-  let Ast.{ fn_name = _; tyvars; parameters; return_type = _; body } = fn in
+  let Ast.
+        {
+          fn_name = current_function;
+          tyvars;
+          parameters;
+          return_type = _;
+          body;
+        } =
+    fn
+  in
+  let () =
+    Format.eprintf "will call - %a\n%!" Ast.FnIdent.pp current_function
+  in
   let types = List.combine tyvars ty_args in
   let env = Env.init_tyvariables types env in
   let env = Env.init_variables parameters args env in
+  let env = { env with current_function = Some current_function } in
   eval_term env body
 
 let eval_node fn_name ty_args args env = function

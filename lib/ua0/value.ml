@@ -81,7 +81,16 @@ end
 type t =
   | VBool of bool
   | VArray of t Array.t
-  | VFunction of Ast.FnIdent.t * Ast.ty list option
+  | VFunction of Ast.FnIdent.t * Ast.ty list
+
+let rec pp format = function
+  | VBool true -> Format.fprintf format "1"
+  | VBool false -> Format.fprintf format "0"
+  | VArray array ->
+      let pp_sep format () = Format.pp_print_string format ", " in
+      Format.fprintf format "[%a]" (Format.pp_print_array ~pp_sep pp) array
+  | VFunction (fn, tys) ->
+      Format.fprintf format "%a%a" Ast.FnIdent.pp fn Pp.pp_tys tys
 
 let true' = VBool true
 let false' = VBool false
@@ -201,20 +210,6 @@ let rec mapn' level f values =
 and mapn'' level i f values =
   let values = List.map (fun value -> get i value) values in
   mapn' (level - 1) f values
-
-let rec pp format = function
-  | VBool true -> Format.fprintf format "1"
-  | VBool false -> Format.fprintf format "0"
-  | VArray array ->
-      let pp_sep format () = Format.pp_print_string format ", " in
-      Format.fprintf format "[%a]" (Format.pp_print_array ~pp_sep pp) array
-  | VFunction (fn, tys) ->
-      let pp_none _format () = () in
-      let pp_option =
-        Format.pp_print_option ~none:pp_none @@ fun format tys ->
-        Format.fprintf format "[%a]" Pp.pp_tys tys
-      in
-      Format.fprintf format "%a%a" Ast.FnIdent.pp fn pp_option tys
 
 let tabulate size f =
   let array = Array.init size f in

@@ -1,5 +1,5 @@
 let () = Printexc.print_backtrace stderr
-let () = Printexc.record_backtrace true
+let () = Printexc.record_backtrace false
 
 module RowsCols = struct
   let tabulate f =

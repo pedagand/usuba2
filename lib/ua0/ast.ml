@@ -51,7 +51,7 @@ and term =
   | TFalse
   | TTrue
   | TVar of TermIdent.t
-  | TFn of FnIdent.t
+  | TFn of { fn_ident : FnIdent.t; tyresolve : ty list }
   | TLet of { variable : TermIdent.t; term : term; k : term }
   | TLookup of { lterm : lterm; index : int }
   | TThunk of { lterm : lterm }

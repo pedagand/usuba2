@@ -77,6 +77,21 @@ module Env = struct
   let clear_variables env = { env with variables = Variables.empty }
   let clear_tyvariables env = { env with type_variables = TyVariables.empty }
 
+  let rec to_ty env = function
+    | Value.Ty.TBool -> Ast.TyBool
+    | TNamedTuple { name; ty; size = _ } ->
+        let ty = to_ty env ty in
+        TyApp { name; ty }
+    | TFun signature ->
+        let signature = to_signature env signature in
+        TyFun signature
+
+  and to_signature env = function
+    | { tyvars; parameters; return_type } ->
+        let parameters = List.map (to_ty env) parameters in
+        let return_type = to_ty env return_type in
+        { tyvars; parameters; return_type }
+
   let rec of_ty env ty =
     match ty with
     | Ast.TyBool -> Value.Ty.TBool
@@ -154,6 +169,26 @@ module Env = struct
     | None -> err "function %a not in env" Ast.FnIdent.pp fn_name
 end
 
+let rec ty_substitute types = function
+  | Ast.TyBool -> Ast.TyBool
+  | TyApp { name; ty } ->
+      let ty = ty_substitute types ty in
+      Ast.TyApp { name; ty }
+  | TyFun signature ->
+      let signature = ty_substitute_sig types signature in
+      Ast.TyFun signature
+  | TyVar variable as default ->
+      types |> List.assoc_opt variable |> Option.value ~default
+
+and ty_substitute_sig types signature =
+  let Ast.{ tyvars; parameters; return_type } : Ast.signature = signature in
+  Ast.
+    {
+      tyvars;
+      parameters = List.map (ty_substitute types) parameters;
+      return_type = ty_substitute types return_type;
+    }
+
 let rec eval_op env = function
   | Ast.ONot term ->
       let value, ty = eval_term env term in
@@ -221,6 +256,13 @@ and eval_term env = function
             e
       in
       let fn_decl = Env.fn_declaration fnident env in
+      let ty_resolve =
+        List.map
+          (fun ty ->
+            let ty = Env.of_ty env ty in
+            Env.to_ty env ty)
+          ty_resolve
+      in
       eval env fn_decl ty_resolve args
 
 and eval_lterm env = function

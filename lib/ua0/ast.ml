@@ -55,6 +55,7 @@ and term =
   | TLet of { variable : TermIdent.t; term : term; k : term }
   | TLookup of { lterm : lterm; index : int }
   | TThunk of { lterm : lterm }
+  | TLog of { message : string; variables : TermIdent.t list; k : term }
   | TOperator of term operator
   | TFnCall of {
       fn_name : (FnIdent.t, TermIdent.t) Either.t;

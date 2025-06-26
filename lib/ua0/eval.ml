@@ -7,6 +7,7 @@ let rec find_fold_map f acc = function
       | Right _ as r -> r)
 
 let err fmt = Format.kasprintf failwith fmt
+let log fmt = Format.eprintf fmt
 
 module Env = struct
   module Functions = Map.Make (Ast.FnIdent)
@@ -239,6 +240,19 @@ and eval_term env = function
       in
       let value = Value.get index value in
       (value, ty)
+  | TLog { message; variables; k } ->
+      let () = log "%s\n" message in
+      let () =
+        List.iter
+          (fun variable ->
+            let value, ty = Env.lookup variable env in
+            let ty = Env.to_ty env ty in
+            log "log: %a : %a = %a\n" Ast.TermIdent.pp variable Pp.pp_ty ty
+              Value.pp value)
+          variables
+      in
+      let () = log "\n" in
+      eval_term env k
   | TFnCall { fn_name; ty_resolve; args } ->
       let args = List.map (fun term -> fst @@ eval_term env term) args in
       let fnident =
@@ -270,13 +284,6 @@ and eval_lterm env = function
       let vvalue, vty = eval_lterm env lterm in
       let iprefix = Value.Ty.view vty in
       let prefix = List.map fst iprefix in
-      let () =
-        Format.eprintf "prefix = [%a] \n%!"
-          (Format.pp_print_list
-             ~pp_sep:(fun format () -> Format.fprintf format ", ")
-             Ast.TyDeclIdent.pp)
-          prefix
-      in
       let ands =
         List.map
           (fun (variable, lterm) ->
@@ -368,9 +375,6 @@ and eval env (fn : Ast.fn_declaration) ty_args args =
           body;
         } =
     fn
-  in
-  let () =
-    Format.eprintf "will call - %a\n%!" Ast.FnIdent.pp current_function
   in
   let types = List.combine tyvars ty_args in
   let env = Env.init_tyvariables types env in

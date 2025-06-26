@@ -34,6 +34,10 @@ module Term = struct
   let v variable = TVar variable
   let vfn tyresolve fn_ident = TFn { fn_ident; tyresolve }
 
+  let log message variables k =
+    let k = k () in
+    TLog { message; variables; k }
+
   (* haha *)
   let funk lterm = TThunk { lterm }
   let lookup lterm index = TLookup { lterm; index }
@@ -183,44 +187,37 @@ let reindex_slice_colrow, node_reindex_slice_colrow =
         let second_dim = lterm.%(c) in
         (range [ row ] second_dim).%(r)))
   in
+
   let body =
     LTerm.(
       Term.(
+        let s0 = funk (cstr slice [ i 0 0 0; i 0 1 0; i 0 2 0; i 0 3 0 ]) in
+        let s1 = funk (cstr slice [ i 1 0 0; i 1 1 0; i 1 2 0; i 1 3 0 ]) in
+        let s2 = funk (cstr slice [ i 2 0 0; i 2 1 0; i 2 2 0; i 2 3 0 ]) in
+        let s3 = funk (cstr slice [ i 3 0 0; i 3 1 0; i 3 2 0; i 3 3 0 ]) in
+
+        let s4 = funk (cstr slice [ i 0 0 1; i 0 1 1; i 0 2 1; i 0 3 1 ]) in
+        let s5 = funk (cstr slice [ i 1 0 1; i 1 1 1; i 1 2 1; i 1 3 1 ]) in
+        let s6 = funk (cstr slice [ i 2 0 1; i 2 1 1; i 2 2 1; i 2 3 1 ]) in
+        let s7 = funk (cstr slice [ i 3 0 1; i 3 1 1; i 3 2 1; i 3 3 1 ]) in
+
+        let s8 = funk (cstr slice [ i 0 0 2; i 0 1 2; i 0 2 2; i 0 3 2 ]) in
+        let s9 = funk (cstr slice [ i 1 0 2; i 1 1 2; i 1 2 2; i 1 3 2 ]) in
+        let s10 = funk (cstr slice [ i 2 0 2; i 2 1 2; i 2 2 2; i 2 3 2 ]) in
+        let s11 = funk (cstr slice [ i 3 0 2; i 3 1 2; i 3 2 2; i 3 3 2 ]) in
+
+        let s12 = funk (cstr slice [ i 0 0 3; i 0 1 3; i 0 2 3; i 0 3 3 ]) in
+        let s13 = funk (cstr slice [ i 1 0 3; i 1 1 3; i 1 2 3; i 1 3 3 ]) in
+        let s14 = funk (cstr slice [ i 2 0 3; i 2 1 3; i 2 2 3; i 2 3 3 ]) in
+        let s15 = funk (cstr slice [ i 3 0 3; i 3 1 3; i 3 2 3; i 3 3 3 ]) in
+
         funk
           (cstr col
              [
-               funk
-                 (cstr row
-                    [
-                      funk (cstr slice [ i 0 0 0; i 0 1 0; i 0 2 0; i 0 3 0 ]);
-                      funk (cstr slice [ i 1 0 0; i 1 1 0; i 1 2 0; i 1 3 0 ]);
-                      funk (cstr slice [ i 2 0 0; i 2 1 0; i 2 2 0; i 2 3 0 ]);
-                      funk (cstr slice [ i 3 0 0; i 3 1 0; i 3 2 0; i 3 3 0 ]);
-                    ]);
-               funk
-                 (cstr row
-                    [
-                      funk (cstr slice [ i 0 0 1; i 0 1 1; i 0 2 1; i 0 3 1 ]);
-                      funk (cstr slice [ i 1 0 1; i 1 1 1; i 1 2 1; i 1 3 1 ]);
-                      funk (cstr slice [ i 2 0 1; i 2 1 1; i 2 2 1; i 2 3 1 ]);
-                      funk (cstr slice [ i 3 0 1; i 3 1 1; i 3 2 1; i 3 3 1 ]);
-                    ]);
-               funk
-                 (cstr row
-                    [
-                      funk (cstr slice [ i 0 0 2; i 0 1 2; i 0 2 2; i 0 3 2 ]);
-                      funk (cstr slice [ i 1 0 2; i 1 1 2; i 1 2 2; i 1 3 2 ]);
-                      funk (cstr slice [ i 2 0 2; i 2 1 2; i 2 2 2; i 2 3 2 ]);
-                      funk (cstr slice [ i 3 0 2; i 3 1 2; i 3 2 2; i 3 3 2 ]);
-                    ]);
-               funk
-                 (cstr row
-                    [
-                      funk (cstr slice [ i 0 0 3; i 0 1 3; i 0 2 3; i 0 3 3 ]);
-                      funk (cstr slice [ i 1 0 3; i 1 1 3; i 1 2 3; i 1 3 3 ]);
-                      funk (cstr slice [ i 2 0 3; i 2 1 3; i 2 2 3; i 2 3 3 ]);
-                      funk (cstr slice [ i 3 0 3; i 3 1 3; i 3 2 3; i 3 3 3 ]);
-                    ]);
+               funk (cstr row [ s0; s4; s8; s12 ]);
+               funk (cstr row [ s1; s5; s9; s13 ]);
+               funk (cstr row [ s2; s6; s10; s14 ]);
+               funk (cstr row [ s3; s7; s11; s15 ]);
              ])))
   in
   let node =
@@ -464,7 +461,7 @@ let subcells, node_subcells =
               let' "s1" (v_call txor [] [ v s1; v s3 ]) @@ fun s1 ->
               let' "s3" (v_call tnot [] [ v s3 ]) @@ fun s3 ->
               let' "s2" (v_call txor [] [ v s2; v_call tand [] [ v s0; v s1 ] ])
-              @@ fun s2 -> funk (cstr slice [ v s3; v s1; v s2; v s3 ])));
+              @@ fun s2 -> funk (cstr slice [ v s3; v s1; v s2; v s0 ])));
       }
   in
   (subcells, node)
@@ -502,6 +499,7 @@ let round, node_round =
                    v slice;
                  ]))
         @@ fun state ->
+        log "after subcells" [ state ] @@ fun () ->
         let' "state" (fn_call reindex_colrow_slice [ Ty.bool ] [ v state ])
         @@ fun state ->
         let' "state"
@@ -515,14 +513,18 @@ let round, node_round =
         @@ fun state ->
         let' "state" (fn_call reindex_slice_colrow [ Ty.bool ] [ v state ])
         @@ fun state ->
-        let ty_range = [ col; row; slice ] in
-        funk
-          ( let_plus "state"
-              (range ty_range (v state))
-              [ ("key", range ty_range (v key)) ]
-          @@ fun state keys ->
-            let keys = List.hd keys in
-            v state lxor v keys )))
+        log "after permbits" [ state ] @@ fun () ->
+        let' "state"
+          (let ty_range = [ col; row; slice ] in
+           funk
+             ( let_plus "state"
+                 (range ty_range (v state))
+                 [ ("key", range ty_range (v key)) ]
+             @@ fun state keys ->
+               let keys = List.hd keys in
+               v state lxor v keys ))
+        @@ fun state ->
+        log "after add_round_key" [ state ] @@ fun () -> v state))
   in
   let node =
     NFun

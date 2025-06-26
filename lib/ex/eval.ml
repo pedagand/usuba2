@@ -553,11 +553,11 @@ let rec eval_expression env =
       let ty_ret = Env.instanciate ty_ret env in *)
       let ty_arg = Env.instanciate_anyway ty_arg env in
       let ((_, ty) as valuet) = eval_expression env expression in
-      let () =
+      (*      let () =
         Format.(
           fprintf err_formatter "@let+ : tyarg = %a - ty = %a\n" Pp.pp_ty ty_arg
             Pp.pp_ty ty)
-      in
+      in*)
       let () = assert (Env.are_same_ty_ctsr ty_arg ty env) in
       let ands =
         List.map

@@ -75,3 +75,4 @@ type fn_declaration = {
 type ty_declaration = { tyvar : TyIdent.t; name : TyDeclIdent.t; size : int }
 type node = NFun of fn_declaration | NTy of ty_declaration
 type module' = node list
+

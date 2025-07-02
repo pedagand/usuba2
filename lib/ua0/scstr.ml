@@ -38,6 +38,8 @@ module Term = struct
     let k = k () in
     TLog { message; variables; k }
 
+  let log_ message variables k = TLog { message; variables; k }
+
   (* haha *)
   let funk lterm = TThunk { lterm }
   let lookup lterm index = TLookup { lterm; index }

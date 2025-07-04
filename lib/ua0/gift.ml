@@ -410,12 +410,37 @@ let subcells, node_subcells =
   in
   (subcells, node)
 
-let round, node_round =
-  let round = FnIdent.fresh "round" in
+let rsubcells, node_rsubcells =
+  let fn_name = FnIdent.fresh "rsubcells" in
+  let state = TermIdent.fresh "state" in
   let ty_slice_bool = Ty.(app slice bool) in
   let ty_state = Ty.(app col @@ app row @@ ty_slice_bool) in
+  let body =
+    LTerm.(
+      Term.(
+        funk
+          ( let_plus "slice" (range [ col; row ] (v state)) [] @@ fun slice _ ->
+            fn_call subcells [ ty_slice_bool ]
+              [ vfn [] fnand; vfn [] fnor; vfn [] fnxor; vfn [] fnnot; v slice ]
+          )))
+  in
+  let node =
+    NFun
+      {
+        fn_name;
+        tyvars = [];
+        parameters = [ (state, ty_state) ];
+        return_type = ty_state;
+        body;
+      }
+  in
+  (fn_name, node)
+
+let permbits, node_permbits =
+  let fn_name = FnIdent.fresh "permbits" in
   let state = TermIdent.fresh "state" in
-  let key = TermIdent.fresh "key" in
+  let ty_slice_bool = Ty.(app slice bool) in
+  let ty_state = Ty.(app col @@ app row @@ ty_slice_bool) in
   let body =
     LTerm.(
       Term.(
@@ -429,21 +454,6 @@ let round, node_round =
                   vfn [ Ty.bool ] rev_rotate0;
                 ]))
         @@ fun permbits ->
-        let' "state"
-          (funk
-             LTerm.(
-               let_plus "slice" (range [ col; row ] (v state)) []
-               @@ fun slice _ ->
-               fn_call subcells [ ty_slice_bool ]
-                 [
-                   vfn [] fnand;
-                   vfn [] fnor;
-                   vfn [] fnxor;
-                   vfn [] fnnot;
-                   v slice;
-                 ]))
-        @@ fun state ->
-        log "after subcells" [ state ] @@ fun () ->
         let' "state" (fn_call reindex_colrow_slice [ Ty.bool ] [ v state ])
         @@ fun state ->
         let' "state"
@@ -454,21 +464,64 @@ let round, node_round =
              @@ fun f xs ->
                let xs = match xs with t :: _ -> t | _ -> assert false in
                v_call f [ Ty.bool ] [ v xs ] ))
-        @@ fun state ->
-        let' "state" (fn_call reindex_slice_colrow [ Ty.bool ] [ v state ])
-        @@ fun state ->
-        log "after permbits" [ state ] @@ fun () ->
-        let' "state"
-          (let ty_range = [ col; row; slice ] in
-           funk
-             ( let_plus "state"
-                 (range ty_range (v state))
-                 [ ("key", range ty_range (v key)) ]
-             @@ fun state keys ->
-               let keys = List.hd keys in
-               v state lxor v keys ))
-        @@ fun state ->
-        log "after add_round_key" [ state ] @@ fun () -> v state))
+        @@ fun state -> fn_call reindex_slice_colrow [ Ty.bool ] [ v state ]))
+  in
+  let node =
+    NFun
+      {
+        fn_name;
+        tyvars = [];
+        parameters = [ (state, ty_state) ];
+        return_type = ty_state;
+        body;
+      }
+  in
+  (fn_name, node)
+
+let add_round_key, node_add_round_key =
+  let fn_name = FnIdent.fresh "add_round_key" in
+  let state = TermIdent.fresh "state" in
+  let key = TermIdent.fresh "key" in
+  let ty_slice_bool = Ty.(app slice bool) in
+  let ty_state = Ty.(app col @@ app row @@ ty_slice_bool) in
+  let body =
+    LTerm.(
+      Term.(
+        let ty_range = [ col; row; slice ] in
+        funk
+          ( let_plus "state"
+              (range ty_range (v state))
+              [ ("key", range ty_range (v key)) ]
+          @@ fun state keys ->
+            let keys = List.hd keys in
+            v state lxor v keys )))
+  in
+  let node =
+    NFun
+      {
+        fn_name;
+        tyvars = [];
+        parameters = [ (state, ty_state); (key, ty_state) ];
+        return_type = ty_state;
+        body;
+      }
+  in
+  (fn_name, node)
+
+let round, node_round =
+  let round = FnIdent.fresh "round" in
+  let ty_slice_bool = Ty.(app slice bool) in
+  let ty_state = Ty.(app col @@ app row @@ ty_slice_bool) in
+  let state = TermIdent.fresh "state" in
+  let key = TermIdent.fresh "key" in
+  let body =
+    Term.(
+      let' "state" (fn_call rsubcells [] [ v state ]) @@ fun state ->
+      log "after subcells" [ state ] @@ fun () ->
+      let' "state" (fn_call permbits [] [ v state ]) @@ fun state ->
+      log "after permbits" [ state ] @@ fun () ->
+      let' "state" (fn_call add_round_key [] [ v state; v key ]) @@ fun state ->
+      log "after add_round_key" [ state ] @@ fun () -> v state)
   in
   let node =
     NFun
@@ -527,6 +580,9 @@ let ast =
     node_rev_rotate2;
     node_rev_rotate3;
     node_subcells;
+    node_rsubcells;
+    node_permbits;
+    node_add_round_key;
     node_round;
     node_gift;
   ]

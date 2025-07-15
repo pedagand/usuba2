@@ -45,6 +45,11 @@ type lterm =
     }
   | LConstructor of { ty : TyDeclIdent.t; terms : term list }
   | LRange of { ty : TyDeclIdent.t list; term : term }
+  | LReindex of {
+      lhs : TyDeclIdent.t list;
+      rhs : TyDeclIdent.t list;
+      lterm : lterm;
+    }
   | LCirc of lterm
 
 and term =

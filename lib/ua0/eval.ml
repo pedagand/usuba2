@@ -352,6 +352,10 @@ and eval_lterm env = function
       let value, t = eval_term env term in
       let lty = Env.range ty t env in
       (value, lty)
+  | LReindex { lhs; rhs; lterm } ->
+      let lvalue = eval_lterm env lterm in
+      let () = ignore (lhs, rhs, lvalue) in
+      failwith "TODO: eval lreindex:"
   | LCirc lterm ->
       let value, lty' = eval_lterm env lterm in
       let value = Value.circ value in

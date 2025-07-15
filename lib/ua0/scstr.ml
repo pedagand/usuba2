@@ -12,6 +12,7 @@ end
 module LTerm = struct
   let range ty term = LRange { ty; term }
   let cstr ty terms = LConstructor { ty; terms }
+  let reindex lhs rhs lterm = LReindex { lhs; rhs; lterm }
   let circ term = LCirc term
 
   let let_plus variable lterm ands k =

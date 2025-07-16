@@ -61,11 +61,19 @@ module B = struct
       let _, elt = Util.Ty.prefix ty in
       let () = assert (should_wrap ty env) in
       let new_prefix = destination env in
-      List.fold_right (fun name ty -> Ast.TyApp { name; ty }) new_prefix elt
+      List.fold_right (fun name ty -> Ua0.Ast.TyApp { name; ty }) new_prefix elt
 
-    let reindex term env =
+    let reindex term ty' env =
+      let nty = Util.Ty.lty [] ty' in
+      let rty = retype ty' env in
+      let lrty = Util.Ty.lty [] rty in
       let open Scstr in
-      LTerm.(Term.(funk (reindex env.re_lindex env.re_lindex (range [] term))))
+      LTerm.(
+        Term.(
+          funk
+            (ty nty
+            @@ reindex env.re_lindex env.re_lindex
+                 (ty lrty @@ range [] @@ ty rty @@ v rty term))))
   end
 
   let wrap env fun_decl =
@@ -73,24 +81,32 @@ module B = struct
     let fn_name = Util.FnIdent.prepend "w" fn_name in
     let body, parameters =
       List.fold_left_map
-        (fun body (para, ty) ->
-          let open Scstr in
+        (fun body ((para, ty) as pt) ->
           let npara = Util.TermIdent.prepend "w" para in
-          let ty = Env.retype ty env in
-          let reindexes =
+          let body =
             match Env.should_reindex para env with
             | true ->
-                let term = Env.reindex Term.(v npara) env in
-                Ast.TLet { variable = para; term; k = body }
+                let term = Env.reindex npara ty env in
+                ( Ast.TLet { variable = pt; term = (term, ty); k = body },
+                  snd body )
             | false -> body
           in
-          (reindexes, (npara, ty)))
+          (body, (npara, ty)))
         body parameters
     in
-    let return_type = Env.retype return_type env in
+    let nreturn_type = Env.retype return_type env in
     let body =
       let open Scstr in
-      Term.(let' "tmp" body @@ fun tmp -> Env.reindex (v tmp) env)
+      Term.(
+        let' "tmp" (snd body) body @@ fun (tmp, ty) ->
+        (Env.reindex tmp ty env, nreturn_type))
     in
-    Ast.{ fn_name; tyvars; parameters; return_type; body }
+    Ast.
+      {
+        fn_name;
+        tyvars;
+        parameters;
+        return_type = nreturn_type;
+        body = (body, nreturn_type);
+      }
 end

@@ -24,6 +24,8 @@ type ty =
   | TyApp of { name : TyDeclIdent.t; ty : ty }
   | TyFun of signature
 
+and lty = Lty of { t : (TyDeclIdent.t * int) list; ty : ty }
+
 and signature = {
   tyvars : TyIdent.t list;
   parameters : ty list;

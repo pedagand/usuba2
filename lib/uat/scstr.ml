@@ -49,8 +49,7 @@ module Term = struct
 
   let let' variable ty term k =
     let variable = TermIdent.fresh variable in
-    let tv = (variable, ty) in
-    Ast.TLet { variable = tv; term; k = k tv }
+    Ast.TLet { variable; term; k = k (variable, ty) }
 
   let fn_call fn_name ty_resolve args =
     TFnCall { fn_name = Left fn_name; ty_resolve; args }

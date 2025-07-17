@@ -16,7 +16,7 @@ type lterm =
   | LLetPlus of {
       variable : TermIdent.t;
       lterm : lterm ltys;
-      ands : TermIdent.t * lterm ltys;
+      ands : (TermIdent.t * lterm ltys) list;
       term : term tys;
     }
   | LConstructor of { ty : TyDeclIdent.t; terms : term tys list }
@@ -33,7 +33,7 @@ and term =
   | TTrue
   | TVar of TermIdent.t tys
   | TFn of { fn_ident : FnIdent.t; tyresolve : ty list }
-  | TLet of { variable : TermIdent.t tys; term : term tys; k : term tys }
+  | TLet of { variable : TermIdent.t; term : term tys; k : term tys }
   | TLookup of { lterm : lterm ltys; index : int }
   | TThunk of { lterm : lterm ltys }
   | TLog of { message : string; variables : TermIdent.t tys list; k : term tys }

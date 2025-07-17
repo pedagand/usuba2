@@ -85,6 +85,13 @@ module Term = struct
     | TOperator _ ->
         None
 
+  let rec as_funk = function
+    | Ast.TThunk { lterm } -> Some lterm
+    | TLog { k = k, _; _ } -> as_funk k
+    | TFalse | TTrue | TVar _ | TFn _ | TLet _ | TLookup _ | TOperator _
+    | TFnCall _ ->
+        None
+
   let funk lterm =
     let _, lty = lterm in
     let ty = Ty.to_ty lty in

@@ -116,7 +116,7 @@ module B = struct
         | Some e -> Util.Term.funk e)
     | _ -> List.fold_right term_cstr' cstrs expr
 
-  let wrap_reindex env lterm =
+  let wrap_lreindex env lterm =
     let lterm, _lty = lterm in
     let ( let* ) = Option.bind in
     let* variable, ((_, ty_lterm) as ltty), ands, tterm =
@@ -127,7 +127,6 @@ module B = struct
     in
     let* fn_name, ty_resolve, args = Util.Term.as_function_call (fst tterm) in
     let cstrs = Util.Ty.lprefix ty_lterm in
-
     let letargs = (variable, ltty) :: ands in
     let inlines =
       let letargs =
@@ -151,37 +150,38 @@ module B = struct
     in
     Some tterm
 
+  let wrap_reindex env tterm =
+    let term, _ty = tterm in
+    let ( >>= ) = Option.bind in
+    term |> Util.Term.as_funk >>= wrap_lreindex env
+
   let wrap env fun_decl =
     let Ast.{ fn_name; tyvars; parameters; return_type; body } = fun_decl in
-    let fn_name = Util.FnIdent.prepend "w" fn_name in
-    let body, parameters =
-      List.fold_left_map
-        (fun body (para, ty) ->
-          let npara = Util.TermIdent.prepend "w" para in
-          let body =
-            match Env.should_reindex para env with
-            | true ->
-                let term = Env.reindex_param npara ty env in
-                ( Ast.TLet { variable = para; term = (term, ty); k = body },
-                  snd body )
-            | false -> body
-          in
-          (body, (npara, ty)))
-        body parameters
-    in
-    let nreturn_type = Env.retype return_type env in
-    let body =
-      let open Scstr in
-      Term.(
-        let' "tmp" (snd body) body @@ fun (tmp, ty) ->
-        (Env.reindex_param tmp ty env, nreturn_type))
-    in
-    Ast.
-      {
-        fn_name;
-        tyvars;
-        parameters;
-        return_type = nreturn_type;
-        body = (body, nreturn_type);
-      }
+    match wrap_reindex env body with
+    | None -> fun_decl
+    | Some body ->
+        let fn_name = Util.FnIdent.prepend "w" fn_name in
+        let body, parameters =
+          List.fold_left_map
+            (fun body (para, ty) ->
+              let npara = Util.TermIdent.prepend "w" para in
+              let body =
+                match Env.should_reindex para env with
+                | true ->
+                    let term = Env.reindex_param npara ty env in
+                    ( Ast.TLet { variable = para; term = (term, ty); k = body },
+                      snd body )
+                | false -> body
+              in
+              (body, (npara, ty)))
+            body parameters
+        in
+        let nreturn_type = Env.retype return_type env in
+        let body =
+          Util.(
+            Lterm.(
+              Term.(
+                funk (Env.reindex (range (Fun.flip Env.arity env) [] body) env))))
+        in
+        Ast.{ fn_name; tyvars; parameters; return_type = nreturn_type; body }
 end

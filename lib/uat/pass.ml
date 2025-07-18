@@ -9,10 +9,103 @@ reindex[F, G] o G.map (reindex[F, H])
 
 *)
 
-module B = struct
-  module Idents = Set.Make (Ast.TermIdent)
-  module MIdents = Map.Make (Ast.TermIdent)
+module Idents = Set.Make (Ast.TermIdent)
+module MIdents = Map.Make (Ast.TermIdent)
 
+module InlineLet = struct
+  module Env = struct
+    type t = Ast.(term tys) MIdents.t
+
+    let empty : t = MIdents.empty
+    let add v t env : t = MIdents.add v t env
+    let find v env : Ast.(term tys) = MIdents.find v env
+  end
+
+  let rec inline_term env = function
+    | Ast.TVar (variable, _) -> fst @@ Env.find variable env
+    | (Ast.TFalse | TTrue) as e -> e
+    | _ -> failwith ""
+
+  and inline_term' env term =
+    let term, ty = term in
+    let term = inline_term env term in
+    (term, ty)
+
+  let inline_function function_decl =
+    let Ast.{ parameters; body; return_type = _; fn_name = _; tyvars = _ } =
+      function_decl
+    in
+    let env =
+      List.fold_left
+        (fun env (variable, ty) ->
+          let term = Scstr.Term.v ty variable in
+          let term = (term, ty) in
+          Env.add variable term env)
+        Env.empty parameters
+    in
+    let body = inline_term' env body in
+    { function_decl with body }
+end
+
+module CancelReindex = struct
+  module Env = struct
+    type t = {
+      to_reindex : Ast.TyDeclIdent.t list;
+      re_lindex : Ast.TyDeclIdent.t list;
+      re_rindex : Ast.TyDeclIdent.t list;
+      variables : Idents.t;
+    }
+
+    let init to_reindex re_lindex re_rindex variables =
+      { to_reindex; re_rindex; re_lindex; variables = Idents.of_list variables }
+
+    let mem variable env = Idents.mem variable env.variables
+
+    let same_reindex lhs rhs env =
+      let ( === ) = List.equal Ast.TyDeclIdent.equal in
+      (lhs === env.re_lindex && rhs == env.re_rindex)
+      || (lhs === env.re_rindex && rhs === env.re_lindex)
+  end
+
+  let is_parameter_reindexed env tlterm =
+    let ( let* ) = Option.bind in
+    let lterm, _ = tlterm in
+    let* lreindex_out, rreindex_out, lterm = Util.Lterm.as_reindex lterm in
+    let* () =
+      match Env.same_reindex lreindex_out rreindex_out env with
+      | true -> Some ()
+      | false -> None
+    in
+    let* _, tterm = Util.Lterm.as_range (fst lterm) in
+    let* variable = Util.Term.as_variable (fst tterm) in
+    let is_parameter = Env.mem (fst variable) env in
+    Some is_parameter
+
+  let cancel_reindex env tlterm =
+    let ( let* ) = Option.bind in
+    let lterm, _ = tlterm in
+    let* lreindex_out, rreindex_out, (lterm_map, _tylterm_map) =
+      Util.Lterm.as_reindex lterm
+    in
+    let* () =
+      match Env.same_reindex lreindex_out rreindex_out env with
+      | true -> Some ()
+      | false -> None
+    in
+    let* variable, lterm, ands, _ = Util.Lterm.as_mapn lterm_map in
+    let lterms = (variable, lterm) :: ands in
+    let _ =
+      List.for_all
+        (fun (_, tlterm) ->
+          match is_parameter_reindexed env tlterm with
+          | None -> true
+          | Some t -> t)
+        lterms
+    in
+    failwith ""
+end
+
+module InsertReindex = struct
   module Env = struct
     type t = {
       to_reindex : Ast.TyDeclIdent.t list;
@@ -155,9 +248,9 @@ module B = struct
     let ( >>= ) = Option.bind in
     term |> Util.Term.as_funk >>= wrap_lreindex env
 
-  let wrap env fun_decl =
+  let wrap f env fun_decl =
     let Ast.{ fn_name; tyvars; parameters; return_type; body } = fun_decl in
-    match wrap_reindex env body with
+    match f env body with
     | None -> fun_decl
     | Some body ->
         let fn_name = Util.FnIdent.prepend "w" fn_name in

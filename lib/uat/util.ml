@@ -92,6 +92,13 @@ module Term = struct
     | TFnCall _ ->
         None
 
+  let rec as_variable = function
+    | Ast.TVar v -> Some v
+    | TLog { k = k, _; _ } -> as_variable k
+    | TFalse | TTrue | TFn _ | TLet _ | TLookup _ | TOperator _ | TFnCall _
+    | TThunk _ ->
+        None
+
   let funk lterm =
     let _, lty = lterm in
     let ty = Ty.to_ty lty in
@@ -100,6 +107,19 @@ module Term = struct
 end
 
 module Lterm = struct
+  let as_reindex = function
+    | Ast.LReindex { lhs; rhs; lterm } -> Some (lhs, rhs, lterm)
+    | LLetPlus _ | LConstructor _ | LRange _ | LCirc _ -> None
+
+  let as_mapn = function
+    | Ast.LLetPlus { variable; lterm; ands; term } ->
+        Some (variable, lterm, ands, term)
+    | LConstructor _ | LRange _ | LReindex _ | LCirc _ -> None
+
+  let as_range = function
+    | Ast.LRange { ty; term } -> Some (ty, term)
+    | LLetPlus _ | LConstructor _ | LReindex _ | LCirc _ -> None
+
   let range f tys tterm =
     let _term, ty = tterm in
     let lty = Lty.range f tys ty in

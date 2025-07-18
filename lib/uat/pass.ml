@@ -9,6 +9,8 @@ reindex[F, G] o G.map (reindex[F, H])
 
 *)
 
+let uncons list = match list with [] -> (None, []) | t :: q -> (Some t, q)
+
 module Idents = Set.Make (Ast.TermIdent)
 module MIdents = Map.Make (Ast.TermIdent)
 
@@ -79,7 +81,7 @@ module CancelReindex = struct
     let* _, tterm = Util.Lterm.as_range (fst lterm) in
     let* variable = Util.Term.as_variable (fst tterm) in
     let is_parameter = Env.mem (fst variable) env in
-    Some is_parameter
+    match is_parameter with true -> Some lterm | false -> None
 
   let cancel_reindex env tlterm =
     let ( let* ) = Option.bind in
@@ -92,15 +94,18 @@ module CancelReindex = struct
       | true -> Some ()
       | false -> None
     in
-    let* variable, lterm, ands, _ = Util.Lterm.as_mapn lterm_map in
+    let* variable, lterm, ands, _term = Util.Lterm.as_mapn lterm_map in
     let lterms = (variable, lterm) :: ands in
-    let _ =
-      List.for_all
+    let lterms =
+      List.map
         (fun (_, tlterm) ->
           match is_parameter_reindexed env tlterm with
-          | None -> true
+          | None -> lterm
           | Some t -> t)
         lterms
+    in
+    let (_variable, _lterm), _ands =
+      match lterms with x :: xs -> (x, xs) | [] -> assert false
     in
     failwith ""
 end
@@ -250,31 +255,154 @@ module InsertReindex = struct
 
   let wrap f env fun_decl =
     let Ast.{ fn_name; tyvars; parameters; return_type; body } = fun_decl in
-    match f env body with
-    | None -> fun_decl
-    | Some body ->
-        let fn_name = Util.FnIdent.prepend "w" fn_name in
-        let body, parameters =
-          List.fold_left_map
-            (fun body (para, ty) ->
-              let npara = Util.TermIdent.prepend "w" para in
-              let body =
-                match Env.should_reindex para env with
-                | true ->
-                    let term = Env.reindex_param npara ty env in
-                    ( Ast.TLet { variable = para; term = (term, ty); k = body },
-                      snd body )
-                | false -> body
-              in
-              (body, (npara, ty)))
-            body parameters
+    let fn_name = Util.FnIdent.prepend "w" fn_name in
+    let body = match f env body with None -> body | Some body -> body in
+    let body, parameters =
+      List.fold_left_map
+        (fun body (para, ty) ->
+          let npara = Util.TermIdent.prepend "w" para in
+          let body =
+            match Env.should_reindex para env with
+            | true ->
+                let term = Env.reindex_param npara ty env in
+                ( Ast.TLet { variable = para; term = (term, ty); k = body },
+                  snd body )
+            | false -> body
+          in
+          (body, (npara, ty)))
+        body parameters
+    in
+    let body =
+      Util.(
+        Lterm.(
+          Term.(funk (Env.reindex (range (Fun.flip Env.arity env) [] body) env))))
+    in
+    let nreturn_type = Env.retype return_type env in
+    Ast.{ fn_name; tyvars; parameters; return_type = nreturn_type; body }
+end
+
+module ReSimplify = struct
+  module Env = struct
+    type t = Ast.(term tys) MIdents.t
+
+    let empty = MIdents.empty
+    let add = MIdents.add
+    let find = MIdents.find
+  end
+
+  let prefix_eq lhs rhs lhs' rhs' =
+    let ( = ) = List.equal Ast.TyDeclIdent.equal in
+    (lhs = lhs' && rhs = rhs') || (lhs = rhs' && rhs = lhs')
+
+  let rec simplify_reindex ty' slhs srhs env = function
+    | Ast.LReindex { lhs; rhs; lterm } -> (
+        match prefix_eq lhs rhs slhs srhs with
+        | true -> Some lterm
+        | false -> None)
+    | Ast.LRange { ty; term } ->
+        Option.map
+          (fun term -> (Ast.LRange { ty; term }, ty'))
+          (simplify_reindex_term' slhs srhs env term)
+    | Ast.LLetPlus _ | LConstructor _ | LCirc _ -> None
+
+  and simplify_reindex' slhs srhs env lterm =
+    let lterm, ty = lterm in
+    match simplify_reindex ty slhs srhs env lterm with
+    | None -> None
+    | Some lterm -> Some lterm
+
+  and simplify_reindex_term ty slhs srhs env = function
+    | Ast.TVar (variable, _) ->
+        simplify_reindex_term' slhs srhs env (Env.find variable env)
+    | Ast.TThunk { lterm } ->
+        Option.map
+          (fun lterm -> (Ast.TThunk { lterm }, ty))
+          (simplify_reindex' slhs srhs env lterm)
+    | TFalse | TTrue | TFn _ | TLet _ | TLookup _ | TLog _ | TOperator _
+    | TFnCall _ ->
+        None
+
+  and simplify_reindex_term' slhs srhs env term =
+    let term, ty = term in
+    match simplify_reindex_term ty slhs srhs env term with
+    | None -> None
+    | Some term -> Some term
+
+  let rec simplify_term env = function
+    | Ast.TVar (variable, _) -> fst @@ Env.find variable env
+    | TLet { variable; term; k } ->
+        let term = simplify_term' env term in
+        let env = Env.add variable term env in
+        fst @@ simplify_term' env k
+    | TLookup { lterm; index } ->
+        let lterm = simplify_lterm' env lterm in
+        Ast.TLookup { lterm; index }
+    | TThunk { lterm } ->
+        let lterm = simplify_lterm' env lterm in
+        TThunk { lterm }
+    | TLog { message; variables; k } ->
+        let k = simplify_term' env k in
+        Ast.TLog { message; variables; k }
+    | TOperator operator ->
+        let operator = simplify_operator env operator in
+        TOperator operator
+    | TFnCall { fn_name; ty_resolve; args } ->
+        let args = List.map (simplify_term' env) args in
+        TFnCall { fn_name; ty_resolve; args }
+    | (TFn _ | TFalse | TTrue) as e -> e
+
+  and simplify_term' env term =
+    let term, ty = term in
+    let term = simplify_term env term in
+    (term, ty)
+
+  and simplify_operator env = function
+    | Ua0.Ast.ONot term ->
+        let term = simplify_term' env term in
+        Ua0.Ast.ONot term
+    | OXor (lhs, rhs) ->
+        let lhs = simplify_term' env lhs in
+        let rhs = simplify_term' env rhs in
+        OXor (lhs, rhs)
+    | OAnd (lhs, rhs) ->
+        let lhs = simplify_term' env lhs in
+        let rhs = simplify_term' env rhs in
+        OAnd (lhs, rhs)
+    | OOr (lhs, rhs) ->
+        let lhs = simplify_term' env lhs in
+        let rhs = simplify_term' env rhs in
+        OOr (lhs, rhs)
+
+  and simplify_lterm env = function
+    | Ast.LReindex { lhs; rhs; lterm } -> (
+        match simplify_reindex' lhs rhs env lterm with
+        | Some lterm -> fst @@ simplify_lterm' env lterm
+        | None ->
+            let lterm = simplify_lterm' env lterm in
+            Ast.LReindex { lhs; rhs; lterm })
+    | Ast.LLetPlus { variable; lterm; ands; term } ->
+        let lterm = simplify_lterm' env lterm in
+        let ands =
+          List.map
+            (fun (variable, lterm) ->
+              let lterm = simplify_lterm' env lterm in
+              (variable, lterm))
+            ands
         in
-        let nreturn_type = Env.retype return_type env in
-        let body =
-          Util.(
-            Lterm.(
-              Term.(
-                funk (Env.reindex (range (Fun.flip Env.arity env) [] body) env))))
-        in
-        Ast.{ fn_name; tyvars; parameters; return_type = nreturn_type; body }
+        let term = simplify_term' env term in
+        Ast.LLetPlus { variable; lterm; ands; term }
+    | LConstructor { ty; terms } ->
+        let terms = List.map (simplify_term' env) terms in
+        LConstructor { ty; terms }
+    | LRange { ty; term } ->
+        let term = simplify_term' env term in
+        LRange { ty; term }
+    | LCirc lterm ->
+        let lterm = simplify_lterm' env lterm in
+        LCirc lterm
+
+  and simplify_lterm' env lterm =
+    let lterm, ty = lterm in
+    let lterm = simplify_lterm env lterm in
+    (lterm, ty)
 end

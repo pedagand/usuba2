@@ -77,6 +77,8 @@ module Lty = struct
 end
 
 module Term = struct
+  let v ty term = (Ast.TVar (term, ty), ty)
+
   let rec as_function_call = function
     | Ast.TFnCall { fn_name; ty_resolve; args } ->
         Some (fn_name, ty_resolve, args)
@@ -104,6 +106,18 @@ module Term = struct
     let ty = Ty.to_ty lty in
     let term = Ast.TThunk { lterm } in
     (term, ty)
+
+  let cstr ctr expr =
+    let ctr, arity = ctr in
+    let terms = List.init arity (Fun.const expr) in
+    Ast.LConstructor { ty = ctr; terms }
+
+  let cstr' ctr expr =
+    let _, ty = expr in
+    let cstr = cstr ctr expr in
+    let ctr, _ = ctr in
+    let lty = Ty.lty [] (Ua0.Scstr.Ty.app ctr ty) in
+    (cstr, lty)
 end
 
 module Lterm = struct
@@ -125,4 +139,9 @@ module Lterm = struct
     let lty = Lty.range f tys ty in
     let range = Ast.LRange { ty = tys; term = tterm } in
     (range, lty)
+
+  let let_plus' variable lterm ands term =
+    let lterm = Ast.LLetPlus { variable; lterm; ands; term } in
+    let ty = Ty.lty [] (snd term) in
+    (lterm, ty)
 end

@@ -188,20 +188,8 @@ module InsertReindex = struct
                  (ty lrty @@ range [] @@ ty rty @@ v rty term))))
   end
 
-  let cstr ctr expr =
-    let ctr, arity = ctr in
-    let terms = List.init arity (Fun.const expr) in
-    Ast.LConstructor { ty = ctr; terms }
-
-  let cstr' ctr expr =
-    let _, ty = expr in
-    let cstr = cstr ctr expr in
-    let ctr, _ = ctr in
-    let lty = Util.Ty.lty [] (Ua0.Scstr.Ty.app ctr ty) in
-    (cstr, lty)
-
   let term_cstr' ctr expr =
-    let ((_, lty) as t) = cstr' ctr expr in
+    let ((_, lty) as t) = Util.Term.cstr' ctr expr in
     let term = Ast.TThunk { lterm = t } in
     let ty = Util.Ty.to_ty lty in
     (term, ty)
@@ -405,4 +393,48 @@ module ReSimplify = struct
     let lterm, ty = lterm in
     let lterm = simplify_lterm env lterm in
     (lterm, ty)
+end
+
+module Dup = struct
+  let dup arity cs function_decl =
+    let promote ty = Ua0.Ast.TyApp { name = cs; ty } in
+    let Ast.{ fn_name; tyvars; parameters; return_type; body } =
+      function_decl
+    in
+    let fn_name = Util.FnIdent.prepend "dup" fn_name in
+    let new_parameters =
+      List.map
+        (fun (variable, ty) ->
+          let variable = Util.TermIdent.prepend "dup" variable in
+          let ty = promote ty in
+          (variable, ty))
+        parameters
+    in
+    let new_return_type = promote return_type in
+    let lands =
+      List.map2
+        (fun (new_variable, new_ty) (variable, _ty) ->
+          let lterm =
+            Util.(Lterm.(Term.(range arity [ cs ] (v new_ty new_variable))))
+          in
+          (variable, lterm))
+        new_parameters parameters
+    in
+    let body =
+      match lands with
+      | [] ->
+          let arity = arity cs in
+          Util.Term.cstr' (cs, arity) body
+      | (variable, lterm) :: ands ->
+          Util.Lterm.let_plus' variable lterm ands body
+    in
+    let body = Util.Term.funk body in
+    Ast.
+      {
+        fn_name;
+        tyvars;
+        parameters = new_parameters;
+        return_type = new_return_type;
+        body;
+      }
 end

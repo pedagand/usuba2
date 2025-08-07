@@ -65,7 +65,7 @@ module CancelReindex = struct
 
     let same_reindex lhs rhs env =
       let ( === ) = List.equal Ast.TyDeclIdent.equal in
-      (lhs === env.re_lindex && rhs == env.re_rindex)
+      (lhs === env.re_lindex && rhs === env.re_rindex)
       || (lhs === env.re_rindex && rhs === env.re_lindex)
   end
 

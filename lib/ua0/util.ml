@@ -35,10 +35,22 @@ module Ty = struct
         (name :: names, elt)
     | (TyBool | TyVar _ | TyFun _) as t -> ([], t)
 
+  let lift cstrs ty =
+    List.fold_right (fun name ty -> Ast.TyApp { name; ty }) cstrs ty
+
   let rec contains_boolean = function
     | Ast.TyBool -> true
     | Ast.TyVar _ -> false
     | TyApp { ty; name = _ } -> contains_boolean ty
     | TyFun { parameters; return_type; tyvars = _ } ->
         contains_boolean return_type || List.exists contains_boolean parameters
+
+  let rec lift_boolean cstrs = function
+    | Ast.TyBool as ty -> lift cstrs ty
+    | Ast.TyVar _ as ty -> ty
+    | TyApp { ty; name } -> TyApp { name; ty = lift_boolean cstrs ty }
+    | TyFun { parameters; return_type; tyvars } ->
+        let return_type = lift_boolean cstrs return_type in
+        let parameters = List.map (lift_boolean cstrs) parameters in
+        TyFun { tyvars; parameters; return_type }
 end

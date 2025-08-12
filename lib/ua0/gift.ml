@@ -39,7 +39,7 @@ let transpose, node_transpose =
     NFun
       {
         fn_name = transpose;
-        tyvars = [ alpha ];
+        tyvars = Some alpha;
         parameters = [ (tcols, ty_col_row_alpha) ];
         return_type = ty_row_col_alpha;
         body;
@@ -107,7 +107,7 @@ let reindex_colrow_slice, node_reindex_colrow_slice =
     NFun
       {
         fn_name;
-        tyvars = [ alpha ];
+        tyvars = Some alpha;
         parameters = [ (cols, ty_src) ];
         return_type = ty_dst;
         body;
@@ -168,7 +168,7 @@ let reindex_slice_colrow, node_reindex_slice_colrow =
     NFun
       {
         fn_name;
-        tyvars = [ alpha ];
+        tyvars = Some alpha;
         parameters = [ (cols, ty_src) ];
         return_type = ty_dst;
         body;
@@ -206,7 +206,7 @@ let reindex_row_cols, node_reindex_row_cols =
     NFun
       {
         fn_name = reindex_row_cols;
-        tyvars = [ alpha ];
+        tyvars = Some alpha;
         parameters = [ (trows, ty_row_col_alpha) ];
         return_type = ty_col_row_alpha;
         body;
@@ -223,7 +223,7 @@ let col_reverse, node_col_reverse =
     NFun
       {
         fn_name = col_reverse;
-        tyvars = [ alpha ];
+        tyvars = Some alpha;
         parameters = [ (tcols, ty_cols_alpha) ];
         return_type = ty_cols_alpha;
         body =
@@ -250,16 +250,16 @@ let rev_rotate_n n =
   let body =
     LTerm.(
       Term.(
-        let cols = fn_call col_reverse [ ty_alpha ] [ v tcols ] in
-        let cols = fn_call transpose [ ty_alpha ] [ cols ] in
+        let cols = fn_call ~resolve:ty_alpha col_reverse [ v tcols ] in
+        let cols = fn_call ~resolve:ty_alpha transpose [ cols ] in
         let cols = (circ (range [] cols)).%(n) in
-        fn_call reindex_row_cols [ ty_alpha ] [ cols ]))
+        fn_call ~resolve:ty_alpha reindex_row_cols [ cols ]))
   in
   let node =
     NFun
       {
         fn_name = rev_rotate;
-        tyvars = [ alpha ];
+        tyvars = Some alpha;
         parameters = [ (tcols, ty_col_row_alpha) ];
         return_type = ty_col_row_alpha;
         body;
@@ -280,7 +280,7 @@ let fnnot, node_fnnot =
     NFun
       {
         fn_name;
-        tyvars = [];
+        tyvars = None;
         parameters = [ (e, Ty.bool) ];
         return_type = Ty.bool;
         body;
@@ -302,7 +302,7 @@ let colrow_not, node_colrow_not =
     NFun
       {
         fn_name;
-        tyvars = [];
+        tyvars = None;
         parameters = [ (tlhs, ty) ];
         return_type = ty;
         body;
@@ -320,7 +320,7 @@ let bin name bin =
     NFun
       {
         fn_name;
-        tyvars = [];
+        tyvars = None;
         parameters = Ty.[ (lhs, bool); (rhs, bool) ];
         return_type = Ty.bool;
         body;
@@ -347,7 +347,7 @@ let colrow_bin name bin =
     NFun
       {
         fn_name;
-        tyvars = [];
+        tyvars = None;
         parameters = [ (tlhs, ty); (trhs, ty) ];
         return_type = ty;
         body;
@@ -367,8 +367,8 @@ let subcells, node_subcells =
   let alpha = TyIdent.fresh "'a" in
   let ty_alpha = Ty.v alpha in
   let ty_slice = Ty.(app slice ty_alpha) in
-  let ty_fn = Ty.(fn [] [ ty_alpha ] ty_alpha) in
-  let ty_fn2 = Ty.(fn [] [ ty_alpha; ty_alpha ] ty_alpha) in
+  let ty_fn = Ty.(fn [ ty_alpha ] ty_alpha) in
+  let ty_fn2 = Ty.(fn [ ty_alpha; ty_alpha ] ty_alpha) in
   let tslice = TermIdent.fresh "slice" in
   let txor = TermIdent.fresh "xor" in
   let tand = TermIdent.fresh "and" in
@@ -378,7 +378,7 @@ let subcells, node_subcells =
     NFun
       {
         fn_name = subcells;
-        tyvars = [ alpha ];
+        tyvars = Some alpha;
         parameters =
           [
             (tand, ty_fn2);
@@ -395,16 +395,16 @@ let subcells, node_subcells =
               let' "s1" (range [ slice ] (v tslice)).%(1) @@ fun s1 ->
               let' "s2" (range [ slice ] (v tslice)).%(2) @@ fun s2 ->
               let' "s3" (range [ slice ] (v tslice)).%(3) @@ fun s3 ->
-              let' "s1" (v_call txor [] [ v s1; v_call tand [] [ v s0; v s2 ] ])
+              let' "s1" (v_call txor [ v s1; v_call tand [ v s0; v s2 ] ])
               @@ fun s1 ->
-              let' "s0" (v_call txor [] [ v s0; v_call tand [] [ v s1; v s3 ] ])
+              let' "s0" (v_call txor [ v s0; v_call tand [ v s1; v s3 ] ])
               @@ fun s0 ->
-              let' "s2" (v_call txor [] [ v s2; v_call tor [] [ v s0; v s1 ] ])
+              let' "s2" (v_call txor [ v s2; v_call tor [ v s0; v s1 ] ])
               @@ fun s2 ->
-              let' "s3" (v_call txor [] [ v s3; v s2 ]) @@ fun s3 ->
-              let' "s1" (v_call txor [] [ v s1; v s3 ]) @@ fun s1 ->
-              let' "s3" (v_call tnot [] [ v s3 ]) @@ fun s3 ->
-              let' "s2" (v_call txor [] [ v s2; v_call tand [] [ v s0; v s1 ] ])
+              let' "s3" (v_call txor [ v s3; v s2 ]) @@ fun s3 ->
+              let' "s1" (v_call txor [ v s1; v s3 ]) @@ fun s1 ->
+              let' "s3" (v_call tnot [ v s3 ]) @@ fun s3 ->
+              let' "s2" (v_call txor [ v s2; v_call tand [ v s0; v s1 ] ])
               @@ fun s2 -> funk (cstr slice [ v s3; v s1; v s2; v s0 ])));
       }
   in
@@ -420,15 +420,14 @@ let rsubcells, node_rsubcells =
       Term.(
         funk
           ( let_plus "slice" (range [ col; row ] (v state)) [] @@ fun slice _ ->
-            fn_call subcells [ ty_slice_bool ]
-              [ vfn [] fnand; vfn [] fnor; vfn [] fnxor; vfn [] fnnot; v slice ]
-          )))
+            fn_call ~resolve:ty_slice_bool subcells
+              [ vfn fnand; vfn fnor; vfn fnxor; vfn fnnot; v slice ] )))
   in
   let node =
     NFun
       {
         fn_name;
-        tyvars = [];
+        tyvars = None;
         parameters = [ (state, ty_state) ];
         return_type = ty_state;
         body;
@@ -448,13 +447,13 @@ let permbits, node_permbits =
           (funk
              (cstr slice
                 [
-                  vfn [ Ty.bool ] rev_rotate1;
-                  vfn [ Ty.bool ] rev_rotate2;
-                  vfn [ Ty.bool ] rev_rotate3;
-                  vfn [ Ty.bool ] rev_rotate0;
+                  vfn ~resolve:Ty.bool rev_rotate1;
+                  vfn ~resolve:Ty.bool rev_rotate2;
+                  vfn ~resolve:Ty.bool rev_rotate3;
+                  vfn ~resolve:Ty.bool rev_rotate0;
                 ]))
         @@ fun permbits ->
-        let' "state" (fn_call reindex_colrow_slice [ Ty.bool ] [ v state ])
+        let' "state" (fn_call ~resolve:Ty.bool reindex_colrow_slice [ v state ])
         @@ fun state ->
         let' "state"
           (funk
@@ -463,14 +462,15 @@ let permbits, node_permbits =
                  [ ("slice", range [ slice ] (v state)) ]
              @@ fun f xs ->
                let xs = match xs with t :: _ -> t | _ -> assert false in
-               v_call f [ Ty.bool ] [ v xs ] ))
-        @@ fun state -> fn_call reindex_slice_colrow [ Ty.bool ] [ v state ]))
+               v_call ~resolve:Ty.bool f [ v xs ] ))
+        @@ fun state ->
+        fn_call ~resolve:Ty.bool reindex_slice_colrow [ v state ]))
   in
   let node =
     NFun
       {
         fn_name;
-        tyvars = [];
+        tyvars = None;
         parameters = [ (state, ty_state) ];
         return_type = ty_state;
         body;
@@ -500,7 +500,7 @@ let add_round_key, node_add_round_key =
     NFun
       {
         fn_name;
-        tyvars = [];
+        tyvars = None;
         parameters = [ (state, ty_state); (key, ty_state) ];
         return_type = ty_state;
         body;
@@ -516,18 +516,18 @@ let round, node_round =
   let key = TermIdent.fresh "key" in
   let body =
     Term.(
-      let' "state" (fn_call rsubcells [] [ v state ]) @@ fun state ->
+      let' "state" (fn_call rsubcells [ v state ]) @@ fun state ->
       log "after subcells" [ state ] @@ fun () ->
-      let' "state" (fn_call permbits [] [ v state ]) @@ fun state ->
+      let' "state" (fn_call permbits [ v state ]) @@ fun state ->
       log "after permbits" [ state ] @@ fun () ->
-      let' "state" (fn_call add_round_key [] [ v state; v key ]) @@ fun state ->
+      let' "state" (fn_call add_round_key [ v state; v key ]) @@ fun state ->
       log "after add_round_key" [ state ] @@ fun () -> v state)
   in
   let node =
     NFun
       {
         fn_name = round;
-        tyvars = [];
+        tyvars = None;
         parameters = [ (state, ty_state); (key, ty_state) ];
         return_type = ty_state;
         body;
@@ -545,14 +545,14 @@ let gift, node_gift =
     Array.init 28 Fun.id
     |> Array.fold_left
          (fun state i ->
-           LTerm.(Term.(fn_call round [] [ state; (range [] (v vkeys)).%(i) ])))
+           LTerm.(Term.(fn_call round [ state; (range [] (v vkeys)).%(i) ])))
          Term.(v vstate)
   in
   let node =
     NFun
       {
         fn_name = gift;
-        tyvars = [];
+        tyvars = None;
         parameters = [ (vstate, ty_state); (vkeys, ty_keys) ];
         return_type = ty_state;
         body;

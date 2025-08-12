@@ -27,7 +27,7 @@ type ty =
 and lty = Lty of { t : (TyDeclIdent.t * int) list; ty : ty }
 
 and signature = {
-  tyvars : TyIdent.t list;
+  tyvars : TyIdent.t option;
   parameters : ty list;
   return_type : ty;
 }
@@ -58,7 +58,7 @@ and term =
   | TFalse
   | TTrue
   | TVar of TermIdent.t
-  | TFn of { fn_ident : FnIdent.t; tyresolve : ty list }
+  | TFn of { fn_ident : FnIdent.t; tyresolve : ty option }
   | TLet of { variable : TermIdent.t; term : term; k : term }
   | TLookup of { lterm : lterm; index : int }
   | TThunk of { lterm : lterm }
@@ -66,13 +66,13 @@ and term =
   | TOperator of term operator
   | TFnCall of {
       fn_name : (FnIdent.t, TermIdent.t) Either.t;
-      ty_resolve : ty list;
+      ty_resolve : ty option;
       args : term list;
     }
 
 type fn_declaration = {
   fn_name : FnIdent.t;
-  tyvars : TyIdent.t list;
+  tyvars : TyIdent.t option;
   parameters : (TermIdent.t * ty) list;
   return_type : ty;
   body : term;

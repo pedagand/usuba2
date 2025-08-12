@@ -158,11 +158,13 @@ module Env = struct
                 env with
                 type_variables = TyVariables.add tyvar ty env.type_variables;
               })
-            env fn_decl.tyvars tyresolve
+            env
+            (Option.to_list fn_decl.tyvars)
+            (Option.to_list tyresolve)
         in
         Value.Ty.
           {
-            tyvars = [];
+            tyvars = None;
             parameters =
               List.map (fun (_, ty) -> of_ty env ty) fn_decl.parameters;
             return_type = of_ty env fn_decl.return_type;
@@ -271,7 +273,7 @@ and eval_term env = function
       in
       let fn_decl = Env.fn_declaration fnident env in
       let ty_resolve =
-        List.map
+        Option.map
           (fun ty ->
             let ty = Env.of_ty env ty in
             Env.to_ty env ty)
@@ -380,7 +382,11 @@ and eval env (fn : Ast.fn_declaration) ty_args args =
         } =
     fn
   in
-  let types = List.combine tyvars ty_args in
+  let types =
+    match (tyvars, ty_args) with
+    | Some tv, Some ta -> [ (tv, ta) ]
+    | _, _ -> err ""
+  in
   let env = Env.init_tyvariables types env in
   let env = Env.init_variables parameters args env in
   let env = { env with current_function = Some current_function } in

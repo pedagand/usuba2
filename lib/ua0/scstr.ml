@@ -5,7 +5,7 @@ module Ty = struct
   let v v = TyVar v
   let app name ty = TyApp { name; ty }
 
-  let fn tyvars parameters return_type =
+  let fn ?tyvars parameters return_type =
     TyFun { tyvars; parameters; return_type }
 end
 
@@ -33,7 +33,7 @@ module Term = struct
   let true' = TTrue
   let false' = TFalse
   let v variable = TVar variable
-  let vfn tyresolve fn_ident = TFn { fn_ident; tyresolve }
+  let vfn ?resolve fn_ident = TFn { fn_ident; tyresolve = resolve }
 
   let log message variables k =
     let k = k () in
@@ -51,11 +51,11 @@ module Term = struct
     let variable = TermIdent.fresh variable in
     TLet { variable; term; k = k variable }
 
-  let fn_call fn_name ty_resolve args =
-    TFnCall { fn_name = Left fn_name; ty_resolve; args }
+  let fn_call ?resolve fn_name args =
+    TFnCall { fn_name = Left fn_name; ty_resolve = resolve; args }
 
-  let v_call variable_name ty_resolve args =
-    TFnCall { fn_name = Right variable_name; ty_resolve; args }
+  let v_call ?resolve variable_name args =
+    TFnCall { fn_name = Right variable_name; ty_resolve = resolve; args }
 
   let ( lxor ) lhs rhs = TOperator (OXor (lhs, rhs))
   let ( land ) lhs rhs = TOperator (OAnd (lhs, rhs))

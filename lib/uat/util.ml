@@ -26,7 +26,7 @@ module Ty = struct
   and instanciate_signature types =
    fun { tyvars; parameters; return_type } ->
     let types =
-      List.fold_left (fun tyvars ty -> List.remove_assoc ty tyvars) types tyvars
+      match tyvars with None -> types | Some ty -> List.remove_assoc ty types
     in
     let parameters = List.map (instanciate types) parameters in
     let return_type = instanciate types return_type in

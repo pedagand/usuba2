@@ -1,6 +1,6 @@
 module Ty = struct
   type signature = {
-    tyvars : Ast.TyIdent.t list;
+    tyvars : Ast.TyIdent.t option;
     parameters : ty list;
     return_type : ty;
   }
@@ -81,7 +81,7 @@ end
 type t =
   | VBool of bool
   | VArray of t Array.t
-  | VFunction of Ast.FnIdent.t * Ast.ty list
+  | VFunction of Ast.FnIdent.t * Ast.ty option
 
 let rec pp format = function
   | VBool true -> Format.fprintf format "1"
@@ -90,7 +90,7 @@ let rec pp format = function
       let pp_sep format () = Format.pp_print_string format ", " in
       Format.fprintf format "[%a]" (Format.pp_print_array ~pp_sep pp) array
   | VFunction (fn, tys) ->
-      Format.fprintf format "%a%a" Ast.FnIdent.pp fn Pp.pp_tys tys
+      Format.fprintf format "%a%a" Ast.FnIdent.pp fn Pp.pp_ty_opt_args tys
 
 let true' = VBool true
 let false' = VBool false

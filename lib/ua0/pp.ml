@@ -11,12 +11,14 @@ let pp_tyvars format ty_vars =
       in
       Format.fprintf format "%a. " pp_list ty_vars
 
+let pp_tyvar_opt format = Format.pp_print_option TyIdent.pp format
+
 let rec pp_ty format = function
   | TyBool -> Format.fprintf format "bool"
   | TyApp { name; ty } ->
       Format.fprintf format "%a %a" TyDeclIdent.pp name pp_ty ty
   | TyFun { tyvars; parameters; return_type } ->
-      Format.fprintf format "%a(%a) -> %a" pp_tyvars tyvars pp_tys parameters
+      Format.fprintf format "%a(%a) -> %a" pp_tyvar_opt tyvars pp_tys parameters
         pp_ty return_type
   | TyVar name -> Format.fprintf format "%a" TyIdent.pp name
 

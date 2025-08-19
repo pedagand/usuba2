@@ -29,11 +29,11 @@ module Ty = struct
     let return_type = instanciate types return_type in
     { tyvars; parameters; return_type }
 
-  let rec prefix = function
+  (*  let rec prefix = function
     | Ast.TyApp { name; ty } ->
         let names, elt = prefix ty in
         (name :: names, elt)
-    | (TyBool | TyVar _ | TyFun _) as t -> ([], t)
+    | (TyBool | TyVar _ | TyFun _) as t -> ([], t)*)
 
   let lift cstrs ty =
     List.fold_right (fun name ty -> Ast.TyApp { name; ty }) cstrs ty
@@ -53,4 +53,62 @@ module Ty = struct
         let return_type = lift_boolean cstrs return_type in
         let parameters = List.map (lift_boolean cstrs) parameters in
         TyFun { tyvars; parameters; return_type }
+
+  let lty t ty = Ast.Lty { t; ty }
+
+  let rec ty_cstrs = function
+    | (Ast.TyBool | TyVar _ | TyFun _) as e -> ([], e)
+    | TyApp { name; ty } ->
+        let r, ty = ty_cstrs ty in
+        (name :: r, ty)
+
+  let to_ty = function
+    | Ast.Lty { t; ty } ->
+        List.fold_right (fun (name, _) ty -> Ast.TyApp { name; ty }) t ty
+
+  let rec remove_prefix ctsrs ty =
+    match ctsrs with
+    | [] -> Some ty
+    | t :: q -> (
+        match ty with
+        | Ast.TyBool | Ast.TyFun _ | Ast.TyVar _ -> None
+        | TyApp { name; ty; _ } ->
+            if Ast.TyDeclIdent.equal t name then remove_prefix q ty else None)
+
+  let prefix = function Ast.Lty { t; _ } -> t
+  let nest = function Ast.Lty { t; _ } -> List.length t
+
+  let hd = function
+    | Ast.Lty { t = (ty, _) :: _; ty = _ }
+    | Lty { t = []; ty = TyApp { name = ty; _ } } ->
+        Some ty
+    | _ -> None
+
+  let elt = function
+    | Ast.TyApp { ty; _ } -> Some ty
+    | TyBool | TyFun _ | TyVar _ -> None
+
+  let cstrql lhs rhs =
+    match (lhs, rhs) with
+    | Ast.TyBool, Ast.TyBool -> true
+    | TyApp { name = lname; _ }, TyApp { name = rname; _ } ->
+        Ast.TyDeclIdent.equal lname rname
+    | _, _ -> false
+
+  let lcstreq lhs rhs =
+    match (lhs, rhs) with
+    | Ast.Lty { t = lt; ty = lty }, Ast.Lty { t = rt; ty = rty } -> (
+        match (lt, rt) with
+        | [], [] -> cstrql lty rty
+        | (l, _) :: _, (r, _) :: _ -> Ast.TyDeclIdent.equal l r
+        | _, _ -> false)
+end
+
+module FunctionDecl = struct
+  let signature fn_decl =
+    let Ast.{ fn_name = _; tyvars; parameters; return_type; body = _ } =
+      fn_decl
+    in
+    let parameters = List.map snd parameters in
+    Ast.{ tyvars; parameters; return_type }
 end

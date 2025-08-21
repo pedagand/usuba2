@@ -1,2 +1,11 @@
+(ocamllex
+ (modules lexer))
+
+(menhir
+ (modules parser)
+ (flags --table)
+ (infer true))
+
 (library
- (name ua0))
+ (name ua0)
+ (libraries menhirLib))

@@ -53,6 +53,15 @@ module Ty = struct
     List.fold_right (fun name ty -> Ua0.Ast.TyApp { name; ty }) cstrs
 end
 
+module FunctionDecl = struct
+  let signature fn_decl =
+    let Ua0.Ast.{ fn_name = _; tyvars; parameters; return_type; body = _ } =
+      fn_decl
+    in
+    let parameters = List.map snd parameters in
+    Ua0.Ast.{ tyvars; parameters; return_type }
+end
+
 module Lty = struct
   let rec range acc f prefix ty =
     match prefix with

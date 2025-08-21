@@ -52,6 +52,6 @@ type fn_declaration = {
   body : term tys;
 }
 
-type ty_declaration = { tyvar : TyIdent.t; name : TyDeclIdent.t; size : int }
+type ty_declaration = Ua0.Ast.ty_declaration
 type node = NFun of fn_declaration | NTy of ty_declaration
 type module' = node list

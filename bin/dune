@@ -9,3 +9,9 @@
  (name ua0)
  (modules ua0)
  (libraries ex ua0))
+
+(executable
+ (public_name ua)
+ (name ua)
+ (modules ua)
+ (libraries ua0))

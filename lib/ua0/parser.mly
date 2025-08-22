@@ -14,6 +14,12 @@
 %token FUNCTION TYPE TUPLE
 %token EOF
 
+%right IN
+%left CARET
+%left PIPE
+%left AMPERSAND
+%right EXCLAMATION
+
 
 %start module_
 
@@ -89,20 +95,24 @@ term:
         TLookup { lterm; index}
     }
     | HASH lterm=lterm { TThunk {lterm} }
-    | fn_name=Identifier ty_resolve=option(sqrbracketed(ty)) term_call=boption(DOT) 
+    | fn_name=Identifier DOT ty_resolve=option(sqrbracketed(ty)) 
         args=parenthesis(separated_list(COMMA, term)) {
-        let fn_name = match term_call with
-            | true -> Either.Left fn_name
-            | false -> Either.right fn_name
-        in
-        TFnCall {fn_name; ty_resolve; args}
-    } 
+        TFnCall {fn_name = Either.Left fn_name; ty_resolve; args}
+    }
+    | operator {
+        TOperator $1
+    }
+    
+%inline operator:
+    | EXCLAMATION term { ONot $2 }
+    | lhs=term PIPE rhs=term { OOr (lhs, rhs) }
+    | lhs=term AMPERSAND rhs=term { OAnd (lhs, rhs) }
+    | lhs=term CARET rhs=term { OXor (lhs, rhs) }
 
 lterm:
     | LET_PLUS variable=Identifier EQUAL lterm=lterm 
-        ands=loption(preceded(AND,
-            separated_nonempty_list(AND, splitted(Identifier, EQUAL, lterm)))
-        ) IN term=term {
+        ands=list(preceded(AND,splitted(Identifier, EQUAL, lterm)))
+        IN term=term {
             LLetPlus { variable; lterm; ands; term }
         }
     | ty=TypeCstrIdentifier terms=parenthesis(separated_nonempty_list(COMMA, term)) {

@@ -307,6 +307,10 @@ module Idents = struct
       match SMap.find_opt name env.fns with
       | None -> err "Unbound fn name : %s" name
       | Some s -> s
+
+    let find_callable name env =
+      try Either.Right (find_variable name env)
+      with _ -> Either.Left (find_fn_ident name env)
   end
 
   let rec ty env = function
@@ -363,12 +367,8 @@ module Idents = struct
         let op = op env ops in
         TOperator op
     | TFnCall { fn_name; ty_resolve; args } ->
-        let fn_name =
-          Either.map
-            ~left:(Fun.flip Env.find_fn_ident env)
-            ~right:(Fun.flip Env.find_variable env)
-            fn_name
-        in
+        let fn_name = Either.fold ~left:Fun.id ~right:Fun.id fn_name in
+        let fn_name = Env.find_callable fn_name env in
         let ty_resolve = Option.map (ty env) ty_resolve in
         let args = List.map (term env) args in
         TFnCall { fn_name; ty_resolve; args }

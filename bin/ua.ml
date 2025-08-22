@@ -11,7 +11,8 @@ let main file =
         Ua0.Parser.module_ Ua0.Lexer.token lexbuf)
   in
   let ast = Ua0.Pass.Idents.of_string_ast ast in
-  ignore ast
+  let uat = Uat.Typecheck.of_ua0_module ast in
+  ignore uat
 
 let main files = match Queue.peek_opt files with None -> () | Some f -> main f
 let () = main files

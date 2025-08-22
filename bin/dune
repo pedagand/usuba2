@@ -14,4 +14,4 @@
  (public_name ua)
  (name ua)
  (modules ua)
- (libraries ua0))
+ (libraries ua0 uat))

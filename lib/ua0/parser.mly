@@ -7,7 +7,7 @@
 %token <string> TypeCstrIdentifier
 %token <int> IntegerLitteral
 %token LPARENT RPARENT LBRACE RBRACE LSQBRACE RSQBRACE
-%token EQUAL DOT COMMA PIPE HASH CARET EXCLAMATION
+%token EQUAL DOT COMMA PIPE HASH CARET EXCLAMATION COLON
 %token AND LET LET_PLUS IN RANGE REINDEX
 %token TRUE FALSE BOOL
 %token AMPERSAND MINUS_SUP
@@ -59,7 +59,7 @@ type_decl:
 
 fn_decl:
     | FUNCTION tyvars=option(terminated(TypeVariable, DOT))
-        fn_name=Identifier parameters=parenthesis(separated_list(COMMA, splitted(Identifier, COMMA, ty)))
+        fn_name=Identifier parameters=parenthesis(separated_list(COMMA, splitted(Identifier, COLON, ty)))
         return_type=ty EQUAL body=term
     { 
         {tyvars; fn_name; parameters; return_type; body }
@@ -99,6 +99,7 @@ term:
         args=parenthesis(separated_list(COMMA, term)) {
         TFnCall {fn_name = Either.Left fn_name; ty_resolve; args}
     }
+    | parenthesis(term) { $1 }
     | operator {
         TOperator $1
     }
@@ -128,4 +129,5 @@ lterm:
         let (lhs, rhs) = ls in
         LReindex {lhs; rhs; lterm}
     }
+    | parenthesis(lterm) { $1 }
     

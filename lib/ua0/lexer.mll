@@ -33,12 +33,14 @@ let binary_integer = '0' ('b' | 'B') ('0' | '1') ('0' | '1' | '_')*
 let number = decimal_integer | hex_integer | octal_intger | binary_integer
 
 let newline = ('\010' | '\013' | "\013\010")
+let blank   = [' ' '\009' '\012']
 
 rule token = parse
 | newline {
     let () = Lexing.new_line lexbuf in
-        token lexbuf
+    token lexbuf
 }
+| blank+ { token lexbuf }
 | '\'' (lower_identifier as s) { 
     TypeVariable s
 }
@@ -55,6 +57,7 @@ rule token = parse
 | "," { COMMA }
 | "=" { EQUAL }
 | "." { DOT }
+| ":" { COLON }
 | "#" { HASH }
 | "|" { PIPE }
 | "^"  { CARET }

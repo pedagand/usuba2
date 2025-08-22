@@ -81,7 +81,8 @@ end
 type t =
   | VBool of bool
   | VArray of t Array.t
-  | VFunction of Ast.FnIdent.t * Ast.ty option
+  | VFunction of
+      Ast.FnIdent.t * (Ast.TyDeclIdent.t, Ast.TyIdent.t) Ast.ty option
 
 let rec pp format = function
   | VBool true -> Format.fprintf format "1"

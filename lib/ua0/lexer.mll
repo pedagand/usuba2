@@ -3,8 +3,10 @@
     open Lexing
     
     let keywords = [
-        ("false", FALSE); ("fn", FUNCTION); ("let", LET); ("range", RANGE); 
-        ("reindex", REINDEX); ("tuple", TUPLE); ("true", TRUE); ("type", TYPE)
+        ("and", AND); ("bool", BOOL); ("false", FALSE); ("fn", FUNCTION); ("in", IN); 
+        ("let", LET); ("let+", LET_PLUS);
+        ("range", RANGE);  ("reindex", REINDEX); ("tuple", TUPLE); ("true", TRUE); 
+        ("type", TYPE)
     ]
     
     let keywords = Hashtbl.of_seq @@ List.to_seq keywords
@@ -53,6 +55,11 @@ rule token = parse
 | "," { COMMA }
 | "=" { EQUAL }
 | "." { DOT }
+| "#" { HASH }
+| "|" { PIPE }
+| "^"  { CARET }
+| "!"  { EXCLAMATION }
+| "->" { MINUS_SUP}
 | type_cstr_identifier as s {
     TypeCstrIdentifier s
 }

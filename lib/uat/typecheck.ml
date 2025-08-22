@@ -11,8 +11,14 @@ module Env = struct
 
   type t = {
     variables : Ast.ty Vars.t;
-    functions : Ua0.Ast.fn_declaration Fns.t;
-    types : Ua0.Ast.ty_declaration Types.t;
+    functions :
+      ( Ast.TyDeclIdent.t,
+        Ast.FnIdent.t,
+        Ast.TyIdent.t,
+        Ast.TermIdent.t )
+      Ua0.Ast.fn_declaration
+      Fns.t;
+    types : (Ast.TyDeclIdent.t, Ast.TyIdent.t) Ua0.Ast.ty_declaration Types.t;
   }
 
   let empty =

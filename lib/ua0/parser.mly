@@ -1,5 +1,5 @@
 %{
-
+    open Ast
 %}
 
 %token <string> Identifier
@@ -7,17 +7,17 @@
 %token <string> TypeCstrIdentifier
 %token <int> IntegerLitteral
 %token LPARENT RPARENT LBRACE RBRACE LSQBRACE RSQBRACE
-%token EQUAL DOT COMMA
-%token LET RANGE REINDEX
-%token TRUE FALSE
-%token AMPERSAND
+%token EQUAL DOT COMMA PIPE HASH CARET EXCLAMATION
+%token AND LET LET_PLUS IN RANGE REINDEX
+%token TRUE FALSE BOOL
+%token AMPERSAND MINUS_SUP
 %token FUNCTION TYPE TUPLE
 %token EOF
 
 
 %start module_
 
-%type <Ast.node list> module_
+%type <Ast.module_ast> module_
 
 %%
 
@@ -41,33 +41,81 @@ module_:
     | list(node) EOF { $1 }
     
 node:
-    | type_decl { failwith "" }
-    | fn_decl { failwith "" }
+    | type_decl { Ast.NTy $1 }
+    | fn_decl { Ast.NFun $1 }
 
 
 type_decl:
-    | TYPE typecst=TypeCstrIdentifier EQUAL 
-        TUPLE size=sqrbracketed(IntegerLitteral) tyvars=TypeVariable {
-        let () = ignore (typecst, size, tyvars) in
-        failwith ""
+    | TYPE name=TypeCstrIdentifier EQUAL 
+        TUPLE size=sqrbracketed(IntegerLitteral) tyvar=TypeVariable {
+        { tyvar; name; size }
     }
 
 fn_decl:
-    | FUNCTION tyvar=option(terminated(TypeVariable, DOT))
-        fn_name=Identifier params=parenthesis(separated_list(COMMA, splitted(Identifier, COMMA, ty)))
-        return_type=ty EQUAL term
+    | FUNCTION tyvars=option(terminated(TypeVariable, DOT))
+        fn_name=Identifier parameters=parenthesis(separated_list(COMMA, splitted(Identifier, COMMA, ty)))
+        return_type=ty EQUAL body=term
     { 
-        let () = ignore (tyvar, fn_name, params, return_type) in
-        failwith "" 
+        {tyvars; fn_name; parameters; return_type; body }
     }
     
 ty:
-    | { failwith "" }
+    | name=TypeCstrIdentifier ty=ty {
+        TyApp {name; ty}
+    }
+    | TypeVariable { TyVar $1 }
+    | BOOL { TyBool }
+    | FUNCTION signature {
+        TyFun $2
+    }
+    
+%inline signature:
+    | tyvars=option(sqrbracketed(TypeVariable)) 
+        parameters=parenthesis(separated_list(COMMA, ty)) MINUS_SUP 
+        return_type=ty {
+        {tyvars; parameters; return_type}
+    }
+    
+    
 term:
-    | TRUE 
-    | FALSE
-    { failwith "" }
+    | TRUE { TTrue }
+    | FALSE { TFalse }
+    | Identifier { TVar $1 }
+    | AMPERSAND fn_ident=Identifier { TFn {fn_ident; tyresolve = None} }
+    | LET variable=Identifier EQUAL term=term IN k=term {
+        TLet {variable; term; k}
+    }
+    | lterm=lterm index=sqrbracketed(IntegerLitteral) {
+        TLookup { lterm; index}
+    }
+    | HASH lterm=lterm { TThunk {lterm} }
+    | fn_name=Identifier ty_resolve=option(sqrbracketed(ty)) term_call=boption(DOT) 
+        args=parenthesis(separated_list(COMMA, term)) {
+        let fn_name = match term_call with
+            | true -> Either.Left fn_name
+            | false -> Either.right fn_name
+        in
+        TFnCall {fn_name; ty_resolve; args}
+    } 
 
 lterm:
-    | { failwith "" }
+    | LET_PLUS variable=Identifier EQUAL lterm=lterm 
+        ands=loption(preceded(AND,
+            separated_nonempty_list(AND, splitted(Identifier, EQUAL, lterm)))
+        ) IN term=term {
+            LLetPlus { variable; lterm; ands; term }
+        }
+    | ty=TypeCstrIdentifier terms=parenthesis(separated_nonempty_list(COMMA, term)) {
+        LConstructor { ty; terms }
+    }
+    | RANGE ty=sqrbracketed(separated_list(COMMA, TypeCstrIdentifier)) term=parenthesis(term) {
+        LRange {ty; term}
+    }
+    | REINDEX ls=sqrbracketed(splitted(
+        separated_nonempty_list(COMMA, TypeCstrIdentifier), PIPE,
+        separated_nonempty_list(COMMA, TypeCstrIdentifier)
+    )) lterm=parenthesis(lterm) {
+        let (lhs, rhs) = ls in
+        LReindex {lhs; rhs; lterm}
+    }
     

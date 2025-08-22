@@ -1,16 +1,15 @@
 open Ua0
-
-type ty = Ast.ty
-type lty = Ast.lty
-type signature = Ast.signature
-type 'a tys = 'a * ty
-type 'a ltys = 'a * lty
-type 'a operator = 'a Ast.operator
-
 module TyDeclIdent = Ast.TyDeclIdent
 module TermIdent = Ast.TermIdent
 module FnIdent = Ast.FnIdent
 module TyIdent = Ast.TyIdent
+
+type ty = (TyDeclIdent.t, TyIdent.t) Ast.ty
+type lty = Ast.lty
+type signature = (TyDeclIdent.t, TyIdent.t) Ast.signature
+type 'a tys = 'a * ty
+type 'a ltys = 'a * lty
+type 'a operator = 'a Ast.operator
 
 type lterm =
   | LLetPlus of {
@@ -52,6 +51,6 @@ type fn_declaration = {
   body : term tys;
 }
 
-type ty_declaration = Ua0.Ast.ty_declaration
+type ty_declaration = (TyDeclIdent.t, TyIdent.t) Ua0.Ast.ty_declaration
 type node = NFun of fn_declaration | NTy of ty_declaration
 type module' = node list

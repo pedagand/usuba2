@@ -3,18 +3,19 @@
     open Lexing
     
     let keywords = [
-        ("and", AND); ("bool", BOOL); ("false", FALSE); ("fn", FUNCTION); ("in", IN); 
-        ("let", LET); ("let+", LET_PLUS);
-        ("range", RANGE);  ("reindex", REINDEX); ("tuple", TUPLE); ("true", TRUE); 
-        ("type", TYPE)
+        ("and", AND); ("bool", BOOL); ("circ", CIRC); ("false", FALSE); 
+        ("fn", FUNCTION); ("in", IN); ("let", LET); ("let+", LET_PLUS);
+        ("range", RANGE);  ("reindex", REINDEX); ("tuple", TUPLE); 
+        ("true", TRUE); ("type", TYPE)
     ]
     
     let keywords = Hashtbl.of_seq @@ List.to_seq keywords
     
     let fail_at lexbuf fmt = 
-    let _start = lexbuf.lex_start_p in
-    let _end' = lexbuf.lex_curr_p in
-    Format.kasprintf failwith fmt
+    let start = lexbuf.lex_start_p in
+    let end' = lexbuf.lex_curr_p in
+    let range =  MenhirLib.LexerUtil.range (start, end') in
+    Format.kasprintf failwith ( "%s" ^^ fmt ) range
 
 }
 

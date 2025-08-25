@@ -8,7 +8,7 @@
 %token <int> IntegerLitteral
 %token LPARENT RPARENT LBRACE RBRACE LSQBRACE RSQBRACE
 %token EQUAL DOT COMMA PIPE HASH CARET EXCLAMATION COLON
-%token AND LET LET_PLUS IN RANGE REINDEX
+%token AND LET LET_PLUS IN RANGE REINDEX CIRC
 %token TRUE FALSE BOOL
 %token AMPERSAND MINUS_SUP
 %token FUNCTION TYPE TUPLE
@@ -52,8 +52,8 @@ node:
 
 
 type_decl:
-    | TYPE name=TypeCstrIdentifier EQUAL 
-        TUPLE size=sqrbracketed(IntegerLitteral) tyvar=TypeVariable {
+    | TYPE name=TypeCstrIdentifier tyvar=TypeVariable EQUAL 
+        TUPLE size=sqrbracketed(IntegerLitteral)  {
         { tyvar; name; size }
     }
 
@@ -112,22 +112,25 @@ term:
 
 lterm:
     | LET_PLUS variable=Identifier EQUAL lterm=lterm 
-        ands=list(preceded(AND,splitted(Identifier, EQUAL, lterm)))
+         ands=list(preceded(AND, splitted(Identifier, EQUAL, lterm))) 
         IN term=term {
             LLetPlus { variable; lterm; ands; term }
         }
     | ty=TypeCstrIdentifier terms=parenthesis(separated_nonempty_list(COMMA, term)) {
         LConstructor { ty; terms }
     }
-    | RANGE ty=sqrbracketed(separated_list(COMMA, TypeCstrIdentifier)) term=parenthesis(term) {
+    | RANGE ty=loption(sqrbracketed(list(TypeCstrIdentifier))) term=parenthesis(term) {
         LRange {ty; term}
     }
     | REINDEX ls=sqrbracketed(splitted(
-        separated_nonempty_list(COMMA, TypeCstrIdentifier), PIPE,
-        separated_nonempty_list(COMMA, TypeCstrIdentifier)
+        nonempty_list(TypeCstrIdentifier), PIPE,
+        nonempty_list(TypeCstrIdentifier)
     )) lterm=parenthesis(lterm) {
         let (lhs, rhs) = ls in
         LReindex {lhs; rhs; lterm}
+    }
+    | CIRC lterm=parenthesis(lterm) {
+        LCirc lterm
     }
     | parenthesis(lterm) { $1 }
     

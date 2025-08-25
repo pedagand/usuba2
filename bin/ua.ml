@@ -8,6 +8,7 @@ let main file =
   let ast =
     In_channel.with_open_bin file (fun ic ->
         let lexbuf = Lexing.from_channel ic in
+        let () = Lexing.set_filename lexbuf file in
         Ua0.Parser.module_ Ua0.Lexer.token lexbuf)
   in
   let ast = Ua0.Pass.Idents.of_string_ast ast in

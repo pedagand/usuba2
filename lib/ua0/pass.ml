@@ -311,6 +311,12 @@ module Idents = struct
     let find_callable name env =
       try Either.Right (find_variable name env)
       with _ -> Either.Left (find_fn_ident name env)
+
+    let find_variable_term name env =
+      Either.fold
+        ~left:(fun fn_ident -> Ast.TFn { fn_ident; tyresolve = None })
+        ~right:(fun s -> Ast.TVar s)
+        (find_callable name env)
   end
 
   let rec ty env = function
@@ -341,9 +347,7 @@ module Idents = struct
 
   let rec term env = function
     | (Ast.TFalse | Ast.TTrue) as e -> e
-    | Ast.TVar v ->
-        let v = Env.find_variable v env in
-        TVar v
+    | Ast.TVar v -> Env.find_variable_term v env
     | TLet { variable; term = l; k } ->
         let t = term env l in
         let env, variable = Env.add_variable variable env in

@@ -112,7 +112,7 @@ term:
 
 lterm:
     | LET_PLUS variable=Identifier EQUAL lterm=lterm 
-         ands=list(preceded(AND, splitted(Identifier, EQUAL, lterm))) 
+        ands=list(preceded(AND, splitted(Identifier, EQUAL, lterm))) 
         IN term=term {
             LLetPlus { variable; lterm; ands; term }
         }

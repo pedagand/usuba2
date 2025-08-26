@@ -4,7 +4,7 @@
     
     let keywords = [
         ("and", AND); ("bool", BOOL); ("circ", CIRC); ("false", FALSE); 
-        ("fn", FUNCTION); ("in", IN); ("let", LET); ("let+", LET_PLUS);
+        ("fn", FUNCTION); ("in", IN); ("let", LET);
         ("range", RANGE);  ("reindex", REINDEX); ("tuple", TUPLE); 
         ("true", TRUE); ("type", TYPE)
     ]
@@ -48,6 +48,7 @@ rule token = parse
 | (number as n) {
     IntegerLitteral(int_of_string n)
 }
+| "let+" { LET_PLUS }
 | "(" { LPARENT }
 | ")" { RPARENT }
 | "{" { LBRACE }
@@ -63,7 +64,8 @@ rule token = parse
 | "|" { PIPE }
 | "^"  { CARET }
 | "!"  { EXCLAMATION }
-| "->" { MINUS_SUP}
+| "->" { MINUS_SUP }
+| "//" { single_line_comment lexbuf }
 | type_cstr_identifier as s {
     TypeCstrIdentifier s
 }
@@ -75,4 +77,12 @@ rule token = parse
 | _ as c {
     fail_at lexbuf "invalid char : %c" c
 }
+| eof { EOF }
+
+and single_line_comment = parse
+| newline {  
+    let () = Lexing.new_line lexbuf in
+    token lexbuf 
+}
+| _ { single_line_comment lexbuf}
 | eof { EOF }

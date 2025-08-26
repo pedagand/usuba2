@@ -396,19 +396,17 @@ module Idents = struct
 
   and lterm' env = function
     | Ast.LLetPlus { variable; lterm; ands; term = t } ->
-        let variable = Env.find_variable variable env in
+        let env, variable = Env.add_variable variable env in
         let lterm = lterm' env lterm in
-        let e = Env.clear_variables env in
-        let e, ands =
+        let env, ands =
           List.fold_left_map
-            (fun e (variable, lterm) ->
-              let e, variable = Env.add_variable variable e in
-              (* Use same env to "evaluate" lterm *)
+            (fun env (variable, lterm) ->
+              let env, variable = Env.add_variable variable env in
               let lterm = lterm' env lterm in
-              (e, (variable, lterm)))
-            e ands
+              (env, (variable, lterm)))
+            env ands
         in
-        let term = term e t in
+        let term = term env t in
         Ast.LLetPlus { variable; lterm; ands; term }
     | LConstructor { ty; terms } ->
         let terms = List.map (term env) terms in

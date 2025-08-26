@@ -96,23 +96,24 @@ fn 'a. subcells(
     let s2 = fxor.(s2, fand.(s0, s1)) in
     # Slice(s3, s1, s2, s0)
     
-// fn 'a. subcells(
-//     state : Col Row Slice 'a,
-//     fnot : fn('a) -> 'a,
-//     fand : fn('a, 'a) -> 'a,
-//     for : fn('a, 'a) -> 'a,
-//     fxor : fn('a, 'a) -> 'a
-// ) Col Row Slice 'a =
-//     # let+ slice = range[Col Row](state) in subcells(slice, fnot, fand, for, fxor)
-//     
+fn 'a. subcells(
+    state : Col Row Slice 'a,
+    fnot : fn('a) -> 'a,
+    fand : fn('a, 'a) -> 'a,
+    for : fn('a, 'a) -> 'a,
+    fxor : fn('a, 'a) -> 'a
+) Col Row Slice 'a =
+    # let+ slice = range[Col Row](state) in 
+        subcells.(slice, fnot, fand, for, fxor)
+    
 
-// fn 'a. add_round_key(
-//     state : Col Row Slice 'a, 
-//     key : Col Row Slice 'a, 
-//     fxor: fn('a, 'a) -> 'a
-// ) Col Row Slice 'a =
-//     # let+ state = range[Col Row Slice](state) and key = range[Col Row Slice](key) in
-//         fxor.(state, key)
+fn 'a. add_round_key(
+    state : Col Row Slice 'a, 
+    key : Col Row Slice 'a, 
+    fxor: fn('a, 'a) -> 'a
+) Col Row Slice 'a =
+    # let+ state = range[Col Row Slice](state) and key = range[Col Row Slice](key) in
+        fxor.(state, key)
     
 fn 'a. round(
     state : Col Row Slice 'a, 

@@ -40,25 +40,25 @@ fn 'a. transpose(cols : Col Row 'a) Row Col 'a =
     
 
 fn 'a. rev_rotate_0(cols : Col Row 'a) Col Row 'a = 
-    let cols = col_reverse.['a](cols) in
+    let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
     let rows = circ(range[](rows))[0] in
     # reindex[Col | Row](range(rows))
     
 fn 'a. rev_rotate_1(cols : Col Row 'a) Col Row 'a = 
-    let cols = col_reverse.['a](cols) in
+    let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
     let rows = circ(range[](rows))[1] in
     # reindex[Col | Row](range(rows))
     
 fn 'a. rev_rotate_2(cols : Col Row 'a) Col Row 'a = 
-    let cols = col_reverse.['a](cols) in
+    let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
     let rows = circ(range(rows))[2] in
     # reindex[Col | Row](range(rows))
     
 fn 'a. rev_rotate_3(cols : Col Row 'a) Col Row 'a = 
-    let cols = col_reverse.['a](cols) in
+    let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
     let rows = circ(range[](rows))[3] in
     # reindex[Col | Row](range(rows))

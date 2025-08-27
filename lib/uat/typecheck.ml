@@ -56,7 +56,10 @@ module Env = struct
     let typedecl = Types.find name env.types in
     typedecl.size
 
-  let signature variable tyvar env =
+  let signature ~instance variable tyvar env =
+    let pp =
+      Format.pp_print_either ~left:Ast.FnIdent.pp ~right:Ast.TermIdent.pp
+    in
     let signature =
       match variable with
       | Either.Left fn_ident ->
@@ -68,14 +71,21 @@ module Env = struct
               err "%a should be a function ty not %a" Ast.TermIdent.pp variable
                 Ua0.Pp.pp_ty ty)
     in
-    let tyvars =
-      match (signature.tyvars, tyvar) with
-      | None, None -> []
-      | Some lhs, Some rhs -> [ (lhs, rhs) ]
-      | None, Some _t -> err "Unexpected ty vars for function"
-      | Some _, None -> err "Missing expected type variable"
-    in
-    Util.Ty.instanciate_signature tyvars signature
+    match instance with
+    | false -> signature
+    | true ->
+        let tyvars =
+          match (signature.tyvars, tyvar) with
+          | None, None -> []
+          | Some lhs, Some rhs -> [ (lhs, rhs) ]
+          | None, Some _t ->
+              err "call `%a`: Unexpected ty vars for function" pp variable
+          | Some _, None ->
+              err "call `%a`: Missing expected type variable" pp variable
+        in
+        (* Remove tyvars from signature since instance with remove free type variables.*)
+        let signature = { signature with tyvars = None } in
+        Util.Ty.instanciate_signature tyvars signature
 
   let rec range acc prefix ty env =
     match prefix with
@@ -137,7 +147,9 @@ let rec typecheck_term env = function
       let ty = Env.ty_variable variable env in
       (TVar (variable, ty), ty)
   | TFn { fn_ident; tyresolve } ->
-      let signature = Env.signature (Left fn_ident) tyresolve env in
+      let signature =
+        Env.signature ~instance:false (Left fn_ident) tyresolve env
+      in
       let tyresolve = Option.to_list tyresolve in
       (TFn { fn_ident; tyresolve }, TyFun signature)
   | TLet { variable; term; k } ->
@@ -162,7 +174,7 @@ let rec typecheck_term env = function
       let op, ty = typecheck_operator env operator in
       (TOperator op, ty)
   | TFnCall { fn_name; ty_resolve; args } ->
-      let signature = Env.signature fn_name ty_resolve env in
+      let signature = Env.signature ~instance:true fn_name ty_resolve env in
       let ty_resolve = Option.to_list ty_resolve in
       let args =
         List.map2
@@ -170,8 +182,12 @@ let rec typecheck_term env = function
             let ((_, ty_arg) as term) = typecheck_term env arg in
             let () =
               if ty_expected <> ty_arg then
-                err "Fncall: expected type %a found %a" Ua0.Pp.pp_ty ty_expected
-                  Ua0.Pp.pp_ty ty_arg
+                let pp =
+                  Format.pp_print_either ~left:Ast.FnIdent.pp
+                    ~right:Ast.TermIdent.pp
+                in
+                err "fn `%a`: expected type %a found %a" pp fn_name Ua0.Pp.pp_ty
+                  ty_expected Ua0.Pp.pp_ty ty_arg
             in
             term)
           signature.parameters args
@@ -228,7 +244,11 @@ and typecheck_lterm env = function
         List.map
           (fun term ->
             let ((_, t) as term) = typecheck_term env term in
-            let () = if t <> ty then err "not uniform type" in
+            let () =
+              if Ua0.Util.Ty.equal t ty then
+                err "cstr `%a` : not uniform type - %a <> %a" Ast.TyDeclIdent.pp
+                  name Ua0.Pp.pp_ty t Ua0.Pp.pp_ty ty
+            in
             term)
           terms
       in

@@ -35,6 +35,40 @@ module Ty = struct
         (name :: names, elt)
     | (TyBool | TyVar _ | TyFun _) as t -> ([], t)*)
 
+  let rec equal lhs rhs =
+    match (lhs, rhs) with
+    | Ast.TyBool, Ast.TyBool -> true
+    | Ast.TyVar lhs, Ast.TyVar rhs -> Ast.TyIdent.equal lhs rhs
+    | Ast.TyApp { ty = lty; name = lname }, Ast.TyApp { ty = rty; name = rname }
+      ->
+        Ast.TyDeclIdent.equal lname rname && equal lty rty
+    | Ast.TyFun lsignature, Ast.TyFun rsignature ->
+        equal_signature lsignature rsignature
+    | _, _ -> false
+
+  and equal_signature lsignature rsignature =
+    (* Big hack: instance with bool before checking*)
+    let ( let* ) b f = match b with false -> false | true -> f () in
+    let* () =
+      List.compare_lengths lsignature.parameters rsignature.parameters = 0
+    in
+    let* () =
+      Option.equal (fun _ _ -> true) lsignature.tyvars rsignature.tyvars
+    in
+    let cons_bool x = (x, Ast.TyBool) in
+    let lsignature =
+      instanciate_signature
+        (List.map cons_bool (Option.to_list lsignature.tyvars))
+        lsignature
+    in
+    let rsignature =
+      instanciate_signature
+        (List.map cons_bool (Option.to_list rsignature.tyvars))
+        rsignature
+    in
+    let* () = List.for_all2 equal lsignature.parameters rsignature.parameters in
+    equal lsignature.return_type rsignature.return_type
+
   let lift cstrs ty =
     List.fold_right (fun name ty -> Ast.TyApp { name; ty }) cstrs ty
 

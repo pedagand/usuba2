@@ -18,7 +18,7 @@ let rec pp_ty format = function
   | TyApp { name; ty } ->
       Format.fprintf format "%a %a" TyDeclIdent.pp name pp_ty ty
   | TyFun { tyvars; parameters; return_type } ->
-      Format.fprintf format "%a(%a) -> %a" pp_tyvar_opt tyvars pp_tys parameters
+      Format.fprintf format "fn %a(%a) -> %a" pp_tyvar_opt tyvars pp_tys parameters
         pp_ty return_type
   | TyVar name -> Format.fprintf format "%a" TyIdent.pp name
 

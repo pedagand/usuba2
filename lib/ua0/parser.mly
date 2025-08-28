@@ -8,7 +8,7 @@
 %token <int> IntegerLitteral
 %token LPARENT RPARENT LBRACE RBRACE LSQBRACE RSQBRACE
 %token EQUAL DOT COMMA PIPE HASH CARET EXCLAMATION COLON
-%token AND LET LET_PLUS IN RANGE REINDEX CIRC
+%token AND LET LET_PLUS IN RANGE REINDEX CIRC FOLD
 %token TRUE FALSE BOOL
 %token AMPERSAND MINUS_SUP
 %token FUNCTION TYPE TUPLE
@@ -82,6 +82,10 @@ ty:
         {tyvars; parameters; return_type}
     }
     
+%inline fn_identifier:
+    | fn_name=Identifier DOT ty_resolve=option(sqrbracketed(ty))  { 
+        fn_name, ty_resolve 
+    }
     
 term:
     | TRUE { TTrue }
@@ -94,9 +98,19 @@ term:
     | lterm=lterm index=sqrbracketed(IntegerLitteral) {
         TLookup { lterm; index}
     }
+    | FOLD i=sqrbracketed(IntegerLitteral) fi=parenthesis(fn_identifier) LPARENT 
+        args10=splitted(term, COMMA, lterm) args=list(preceded(COMMA, term))
+    RPARENT {
+        let acc, lterm = args10 in
+        let fn_name, ty_resolve = fi in
+        List.init i (Fun.id) |> List.fold_left (fun acc i -> 
+            let args = acc :: (TLookup {lterm; index = i}) :: args in
+            TFnCall {fn_name = Either.Left fn_name; ty_resolve; args }
+        ) acc 
+    }
     | HASH lterm=lterm { TThunk {lterm} }
-    | fn_name=Identifier DOT ty_resolve=option(sqrbracketed(ty)) 
-        args=parenthesis(separated_list(COMMA, term)) {
+    | fn=fn_identifier args=parenthesis(separated_list(COMMA, term)) {
+        let fn_name, ty_resolve = fn in
         TFnCall {fn_name = Either.Left fn_name; ty_resolve; args}
     }
     | parenthesis(term) { $1 }

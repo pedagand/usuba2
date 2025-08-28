@@ -1,3 +1,78 @@
+(*
+  
+// https://github.com/Lelio-Brun/Obelisk
+// bnf grammar generator from .mly file
+
+<parenthesis(X)> ::= LPARENT X RPARENT
+
+<bracketed(X)> ::= LBRACE X RBRACE
+
+<sqrbracketed(X)> ::= LSQBRACE X RSQBRACE
+
+<splitted(lhs, sep, rhs)> ::= lhs sep rhs
+
+<module_> ::= <node>* EOF
+
+<node> ::= <type_decl>
+         | <fn_decl>
+
+<type_decl> ::= TYPE TypeCstrIdentifier EQUAL TUPLE
+                <sqrbracketed(IntegerLitteral)>
+
+<fn_decl> ::= FUNCTION Identifier [<sqrbracketed(TypeVariable)>]
+              <parenthesis([<splitted(Identifier, COLON, <ty>)> (COMMA
+              <splitted(Identifier, COLON, <ty>)>)*])> <ty> EQUAL <term>
+
+<ty> ::= TypeCstrIdentifier <ty>
+       | TypeVariable
+       | BOOL
+       | FUNCTION <signature>
+
+<signature> ::= [<sqrbracketed(TypeVariable)>] <parenthesis([<ty> (COMMA
+                <ty>)*])> MINUS_SUP <ty>
+
+<fn_identifier> ::= Identifier DOT [<sqrbracketed(<ty>)>]
+
+<term> ::= TRUE
+         | FALSE
+         | Identifier
+         | AMPERSAND Identifier
+         | LET Identifier EQUAL <term> IN <term>
+         | <lterm> <sqrbracketed(IntegerLitteral)>
+         | FOLD <sqrbracketed(IntegerLitteral)> <parenthesis(<fn_identifier>
+           [<parenthesis([<term> (COMMA <term>)*])>])>
+           <parenthesis(<splitted(<term>, COMMA, <lterm>)>)>
+         | HASH <lterm>
+         | <fn_identifier> <parenthesis([<term> (COMMA <term>)*])>
+         | <parenthesis(<term>)>
+         | <operator>
+
+<operator> ::= EXCLAMATION <term>
+             | <term> PIPE <term>
+             | <term> AMPERSAND <term>
+             | <term> CARET <term>
+
+<lterm> ::= LET_PLUS Identifier EQUAL <lterm> (AND <splitted(Identifier,
+            EQUAL, <lterm>)>)* IN <term>
+          | TypeCstrIdentifier <parenthesis(<term> (COMMA <term>)* )>
+          | RANGE [<sqrbracketed(TypeCstrIdentifier* )>] <parenthesis(<term>)>
+          | REINDEX <sqrbracketed(<splitted(TypeCstrIdentifier+, PIPE,
+            TypeCstrIdentifier+)>)> <parenthesis(<lterm>)>
+          | CIRC <parenthesis(<lterm>)>
+          | <parenthesis(<lterm>)>
+          
+TypeVariable ::= '<lower_identifier>
+<lower_identifier> ::= (a-z)+
+
+TypeCstrIdentifier ::= <type_cstr_identifier>
+<type_cstr_identifier> ::= [A-Z][a-zA-Z0-9_]*
+
+Identifier ::= <identifiant>
+<identifiant> ::= [a-z][a-zA-Z0-9_]*
+
+*)
+
+
 module Ident () = struct
   type t = { id : int; pretty : string }
 

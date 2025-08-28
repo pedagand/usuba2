@@ -1,3 +1,4 @@
+type Double = tuple[2]
 type Col = tuple[4]
 type Row = tuple[4]
 type Slice = tuple[4]
@@ -136,3 +137,36 @@ fn gift ['a] (
     keys : Keys Col Row Slice 'a
 ) Col Row Slice 'a = 
     fold[28](round.['a](fnot, fand, for, fxor))(state, range(keys))
+    
+fn fnot(b: bool) bool = ! b
+fn fand(lhs: bool, rhs: bool) bool = lhs & rhs
+fn for(lhs: bool, rhs: bool) bool = lhs | rhs
+fn fxor(lhs: bool, rhs : bool) bool = lhs ^ rhs
+    
+fn double_not(d: Double bool) Double bool = 
+    # let+ b = range[Double](d) in ! b 
+
+fn double_and(lhs: Double bool, rhs: Double bool) Double bool = 
+    # let+ lhs = range[Double](lhs) and rhs = range[Double](rhs) in lhs & rhs
+    
+fn double_or(lhs: Double bool, rhs: Double bool) Double bool = 
+    # let+ lhs = range[Double](lhs) and rhs = range[Double](rhs) in lhs | rhs
+    
+fn double_xor(lhs: Double bool, rhs: Double bool) Double bool = 
+    # let+ lhs = range[Double](lhs) and rhs = range[Double](rhs) in lhs ^ rhs
+    
+fn gift32(
+    state : Col Row Slice Double bool,
+    keys : Keys Col Row Slice Double bool
+) Col Row Slice Double bool =
+    gift.[Double bool](
+        double_not, double_and, double_or, double_xor, state, keys
+    )
+
+fn gift16(
+    state : Col Row Slice bool,
+    keys : Keys Col Row Slice bool
+) Col Row Slice bool =
+gift.[bool](
+    fnot, fand, for, fxor, state, keys
+) 

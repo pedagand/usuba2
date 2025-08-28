@@ -35,18 +35,24 @@ module Ty = struct
         (name :: names, elt)
     | (TyBool | TyVar _ | TyFun _) as t -> ([], t)*)
 
-  let rec equal lhs rhs =
+  let rec equal assocs lhs rhs =
     match (lhs, rhs) with
     | Ast.TyBool, Ast.TyBool -> true
-    | Ast.TyVar lhs, Ast.TyVar rhs -> Ast.TyIdent.equal lhs rhs
+    | Ast.TyVar lhs, Ast.TyVar rhs ->
+        Ast.TyIdent.equal lhs rhs
+        || assocs
+           |> List.find_map (fun (l, r) ->
+                  if Ast.TyIdent.equal l lhs then Some r else None)
+           |> Option.map (Ast.TyIdent.equal rhs)
+           |> Option.value ~default:false
     | Ast.TyApp { ty = lty; name = lname }, Ast.TyApp { ty = rty; name = rname }
       ->
-        Ast.TyDeclIdent.equal lname rname && equal lty rty
+        Ast.TyDeclIdent.equal lname rname && equal assocs lty rty
     | Ast.TyFun lsignature, Ast.TyFun rsignature ->
-        equal_signature lsignature rsignature
+        equal_signature assocs lsignature rsignature
     | _, _ -> false
 
-  and equal_signature lsignature rsignature =
+  and equal_signature assocs lsignature rsignature =
     (* Big hack: instance with bool before checking*)
     let ( let* ) b f = match b with false -> false | true -> f () in
     let* () =
@@ -55,19 +61,18 @@ module Ty = struct
     let* () =
       Option.equal (fun _ _ -> true) lsignature.tyvars rsignature.tyvars
     in
-    let cons_bool x = (x, Ast.TyBool) in
-    let lsignature =
-      instanciate_signature
-        (List.map cons_bool (Option.to_list lsignature.tyvars))
-        lsignature
+    let assocs =
+      List.combine
+        (Option.to_list lsignature.tyvars)
+        (Option.to_list rsignature.tyvars)
+      @ assocs
     in
-    let rsignature =
-      instanciate_signature
-        (List.map cons_bool (Option.to_list rsignature.tyvars))
-        rsignature
+    let* () =
+      List.for_all2 (equal assocs) lsignature.parameters rsignature.parameters
     in
-    let* () = List.for_all2 equal lsignature.parameters rsignature.parameters in
-    equal lsignature.return_type rsignature.return_type
+    equal assocs lsignature.return_type rsignature.return_type
+
+  let equal = equal []
 
   let lift cstrs ty =
     List.fold_right (fun name ty -> Ast.TyApp { name; ty }) cstrs ty

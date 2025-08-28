@@ -9,7 +9,7 @@ module Ident () = struct
 
   let compare lhs rhs = Int.compare lhs.id rhs.id
   let equal lhs rhs = Int.equal lhs.id rhs.id
-  let pp format { id = _; pretty } = Format.fprintf format "%s" pretty
+  let pp format { id; pretty } = Format.fprintf format "%s(%u)" pretty id
 end
 
 module TermIdent = Ident ()

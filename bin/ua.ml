@@ -1,3 +1,5 @@
+let () = Printexc.record_backtrace true
+let () = Printexc.print_backtrace stdout
 let files = Queue.create ()
 let spec = Arg.align []
 let positional_args = Fun.flip Queue.add files

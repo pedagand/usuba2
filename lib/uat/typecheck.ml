@@ -44,7 +44,14 @@ module Env = struct
 
   let ty_variable variable env =
     match Vars.find_opt variable env.variables with
-    | None -> err "Unbound variable : %a" Ast.TermIdent.pp variable
+    | None ->
+        let () =
+          Vars.iter
+            (fun variable ty ->
+              Format.eprintf "%a : %a - " Ast.TermIdent.pp variable Pp.pp_ty ty)
+            env.variables
+        in
+        err "Unbound variable : %a" Ast.TermIdent.pp variable
     | Some ty -> ty
 
   let fn_declaration fn_name env =
@@ -245,7 +252,7 @@ and typecheck_lterm env = function
           (fun term ->
             let ((_, t) as term) = typecheck_term env term in
             let () =
-              if Ua0.Util.Ty.equal t ty then
+              if not @@ Ua0.Util.Ty.equal t ty then
                 err "cstr `%a` : not uniform type - %a <> %a" Ast.TyDeclIdent.pp
                   name Ua0.Pp.pp_ty t Ua0.Pp.pp_ty ty
             in
@@ -271,9 +278,9 @@ and typecheck_lterm env = function
           ands
       in
       let variables = (variable, lterm) :: ands in
-      let args =
-        List.map
-          (fun (name, (_, vty)) ->
+      let env, _args =
+        List.fold_left_map
+          (fun env (name, (_, vty)) ->
             let ty =
               match Ua0.Util.Ty.remove_prefix prefix (Util.Ty.to_ty vty) with
               | Some ty -> ty
@@ -282,10 +289,10 @@ and typecheck_lterm env = function
                     (Format.pp_print_list Ast.TyDeclIdent.pp)
                     prefix
             in
-            (name, ty))
-          variables
+            let env = Env.add_variable name ty env in
+            (env, (name, ty)))
+          env variables
       in
-      let env = Env.set_variables args env in
       let ((_, ty) as term) = typecheck_term env term in
       (LLetPlus { variable; lterm; ands; term }, Util.Ty.lty prefix' ty)
   | LRange { ty; term } ->
@@ -320,7 +327,7 @@ let typecheck_function env fn =
   in
   let tyvars = Option.to_list tyvars in
   let ((_, ty) as body) = typecheck_term env body in
-  let () = assert (ty = return_type) in
+  let () = assert (Ua0.Util.Ty.equal return_type ty) in
   let fn_uat = Ast.{ fn_name; tyvars; parameters; return_type; body } in
   (Env.add_function fn env, fn_uat)
 

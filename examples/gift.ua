@@ -2,6 +2,7 @@ type Col 'a = tuple[4]
 type Row 'a = tuple[4]
 type Slice 'a = tuple[4]
 type Keys 'a = tuple[4]
+type Cols 'a = tuple[4]
 
 fn 'a. col_reverse(cols : Col 'a) Col 'a = 
     # Col(
@@ -104,7 +105,7 @@ fn 'a. subcells(
     fxor : fn('a, 'a) -> 'a
 ) Col Row Slice 'a =
     # let+ slice = range[Col Row](state) in 
-        subcells.(slice, fnot, fand, for, fxor)
+        subcells.['a](slice, fnot, fand, for, fxor)
     
 
 fn 'a. add_round_key(
@@ -123,6 +124,6 @@ fn 'a. round(
     for : fn('a, 'a) -> 'a,
     fxor : fn('a, 'a) -> 'a
 ) Col Row Slice 'a = 
-    let state = subcells.(state, fnot, fand, for, fxor) in
-    let state = permbits.(state) in
-    add_round_key.(state, fxor)
+    let state = subcells.['a](state, fnot, fand, for, fxor) in
+    let state = permbits.['a](state) in
+    add_round_key.['a](state, key, fxor)

@@ -396,13 +396,17 @@ module Idents = struct
 
   and lterm' env = function
     | Ast.LLetPlus { variable; lterm; ands; term = t } ->
-        let env, variable = Env.add_variable variable env in
+        (* 
+          Evaluate the ltherm before adding variable to env. 
+          Otherwise variable shadowning issues. 
+        *)
         let lterm = lterm' env lterm in
+        let env, variable = Env.add_variable variable env in
         let env, ands =
           List.fold_left_map
             (fun env (variable, lterm) ->
-              let env, variable = Env.add_variable variable env in
               let lterm = lterm' env lterm in
+              let env, variable = Env.add_variable variable env in
               (env, (variable, lterm)))
             env ands
         in
@@ -429,7 +433,6 @@ module Idents = struct
     let Ast.{ fn_name; tyvars; parameters; return_type; body } =
       fn_declaration
     in
-    let env, fn_name = Env.add_fn fn_name env in
     let env = Env.clear_variables env in
     let env = Env.clear_ty_variables env in
     let env, tyvars =
@@ -449,6 +452,8 @@ module Idents = struct
     in
     let return_type = ty env return_type in
     let body = term env body in
+    (* Add name at the end to allow fn_name shadowing. *)
+    let env, fn_name = Env.add_fn fn_name env in
     (env, Ast.{ fn_name; tyvars; parameters; return_type; body })
 
   let ty_declaration env ty_declaration =

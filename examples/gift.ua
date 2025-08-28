@@ -1,16 +1,17 @@
-type Col 'a = tuple[4]
-type Row 'a = tuple[4]
-type Slice 'a = tuple[4]
-type Keys 'a = tuple[28]
+type Col = tuple[4]
+type Row = tuple[4]
+type Slice = tuple[4]
+type Keys = tuple[28]
 
-fn 'a. col_reverse(cols : Col 'a) Col 'a = 
+fn col_reverse ['a]  (cols : Col 'a) Col 'a = 
     # Col(
-        range[](cols)[3],
-        range[](cols)[2],
-        range[](cols)[1],
-        range[](cols)[0]
+        range(cols)[3],
+        range(cols)[2],
+        range(cols)[1],
+        range(cols)[0]
     )
-fn 'a. transpose(cols : Col Row 'a) Row Col 'a = 
+
+fn transpose ['a] (cols : Col Row 'a) Row Col 'a = 
     # Row(
         # Col(
             range(range(cols)[0])[0],
@@ -37,33 +38,32 @@ fn 'a. transpose(cols : Col Row 'a) Row Col 'a =
             range(range(cols)[3])[3]           
         )
     )
-    
 
-fn 'a. rev_rotate_0(cols : Col Row 'a) Col Row 'a = 
+fn rev_rotate_0['a](cols : Col Row 'a) Col Row 'a = 
     let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
     let rows = circ(range[](rows))[0] in
     # reindex[Col | Row](range(rows))
     
-fn 'a. rev_rotate_1(cols : Col Row 'a) Col Row 'a = 
+fn rev_rotate_1 ['a](cols : Col Row 'a) Col Row 'a = 
     let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
     let rows = circ(range[](rows))[1] in
     # reindex[Col | Row](range(rows))
     
-fn 'a. rev_rotate_2(cols : Col Row 'a) Col Row 'a = 
+fn rev_rotate_2 ['a] (cols : Col Row 'a) Col Row 'a = 
     let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
     let rows = circ(range(rows))[2] in
     # reindex[Col | Row](range(rows))
     
-fn 'a. rev_rotate_3(cols : Col Row 'a) Col Row 'a = 
+fn rev_rotate_3 ['a] (cols : Col Row 'a) Col Row 'a = 
     let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
     let rows = circ(range[](rows))[3] in
     # reindex[Col | Row](range(rows))
     
-fn 'a. permbits(state : Col Row Slice 'a) Col Row Slice 'a = 
+fn permbits ['a] (state : Col Row Slice 'a) Col Row Slice 'a = 
     let permbits = # Slice(
         rev_rotate_1,
         rev_rotate_2,
@@ -76,17 +76,17 @@ fn 'a. permbits(state : Col Row Slice 'a) Col Row Slice 'a =
         f.['a](slice)
     )
 
-fn 'a. subcells(
-    slice : Slice 'a, 
+fn subcells ['a](
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,
     for  : fn('a, 'a) -> 'a,
-    fxor : fn('a, 'a) -> 'a
+    fxor : fn('a, 'a) -> 'a,
+    slice : Slice 'a
 ) Slice 'a = 
-    let s0 = range[](slice)[0] in
-    let s1 = range[](slice)[1] in
-    let s2 = range[](slice)[2] in
-    let s3 = range[](slice)[3] in
+    let s0 = range(slice)[0] in
+    let s1 = range(slice)[1] in
+    let s2 = range(slice)[2] in
+    let s3 = range(slice)[3] in
     let s1 = fxor.(s1, fand.(s0, s2)) in
     let s0 = fxor.(s0, fand.(s1, s3)) in
     let s2 = fxor.(s2, for.(s0, s1)) in
@@ -96,43 +96,43 @@ fn 'a. subcells(
     let s2 = fxor.(s2, fand.(s0, s1)) in
     # Slice(s3, s1, s2, s0)
     
-fn 'a. subcells(
-    state : Col Row Slice 'a,
+fn subcells ['a] (
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,
     for : fn('a, 'a) -> 'a,
-    fxor : fn('a, 'a) -> 'a
+    fxor : fn('a, 'a) -> 'a,
+    state : Col Row Slice 'a
 ) Col Row Slice 'a =
     # let+ slice = range[Col Row](state) in 
-        subcells.['a](slice, fnot, fand, for, fxor)
+        subcells.['a](fnot, fand, for, fxor, slice)
     
 
-fn 'a. add_round_key(
-    state : Col Row Slice 'a, 
-    key : Col Row Slice 'a, 
-    fxor: fn('a, 'a) -> 'a
+fn add_round_key ['a](
+    fxor: fn('a, 'a) -> 'a,
+    state : Col Row Slice 'a,
+    key : Col Row Slice 'a
 ) Col Row Slice 'a =
     # let+ state = range[Col Row Slice](state) and key = range[Col Row Slice](key) in
         fxor.(state, key)
     
-fn 'a. round(
-    state : Col Row Slice 'a, 
-    key : Col Row Slice 'a,
+fn round ['a] (
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,
     for : fn('a, 'a) -> 'a,
-    fxor : fn('a, 'a) -> 'a
+    fxor : fn('a, 'a) -> 'a,
+    state : Col Row Slice 'a,
+    key : Col Row Slice 'a
 ) Col Row Slice 'a = 
-    let state = subcells.['a](state, fnot, fand, for, fxor) in
+    let state = subcells.['a](fnot, fand, for, fxor, state) in
     let state = permbits.['a](state) in
-    add_round_key.['a](state, key, fxor)
+    add_round_key.['a](fxor, state, key)
     
-fn 'a. gift(
-    state : Col Row Slice 'a, 
-    keys : Keys Col Row Slice 'a,
+fn gift ['a] (
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,
     for : fn('a, 'a) -> 'a,
-    fxor : fn('a, 'a) -> 'a
+    fxor : fn('a, 'a) -> 'a,
+    state : Col Row Slice 'a, 
+    keys : Keys Col Row Slice 'a
 ) Col Row Slice 'a = 
-    fold[28](round.['a])(state, range(keys), fnot, fand, for, fxor)
+    fold[28](round.['a](fnot, fand, for, fxor))(state, range(keys))

@@ -52,14 +52,14 @@ node:
 
 
 type_decl:
-    | TYPE name=TypeCstrIdentifier tyvar=TypeVariable EQUAL 
+    | TYPE name=TypeCstrIdentifier EQUAL 
         TUPLE size=sqrbracketed(IntegerLitteral)  {
-        { tyvar; name; size }
+        { tyvar = "a"; name; size }
     }
 
 fn_decl:
-    | FUNCTION tyvars=option(terminated(TypeVariable, DOT))
-        fn_name=Identifier parameters=parenthesis(separated_list(COMMA, splitted(Identifier, COLON, ty)))
+    | FUNCTION fn_name=Identifier
+        tyvars=option(sqrbracketed(TypeVariable)) parameters=parenthesis(separated_list(COMMA, splitted(Identifier, COLON, ty)))
         return_type=ty EQUAL body=term
     { 
         {tyvars; fn_name; parameters; return_type; body }
@@ -98,13 +98,15 @@ term:
     | lterm=lterm index=sqrbracketed(IntegerLitteral) {
         TLookup { lterm; index}
     }
-    | FOLD i=sqrbracketed(IntegerLitteral) fi=parenthesis(fn_identifier) LPARENT 
-        args10=splitted(term, COMMA, lterm) args=list(preceded(COMMA, term))
-    RPARENT {
+    | FOLD i=sqrbracketed(IntegerLitteral) 
+        fi=parenthesis(fi=fn_identifier const_args=option(parenthesis(separated_list(COMMA, term))) {fi, const_args} ) 
+        args10=parenthesis(splitted(term, COMMA, lterm))
+    {
         let acc, lterm = args10 in
-        let fn_name, ty_resolve = fi in
+        let (fn_name, ty_resolve), const_args = fi in
+        let const_args = Option.fold ~none:[] ~some:Fun.id const_args in
         List.init i (Fun.id) |> List.fold_left (fun acc i -> 
-            let args = acc :: (TLookup {lterm; index = i}) :: args in
+            let args = const_args @ acc :: (TLookup {lterm; index = i}) :: [] in
             TFnCall {fn_name = Either.Left fn_name; ty_resolve; args }
         ) acc 
     }

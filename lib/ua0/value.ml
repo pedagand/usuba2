@@ -158,6 +158,15 @@ let as_function = function
   | VFunction (fn_ident, e) -> Some (fn_ident, e)
   | VBool _ | VArray _ -> None
 
+let rec split2 lhs =
+  match lhs with
+  | VBool _ | VFunction _ -> invalid_arg ""
+  | VArray [| lhs; rhs |] -> (lhs, rhs)
+  | VArray values ->
+      let values = Array.map split2 values in
+      let lhs, rhs = Array.split values in
+      (VArray lhs, VArray rhs)
+
 let rec map' f = function
   | VBool b -> VBool (f b)
   | VArray a -> VArray (Array.map (map' f) a)

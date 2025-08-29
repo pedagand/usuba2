@@ -222,15 +222,15 @@ end
 
 let keys = Queue.create ()
 let texts = Queue.create ()
+let double = ref false
 let debug = ref false
-let file = ref String.empty
 let fn_name = ref String.empty
 
 let spec =
   Arg.align
     [
+      ("-2", Arg.Set double, " Enable double processing");
       ("-d", Arg.Set debug, " Debug mode");
-      ("-f", Arg.Set_string file, "<file> ua file");
       ("-s", Arg.Set_string fn_name, "<fn-name> function to evaluate");
       ("-k", Arg.String (Fun.flip Queue.add keys), "<keyfile> path to the key");
     ]
@@ -238,24 +238,14 @@ let spec =
 let pos_args = Fun.flip Queue.add texts
 
 let usage =
-  Printf.sprintf "%s -s <fn-name> -f <file.ua> [-k <keyfile>]... PLAINTEXT..."
+  Printf.sprintf "%s [-2] -s <fn-name> [-k <keyfile>]... FILE PLAINTEXT..."
     Sys.argv.(0)
 
 let () = Arg.parse spec pos_args usage
 
-let eval ast symbole keys texts =
-  (*  let debug =
-    match !debug with
-    | false -> None
-    | true ->
-        Option.some @@ fun termid (value, _ty) ->
-        let (_, name) : _ * string = Obj.magic termid in
-        let pp = if name = "state" then Gift.pp_value else Ua0.Value.pp in
-        Format.(
-          fprintf err_formatter "%a = %a\n%!" Ua0.Ast.TermIdent.pp termid pp
-            value)
-  in*)
+let eval ~double ast symbole keys texts =
   let () = assert (Queue.length keys = Queue.length texts) in
+  let size = if double then 2 else 1 in
   let kps =
     Seq.map2
       (fun k t ->
@@ -274,12 +264,30 @@ let eval ast symbole keys texts =
       kps
   in
 
-  Seq.find_map
-    (fun (state, keys) ->
-      let keys = Array.of_list keys in
-      let () = assert (Array.length keys = 28) in
-      Ua0.Eval.eval ast symbole None [ state; VArray keys ])
-    kps
+  let kps = Seq.take size kps in
+
+  match double with
+  | false ->
+      Seq.find_map
+        (fun (state, keys) ->
+          let keys = Array.of_list keys in
+          let () = assert (Array.length keys = 28) in
+          Ua0.Eval.eval ast symbole None [ state; VArray keys ])
+        kps
+  | true ->
+      let ( let* ) = Option.bind in
+      let* (c1, ks1), kps = Seq.uncons kps in
+      let* (c2, ks2), _ = Seq.uncons kps in
+      let state =
+        Ua0.Value.map2 (fun lhs rhs -> Ua0.Value.VArray [| lhs; rhs |]) c1 c2
+      in
+      let ks =
+        List.map2
+          (Ua0.Value.map2 (fun lhs rhs -> Ua0.Value.VArray [| lhs; rhs |]))
+          ks1 ks2
+      in
+      let keys = Array.of_list ks in
+      Ua0.Eval.eval ast symbole None [ state; VArray keys ]
 
 (*let print module' = Format.printf "%a\n" Ua0.Pp.pp_module module'*)
 
@@ -294,17 +302,32 @@ let ast symbole file =
   let symbole = Ua0.Pass.Idents.Env.find_fn_ident symbole env in
   (ast, symbole)
 
+let pp_value value =
+  let () = Format.(fprintf err_formatter "%a\n" Ua0.Value.pp value) in
+  let slices = Gift.to_slice value in
+  let chars = Gift.transpose_inverse slices in
+  Gift.pp Format.err_formatter chars
+
 let main () =
   match Queue.is_empty texts with
   | true -> (*print Ua0.Gift.gift*) ()
   | false -> (
-      let ast, symbole = ast !fn_name !file in
-      match eval ast symbole keys texts with
+      let file =
+        match Queue.take_opt texts with
+        | None -> raise @@ Arg.Bad "Missing ua file"
+        | Some file -> file
+      in
+      let ast, symbole = ast !fn_name file in
+      match eval ~double:!double ast symbole keys texts with
       | None -> Printf.eprintf "evaluation None\n"
       | Some (value, _) ->
-          let () = Format.(fprintf err_formatter "%a\n" Ua0.Value.pp value) in
-          let slices = Gift.to_slice value in
-          let chars = Gift.transpose_inverse slices in
-          Gift.pp Format.err_formatter chars)
+          let values =
+            match !double with
+            | true ->
+                let lhs, rhs = Ua0.Value.split2 value in
+                [ lhs; rhs ]
+            | false -> [ value ]
+          in
+          List.iter pp_value values)
 
 let () = main ()

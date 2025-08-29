@@ -72,7 +72,6 @@ Identifier ::= <identifiant>
 
 *)
 
-
 module Ident () = struct
   type t = { id : int; pretty : string }
 

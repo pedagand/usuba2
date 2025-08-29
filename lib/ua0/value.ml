@@ -215,3 +215,43 @@ and mapn'' level i f values =
 let tabulate size f =
   let array = Array.init size f in
   VArray array
+
+module type S = sig
+  val n : int
+end
+
+module type SNaperian = sig
+  type idx
+
+  val tabulate : (idx -> t) -> t
+  val lookup : t -> idx -> t
+end
+
+module Naperian (S : S) : SNaperian = struct
+  type idx = int
+
+  let tabulate f = tabulate S.n f
+  let lookup s i = as_array s |> Option.map (Fun.flip Array.get i) |> Option.get
+end
+
+module NaperianCompose (F : SNaperian) (G : SNaperian) : SNaperian = struct
+  type idx = F.idx * G.idx
+
+  let lookup fgs (i, j) = G.lookup (F.lookup fgs i) j
+  let tabulate f = F.tabulate (fun i -> G.tabulate (fun j -> f (i, j)))
+end
+
+let naperian n =
+  (module Naperian (struct
+    let n = n
+  end) : SNaperian)
+
+let naperian_compose f g =
+  (module NaperianCompose ((val f : SNaperian)) ((val g : SNaperian))
+  : SNaperian)
+
+(** [L R 'a -> R L 'a] *)
+let reindex_lr lhs rhs value =
+  let module L = (val lhs : SNaperian) in
+  let module R = (val rhs : SNaperian) in
+  R.tabulate (fun c -> L.tabulate (fun r -> R.lookup (L.lookup value r) c))

@@ -8,6 +8,7 @@ let rec find_fold_map f acc = function
 
 let err fmt = Format.kasprintf failwith fmt
 let log fmt = Format.eprintf fmt
+let uncons l = match l with [] -> None | x :: xs -> Some (x, xs)
 
 module Env = struct
   module Functions = Map.Make (Ast.FnIdent)
@@ -80,6 +81,18 @@ module Env = struct
   let cstr_log name env =
     let decl = type_declaration name env in
     decl.size
+
+  let naperian cstr env = Value.naperian (cstr_log cstr env)
+
+  let naperian_compose lhs rhs env =
+    Value.naperian_compose (naperian lhs env) (naperian rhs env)
+
+  let naperians cstrs env =
+    let cstr, cstrs = Option.get @@ uncons cstrs in
+    let n0 = naperian cstr env in
+    List.fold_left
+      (fun nap cstr -> Value.naperian_compose nap (naperian cstr env))
+      n0 cstrs
 
   let clear_variables env = { env with variables = Variables.empty }
   let clear_tyvariables env = { env with type_variables = TyVariables.empty }
@@ -361,9 +374,21 @@ and eval_lterm env = function
       let lty = Env.range ty t env in
       (value, lty)
   | LReindex { lhs; rhs; lterm } ->
-      let lvalue = eval_lterm env lterm in
-      let () = ignore (lhs, rhs, lvalue) in
-      failwith "TODO: eval lreindex:"
+      let prefix = lhs @ rhs in
+      let nap_lhs = Env.naperians lhs env in
+      let nap_rhs = Env.naperians rhs env in
+      let value, lty = eval_lterm env lterm in
+      let value = Value.reindex_lr nap_lhs nap_rhs value in
+      let ty = Value.Ty.to_ty lty in
+      let ty_elt = Option.get @@ Value.Ty.remove_prefix prefix ty in
+      let ty =
+        List.fold_right
+          (fun cstr ty ->
+            let size = Env.cstr_log cstr env in
+            Value.Ty.TNamedTuple { name = cstr; size; ty })
+          (rhs @ lhs) ty_elt
+      in
+      (value, Value.Ty.lty [] ty)
   | LCirc lterm ->
       let value, lty' = eval_lterm env lterm in
       let value = Value.circ value in

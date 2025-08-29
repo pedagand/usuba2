@@ -61,7 +61,7 @@ fn rev_rotate_2 ['a] (cols : Col Row 'a) Col Row 'a =
 fn rev_rotate_3 ['a] (cols : Col Row 'a) Col Row 'a = 
     let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
-    let rows = circ(range[](rows))[3] in
+    let rows = circ(range(rows))[3] in
     # reindex[Col | Row](range(rows))
     
 fn permbits ['a] (state : Col Row Slice 'a) Col Row Slice 'a = 

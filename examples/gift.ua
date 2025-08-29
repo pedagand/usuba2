@@ -44,25 +44,25 @@ fn rev_rotate_0['a](cols : Col Row 'a) Col Row 'a =
     let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
     let rows = circ(range[](rows))[0] in
-    # reindex[Col | Row](range(rows))
+    # reindex[Row | Col](range(rows))
     
 fn rev_rotate_1 ['a](cols : Col Row 'a) Col Row 'a = 
     let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
     let rows = circ(range[](rows))[1] in
-    # reindex[Col | Row](range(rows))
+    # reindex[Row | Col](range(rows))
     
 fn rev_rotate_2 ['a] (cols : Col Row 'a) Col Row 'a = 
     let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
     let rows = circ(range(rows))[2] in
-    # reindex[Col | Row](range(rows))
+    # reindex[Row | Col](range(rows))
     
 fn rev_rotate_3 ['a] (cols : Col Row 'a) Col Row 'a = 
     let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
     let rows = circ(range(rows))[3] in
-    # reindex[Col | Row](range(rows))
+    # reindex[Row | Col](range(rows))
     
 fn permbits ['a] (state : Col Row Slice 'a) Col Row Slice 'a = 
     let permbits = # Slice(

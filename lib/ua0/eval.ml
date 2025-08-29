@@ -65,7 +65,7 @@ module Env = struct
         let name, size, ty =
           match ty with
           | Value.Ty.TNamedTuple { name; size; ty } -> (name, size, ty)
-          | TBool | TFun _ -> err "Not a named tuple."
+          | TBool | TFun _ | TVar _ -> err "Not a named tuple."
         in
         let () =
           match Ast.TyDeclIdent.equal name t with
@@ -102,6 +102,7 @@ module Env = struct
     | TNamedTuple { name; ty; size = _ } ->
         let ty = to_ty env ty in
         TyApp { name; ty }
+    | TVar v -> Ast.TyVar v
     | TFun signature ->
         let signature = to_signature env signature in
         TyFun signature
@@ -124,12 +125,13 @@ module Env = struct
         Value.Ty.TFun signature
     | TyVar variable -> (
         match TyVariables.find_opt variable env.type_variables with
-        | None -> (
-            match env.current_function with
+        | None ->
+            Value.Ty.TVar variable
+            (*            match env.current_function with
             | None -> err "Undefinied ty_variable : %a" Ast.TyIdent.pp variable
             | Some fn ->
                 err "%a : Undefinied ty_variable : %a" Ast.FnIdent.pp fn
-                  Ast.TyIdent.pp variable)
+                  Ast.TyIdent.pp variable*)
         | Some ty -> ty)
 
   and of_signature signature env =
@@ -143,7 +145,6 @@ module Env = struct
       }
 
   let init_tyvariables types env =
-    let env = { env with type_variables = TyVariables.empty } in
     let type_variables =
       List.fold_left
         (fun tyvars (tyvar, ty) ->
@@ -166,28 +167,49 @@ module Env = struct
     | Some e -> e
     | None -> err "variable %a not in env" Ast.TermIdent.pp variable
 
-  let signature fn_name tyresolve env =
+  let signature ~instance fn_name tyresolve env =
     match Functions.find_opt fn_name env.functions with
     | Some fn_decl ->
-        let env =
-          List.fold_left2
-            (fun env tyvar ty ->
-              let ty = of_ty env ty in
-              {
-                env with
-                type_variables = TyVariables.add tyvar ty env.type_variables;
-              })
-            env
-            (Option.to_list fn_decl.tyvars)
-            (Option.to_list tyresolve)
+        let () = log "lookup sig : %a\n" Ast.FnIdent.pp fn_name in
+        let signature =
+          Value.Ty.
+            {
+              tyvars = fn_decl.tyvars;
+              parameters =
+                List.map (fun (_, ty) -> of_ty env ty) fn_decl.parameters;
+              return_type = of_ty env fn_decl.return_type;
+            }
         in
-        Value.Ty.
-          {
-            tyvars = None;
-            parameters =
-              List.map (fun (_, ty) -> of_ty env ty) fn_decl.parameters;
-            return_type = of_ty env fn_decl.return_type;
-          }
+        let signature =
+          match instance with
+          | false -> signature
+          | true ->
+              let env =
+                match (fn_decl.tyvars, tyresolve) with
+                | Some tyvar, Some ty ->
+                    let ty = of_ty env ty in
+                    {
+                      env with
+                      type_variables =
+                        TyVariables.add tyvar ty env.type_variables;
+                    }
+                | None, None -> env
+                | Some lhs, None ->
+                    err "sig %a : expect type instance for : %a\n"
+                      Ast.FnIdent.pp fn_name Ast.TyIdent.pp lhs
+                | None, Some rhs ->
+                    err "sig %a : no type instance expected but found : %a\n"
+                      Ast.FnIdent.pp fn_name Pp.pp_ty rhs
+              in
+              Value.Ty.
+                {
+                  tyvars = None;
+                  parameters =
+                    List.map (fun (_, ty) -> of_ty env ty) fn_decl.parameters;
+                  return_type = of_ty env fn_decl.return_type;
+                }
+        in
+        signature
     | None -> err "function %a not in env" Ast.FnIdent.pp fn_name
 end
 
@@ -241,7 +263,7 @@ and eval_term env = function
   | TTrue -> (Value.VBool true, Value.Ty.TBool)
   | TVar variable -> Env.lookup variable env
   | TFn { fn_ident; tyresolve } ->
-      let signature = Env.signature fn_ident tyresolve env in
+      let signature = Env.signature ~instance:false fn_ident tyresolve env in
       (Value.VFunction (fn_ident, tyresolve), Value.Ty.TFun signature)
   | TLet { variable; term; k } ->
       let value, ty = eval_term env term in
@@ -339,7 +361,6 @@ and eval_lterm env = function
       let value =
         Value.mapn' level
           (fun values ->
-            let env = Env.clear_variables env in
             let env =
               List.fold_left2
                 (fun env (indent, ty) value ->
@@ -380,6 +401,13 @@ and eval_lterm env = function
       let value, lty = eval_lterm env lterm in
       let value = Value.reindex_lr nap_lhs nap_rhs value in
       let ty = Value.Ty.to_ty lty in
+      let () =
+        log "reindex lterm ty : %a\nprefix = %a\n\n" Value.Ty.pp ty
+          (Format.pp_print_list
+             ~pp_sep:(fun format () -> Format.pp_print_string format ", ")
+             Ast.TyDeclIdent.pp)
+          prefix
+      in
       let ty_elt = Option.get @@ Value.Ty.remove_prefix prefix ty in
       let ty =
         List.fold_right
@@ -416,7 +444,13 @@ and eval env (fn : _ Ast.fn_declaration) ty_args args =
   let types =
     match (tyvars, ty_args) with
     | Some tv, Some ta -> [ (tv, ta) ]
-    | _, _ -> err ""
+    | None, None -> []
+    | Some lhs, None ->
+        err "eval %a : expect type instance for : %a\n" Ast.FnIdent.pp
+          current_function Ast.TyIdent.pp lhs
+    | None, Some rhs ->
+        err "eval %a : no type instance expected but found : %a\n"
+          Ast.FnIdent.pp current_function Pp.pp_ty rhs
   in
   let env = Env.init_tyvariables types env in
   let env = Env.init_variables parameters args env in

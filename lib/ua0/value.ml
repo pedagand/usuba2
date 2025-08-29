@@ -8,14 +8,32 @@ module Ty = struct
   and ty =
     | TBool
     | TFun of signature
+    | TVar of Ast.TyIdent.t
     | TNamedTuple of { name : Ast.TyDeclIdent.t; size : int; ty : ty }
 
   type lty = Lty of { t : (Ast.TyDeclIdent.t * int) list; ty : ty }
+
+  let pp_tyvar_opt format = Format.pp_print_option Ast.TyIdent.pp format
+
+  let rec pp format = function
+    | TBool -> Format.fprintf format "bool"
+    | TNamedTuple { name; size = _; ty } ->
+        Format.fprintf format "%a %a" Ast.TyDeclIdent.pp name pp ty
+    | TFun { tyvars; parameters; return_type } ->
+        Format.fprintf format "fn %a(%a) -> %a" pp_tyvar_opt tyvars pps
+          parameters pp return_type
+    | TVar name -> Format.fprintf format "%a" Ast.TyIdent.pp name
+
+  and pps format =
+    Format.pp_print_list
+      ~pp_sep:(fun format () -> Format.pp_print_string format ", ")
+      pp format
 
   let rec equal lhs rhs =
     match (lhs, rhs) with
     | TBool, TBool -> true
     | TFun _lhs, TFun _rhs -> failwith ""
+    | TVar lhs, TVar rhs -> Ast.TyIdent.equal lhs rhs
     | ( TNamedTuple { name = lname; size = lsize; ty = lty },
         TNamedTuple { name = rname; size = rsize; ty = rty } ) ->
         Ast.TyDeclIdent.equal lname rname
@@ -66,14 +84,17 @@ module Ty = struct
 
   let view = function Lty { t; _ } -> t
   let nest = function Lty { t; _ } -> List.length t
-  let elt = function TNamedTuple { ty; _ } -> Some ty | TBool | TFun _ -> None
+
+  let elt = function
+    | TNamedTuple { ty; _ } -> Some ty
+    | TBool | TFun _ | TVar _ -> None
 
   let rec remove_prefix ctsrs ty =
     match ctsrs with
     | [] -> Some ty
     | t :: q -> (
         match ty with
-        | TBool | TFun _ -> None
+        | TBool | TFun _ | TVar _ -> None
         | TNamedTuple { name; ty; _ } ->
             if Ast.TyDeclIdent.equal t name then remove_prefix q ty else None)
 end

@@ -471,6 +471,8 @@ module Idents = struct
         let env, ty = ty_declaration env type_decl in
         (env, Ast.NTy ty)
 
+  let of_string_ast_env modules = List.fold_left_map node Env.empty modules
+
   let of_string_ast modules =
     let _, ast = List.fold_left_map node Env.empty modules in
     ast

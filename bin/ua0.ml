@@ -1,5 +1,5 @@
 let () = Printexc.print_backtrace stderr
-let () = Printexc.record_backtrace false
+let () = Printexc.record_backtrace true
 
 module RowsCols = struct
   let tabulate f =
@@ -223,19 +223,27 @@ end
 let keys = Queue.create ()
 let texts = Queue.create ()
 let debug = ref false
+let file = ref String.empty
+let fn_name = ref String.empty
 
 let spec =
   Arg.align
     [
-      ("-k", Arg.String (Fun.flip Queue.add keys), "<keyfile> path to the key");
       ("-d", Arg.Set debug, " Debug mode");
+      ("-f", Arg.Set_string file, "<file> ua file");
+      ("-s", Arg.Set_string fn_name, "<fn-name> function to evaluate");
+      ("-k", Arg.String (Fun.flip Queue.add keys), "<keyfile> path to the key");
     ]
 
 let pos_args = Fun.flip Queue.add texts
-let usage = Printf.sprintf "%s [-k <keyfile>]... PLAINTEXT..." Sys.argv.(0)
+
+let usage =
+  Printf.sprintf "%s -s <fn-name> -f <file.ua> [-k <keyfile>]... PLAINTEXT..."
+    Sys.argv.(0)
+
 let () = Arg.parse spec pos_args usage
 
-let eval keys texts =
+let eval ast symbole keys texts =
   (*  let debug =
     match !debug with
     | false -> None
@@ -270,16 +278,28 @@ let eval keys texts =
     (fun (state, keys) ->
       let keys = Array.of_list keys in
       let () = assert (Array.length keys = 28) in
-      Ua0.Eval.eval Ua0.Gift.ast Ua0.Gift.gift None [ state; VArray keys ])
+      Ua0.Eval.eval ast symbole None [ state; VArray keys ])
     kps
 
 (*let print module' = Format.printf "%a\n" Ua0.Pp.pp_module module'*)
+
+let ast symbole file =
+  let ast =
+    In_channel.with_open_bin file (fun ic ->
+        let lexbuf = Lexing.from_channel ic in
+        let () = Lexing.set_filename lexbuf file in
+        Ua0.Parser.module_ Ua0.Lexer.token lexbuf)
+  in
+  let env, ast = Ua0.Pass.Idents.of_string_ast_env ast in
+  let symbole = Ua0.Pass.Idents.Env.find_fn_ident symbole env in
+  (ast, symbole)
 
 let main () =
   match Queue.is_empty texts with
   | true -> (*print Ua0.Gift.gift*) ()
   | false -> (
-      match eval keys texts with
+      let ast, symbole = ast !fn_name !file in
+      match eval ast symbole keys texts with
       | None -> Printf.eprintf "evaluation None\n"
       | Some (value, _) ->
           let () = Format.(fprintf err_formatter "%a\n" Ua0.Value.pp value) in

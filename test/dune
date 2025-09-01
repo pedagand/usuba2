@@ -1,2 +1,3 @@
 (test
- (name test_usuba2))
+ (name test_usuba2)
+ (libraries ua0 uat alcotest fmt))

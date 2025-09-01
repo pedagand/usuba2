@@ -30,7 +30,7 @@ type lterm =
 and term =
   | TFalse
   | TTrue
-  | TVar of TermIdent.t tys
+  | TVar of TermIdent.t
   | TFn of { fn_ident : FnIdent.t; tyresolve : ty list }
   | TLet of { variable : TermIdent.t; term : term tys; k : term tys }
   | TLookup of { lterm : lterm ltys; index : int }

@@ -152,7 +152,7 @@ let rec typecheck_term env = function
   | TTrue -> (TTrue, Ua0.Ast.TyBool)
   | TVar variable ->
       let ty = Env.ty_variable variable env in
-      (TVar (variable, ty), ty)
+      (TVar variable, ty)
   | TFn { fn_ident; tyresolve } ->
       let signature =
         Env.signature ~instance:false (Left fn_ident) tyresolve env

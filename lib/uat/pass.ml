@@ -24,7 +24,7 @@ module InlineLet = struct
   end
 
   let rec inline_term env = function
-    | Ast.TVar (variable, _) -> fst @@ Env.find variable env
+    | Ast.TVar variable -> fst @@ Env.find variable env
     | (Ast.TFalse | TTrue) as e -> e
     | _ -> failwith ""
 
@@ -40,7 +40,7 @@ module InlineLet = struct
     let env =
       List.fold_left
         (fun env (variable, ty) ->
-          let term = Scstr.Term.v ty variable in
+          let term = Scstr.Term.v variable in
           let term = (term, ty) in
           Env.add variable term env)
         Env.empty parameters
@@ -80,7 +80,7 @@ module CancelReindex = struct
     in
     let* _, tterm = Util.Lterm.as_range (fst lterm) in
     let* variable = Util.Term.as_variable (fst tterm) in
-    let is_parameter = Env.mem (fst variable) env in
+    let is_parameter = Env.mem variable env in
     match is_parameter with true -> Some lterm | false -> None
 
   let cancel_reindex env tlterm =
@@ -185,7 +185,7 @@ module InsertReindex = struct
           funk
             (ty nty
             @@ reindex env.re_lindex env.re_lindex
-                 (ty lrty @@ range [] @@ ty rty @@ v rty term))))
+                 (ty lrty @@ range [] @@ ty rty @@ v term))))
   end
 
   let term_cstr' ctr expr =
@@ -196,7 +196,7 @@ module InsertReindex = struct
 
   let lift inlines cstrs expr =
     match fst expr with
-    | Ast.TVar (variable, _) -> (
+    | Ast.TVar variable -> (
         match MIdents.find_opt variable inlines with
         | None -> expr
         | Some e -> Util.Term.funk e)
@@ -300,7 +300,7 @@ module ReSimplify = struct
     | Some lterm -> Some lterm
 
   and simplify_reindex_term ty slhs srhs env = function
-    | Ast.TVar (variable, _) ->
+    | Ast.TVar variable ->
         simplify_reindex_term' slhs srhs env (Env.find variable env)
     | Ast.TThunk { lterm } ->
         Option.map
@@ -317,7 +317,7 @@ module ReSimplify = struct
     | Some term -> Some term
 
   let rec simplify_term env = function
-    | Ast.TVar (variable, _) -> fst @@ Env.find variable env
+    | Ast.TVar variable -> fst @@ Env.find variable env
     | TLet { variable; term; k } ->
         let term = simplify_term' env term in
         let env = Env.add variable term env in

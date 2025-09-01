@@ -125,13 +125,7 @@ module Env = struct
         Value.Ty.TFun signature
     | TyVar variable -> (
         match TyVariables.find_opt variable env.type_variables with
-        | None ->
-            Value.Ty.TVar variable
-            (*            match env.current_function with
-            | None -> err "Undefinied ty_variable : %a" Ast.TyIdent.pp variable
-            | Some fn ->
-                err "%a : Undefinied ty_variable : %a" Ast.FnIdent.pp fn
-                  Ast.TyIdent.pp variable*)
+        | None -> Value.Ty.TVar variable
         | Some ty -> ty)
 
   and of_signature signature env =

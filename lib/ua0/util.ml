@@ -8,6 +8,26 @@ module FnIdent = struct
     Ast.FnIdent.(fresh @@ Format.asprintf "%s%a" prefix pp base)
 end
 
+module Cstrs = struct
+  (* Should be here : More in list util equivalent. *)
+  let rec remove_prefix f p list =
+    match (p, list) with
+    | [], list -> Some list
+    | _ :: _, [] -> None
+    | p :: ps, x :: xs -> if f p x then remove_prefix f ps xs else None
+
+  let rec replace f cstrs = function
+    | [] -> []
+    | x :: xs as list -> (
+        match remove_prefix f cstrs list with
+        | Some remains -> cstrs @ remains
+        | None -> x :: replace f cstrs xs)
+
+  let reorder lhs rhs types =
+    let eq = Ast.TyDeclIdent.equal in
+    types |> replace eq lhs |> replace eq rhs
+end
+
 module Ty = struct
   let rec instanciate types = function
     | Ast.TyBool -> Ast.TyBool

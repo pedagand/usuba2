@@ -86,7 +86,7 @@ module Lty = struct
 end
 
 module Term = struct
-  let v ty term = (Ast.TVar (term, ty), ty)
+  let v ty term = (Ast.TVar term, ty)
 
   let rec as_function_call = function
     | Ast.TFnCall { fn_name; ty_resolve; args } ->

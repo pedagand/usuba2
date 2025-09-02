@@ -13,6 +13,7 @@ let uncons list = match list with [] -> (None, []) | t :: q -> (Some t, q)
 
 module Idents = Set.Make (Ast.TermIdent)
 module MIdents = Map.Make (Ast.TermIdent)
+module ReindexWrap = ReindexWrap
 
 module InlineLet = struct
   module Env = struct

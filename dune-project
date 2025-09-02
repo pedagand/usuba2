@@ -1,4 +1,4 @@
-(lang dune 3.18)
+(lang dune 3.13)
 
 (name usuba2)
 
@@ -21,7 +21,11 @@
  (name usuba2)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml)
+ (depends ocaml   
+  menhir
+  (alcotest :with-test)
+  (fmt :with-test)
+  )
  (tags
   ("add topics" "to describe" your project)))
 

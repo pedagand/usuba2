@@ -1,3 +1,5 @@
-(test
- (name test_usuba2)
- (libraries ua0 uat alcotest fmt))
+(tests
+ (names test_reindexWrap)
+ (libraries ua0 uat alcotest fmt)
+ (deps
+  (source_tree src)))

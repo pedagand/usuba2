@@ -59,7 +59,7 @@ let wr_function lcstrs rcstrs fn =
         | Some ty_new ->
             let variable_new = Util.TermIdent.prepend String.empty variable in
             let reindex =
-              reindex_term ty ty_new lcstrs rcstrs (TVar variable)
+              reindex_term ty ty_new lcstrs rcstrs (TVar variable_new)
             in
             let body =
               Scstr.(Term.(let_ variable (reindex, ty_new) body, snd body))

@@ -191,8 +191,8 @@ let rec typecheck_term env = function
                   Format.pp_print_either ~left:Ast.FnIdent.pp
                     ~right:Ast.TermIdent.pp
                 in
-                err "call `%a`: expected type %a found %a" pp fn_name Ua0.Pp.pp_ty
-                  ty_expected Ua0.Pp.pp_ty ty_arg
+                err "call `%a`: expected type %a found %a" pp fn_name
+                  Ua0.Pp.pp_ty ty_expected Ua0.Pp.pp_ty ty_arg
             in
             term)
           signature.parameters args
@@ -304,7 +304,7 @@ and typecheck_lterm env = function
       let ty_new =
         List.fold_right
           (fun name ty -> Ua0.Ast.TyApp { name; ty })
-          (cstrs_reindexed) ty
+          cstrs_reindexed ty
       in
       let () =
         Format.eprintf "source = %a - reindex = %a\n" Ua0.Pp.pp_ty

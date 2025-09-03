@@ -24,7 +24,7 @@ module Subcells = struct
     let slice = fty "Slice" in
     Alcotest.(check fn_declaration)
       "subcells reindex" fn_decl_test
-      (Uat.Pass.ReindexWrap.wr_function  [ slice ] [ col; row ] fn_decl)
+      (Uat.Pass.ReindexWrap.wr_function [ slice ] [ col; row ] fn_decl)
 end
 
 let type_declaration env0 name = Ua0.Pass.Idents.Env.find_tycstr name env0

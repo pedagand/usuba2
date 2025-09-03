@@ -300,11 +300,11 @@ and typecheck_lterm env = function
   | LReindex { lhs; rhs; lterm } ->
       let ((_, lty') as lterm) = typecheck_lterm env lterm in
       let cstrs, ty = Util.Ty.(prefix @@ to_ty lty') in
-      let _cstrs_reindexed = Ua0.Util.Cstrs.reorder lhs rhs cstrs in
+      let cstrs_reindexed = Ua0.Util.Cstrs.reorder lhs rhs cstrs in
       let ty_new =
         List.fold_right
           (fun name ty -> Ua0.Ast.TyApp { name; ty })
-          (rhs @ lhs) ty
+          (cstrs_reindexed) ty
       in
       let () =
         Format.eprintf "source = %a - reindex = %a\n" Ua0.Pp.pp_ty

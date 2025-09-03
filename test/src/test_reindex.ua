@@ -106,9 +106,10 @@ fn subcells_reindexed ['a] (
     state : Slice Col Row 'a
 ) Slice Col Row 'a = 
     let state = # reindex[Slice | Col Row](range(state)) in
-        # reindex[Col Row | Slice](
-        let+ slice = range[Col Row](state) in 
-        subcells.['a](fnot, fand, for, fxor, slice)
+    # reindex[Col Row | Slice](
+        range(# let+ slice = range[Col Row](state) in 
+            subcells.['a](fnot, fand, for, fxor, slice)
+        )
     )
     
 fn subcells ['a] ( 

@@ -17,15 +17,19 @@ module Cstrs = struct
     | p :: ps, x :: xs -> if f p x then remove_prefix f ps xs else None
 
   let rec replace ~by f cstrs = function
-    | [] -> []
+    | [] -> ([], [])
     | x :: xs as list -> (
         match remove_prefix f cstrs list with
-        | Some remains -> by @ remains
-        | None -> x :: replace ~by f cstrs xs)
+        | Some remains -> (by, remains)
+        | None ->
+            let by, remains = replace ~by f cstrs xs in
+            (x :: by, remains))
 
   let reorder lhs rhs types =
     let eq = Ast.TyDeclIdent.equal in
-    types |> replace ~by:rhs eq lhs |> replace ~by:lhs eq rhs
+    let head, remains = replace ~by:rhs eq lhs types in
+    let queue, remains = replace ~by:lhs eq rhs remains in
+    head @ queue @ remains
 end
 
 module Ty = struct

@@ -157,8 +157,7 @@ let rec typecheck_term env = function
       let signature =
         Env.signature ~instance:false (Left fn_ident) tyresolve env
       in
-      let tyresolve = Option.to_list tyresolve in
-      (TFn { fn_ident; tyresolve }, TyFun signature)
+      (TFn { fn_ident }, TyFun signature)
   | TLet { variable; term; k } ->
       let ((_, ty) as term) = typecheck_term env term in
       let env = Env.add_variable variable ty env in
@@ -182,7 +181,6 @@ let rec typecheck_term env = function
       (TOperator op, ty)
   | TFnCall { fn_name; ty_resolve; args } ->
       let signature = Env.signature ~instance:true fn_name ty_resolve env in
-      let ty_resolve = Option.to_list ty_resolve in
       let args =
         List.map2
           (fun ty_expected arg ->
@@ -193,7 +191,7 @@ let rec typecheck_term env = function
                   Format.pp_print_either ~left:Ast.FnIdent.pp
                     ~right:Ast.TermIdent.pp
                 in
-                err "fn `%a`: expected type %a found %a" pp fn_name Ua0.Pp.pp_ty
+                err "call `%a`: expected type %a found %a" pp fn_name Ua0.Pp.pp_ty
                   ty_expected Ua0.Pp.pp_ty ty_arg
             in
             term)
@@ -300,10 +298,19 @@ and typecheck_lterm env = function
       let lty = Env.range ty t env in
       (LRange { ty; term }, lty)
   | LReindex { lhs; rhs; lterm } ->
-      let ((_, lty) as lterm) = typecheck_lterm env lterm in
-      let ty = Env.reindex ~lhs ~rhs lty in
-      (* MAYBE: Delete the reindex *)
-      (LReindex { lhs; rhs; lterm }, Util.Ty.lty [] ty)
+      let ((_, lty') as lterm) = typecheck_lterm env lterm in
+      let cstrs, ty = Util.Ty.(prefix @@ to_ty lty') in
+      let _cstrs_reindexed = Ua0.Util.Cstrs.reorder lhs rhs cstrs in
+      let ty_new =
+        List.fold_right
+          (fun name ty -> Ua0.Ast.TyApp { name; ty })
+          (rhs @ lhs) ty
+      in
+      let () =
+        Format.eprintf "source = %a - reindex = %a\n" Ua0.Pp.pp_ty
+          (Util.Ty.to_ty lty') Ua0.Pp.pp_ty ty_new
+      in
+      (LReindex { lhs; rhs; lterm }, Util.Ty.lty [] ty_new)
   | LCirc lterm ->
       let ((_, lty) as lterm) = typecheck_lterm env lterm in
       let wrapper =
@@ -325,9 +332,14 @@ let typecheck_function env fn =
       (fun env (variable, ty) -> Env.add_variable variable ty env)
       env parameters
   in
-  let tyvars = Option.to_list tyvars in
   let ((_, ty) as body) = typecheck_term env body in
-  let () = assert (Ua0.Util.Ty.equal return_type ty) in
+  let () =
+    match Ua0.Util.Ty.equal return_type ty with
+    | true -> ()
+    | false ->
+        err "fn `%a` : return type %a but term has the type : %a" Ast.FnIdent.pp
+          fn_name Ua0.Pp.pp_ty return_type Ua0.Pp.pp_ty ty
+  in
   let fn_uat = Ast.{ fn_name; tyvars; parameters; return_type; body } in
   (Env.add_function fn env, fn_uat)
 

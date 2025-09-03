@@ -31,7 +31,7 @@ and term =
   | TFalse
   | TTrue
   | TVar of TermIdent.t
-  | TFn of { fn_ident : FnIdent.t; tyresolve : ty list }
+  | TFn of { fn_ident : FnIdent.t }
   | TLet of { variable : TermIdent.t; term : term tys; k : term tys }
   | TLookup of { lterm : lterm ltys; index : int }
   | TThunk of { lterm : lterm ltys }
@@ -39,13 +39,13 @@ and term =
   | TOperator of term tys operator
   | TFnCall of {
       fn_name : (FnIdent.t, TermIdent.t) Either.t;
-      ty_resolve : ty list;
+      ty_resolve : ty option;
       args : term tys list;
     }
 
 type fn_declaration = {
   fn_name : FnIdent.t;
-  tyvars : TyIdent.t list;
+  tyvars : TyIdent.t option;
   parameters : (TermIdent.t * ty) list;
   return_type : ty;
   body : term tys;

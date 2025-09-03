@@ -192,7 +192,9 @@ module Eq = struct
     | TOperator lhs, TOperator rhs -> operator env lhs rhs
     | ( TFnCall { fn_name = lfn_name; ty_resolve = lty; args = largs },
         TFnCall { fn_name = rfn_name; ty_resolve = rty; args = rargs } ) ->
-        let* () = List.compare_lengths lty rty = 0 in
+        let* () =
+          List.compare_lengths (Option.to_list lty) (Option.to_list rty) = 0
+        in
         let* () =
           match (lfn_name, rfn_name) with
           | Either.Left lhs, Either.Left rhs -> Ast.FnIdent.equal lhs rhs

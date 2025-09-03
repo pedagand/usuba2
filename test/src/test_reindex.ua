@@ -43,7 +43,7 @@ fn transpose ['a] (cols : Col Row 'a) Row Col 'a =
 fn rev_rotate_0['a](cols : Col Row 'a) Col Row 'a = 
     let cols = col_reverse.[Row 'a](cols) in
     let rows = transpose.['a](cols) in
-    let rows = circ(range[](rows))[0] in
+    let rows = circ(range(rows))[0] in
     # reindex[Row | Col](range(rows))
     
 fn rev_rotate_1 ['a](cols : Col Row 'a) Col Row 'a = 
@@ -97,7 +97,21 @@ fn subcells ['a](
     let s2 = fxor.(s2, fand.(s0, s1)) in
     # Slice(s3, s1, s2, s0)
     
-fn subcells ['a] (
+    
+fn subcells_reindexed ['a] (
+    fnot : fn('a) -> 'a,
+    fand : fn('a, 'a) -> 'a,
+    for : fn('a, 'a) -> 'a,
+    fxor : fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a
+) Slice Col Row 'a = 
+    let state = # reindex[Slice | Col Row](range(state)) in
+        # reindex[Col Row | Slice](
+        let+ slice = range[Col Row](state) in 
+        subcells.['a](fnot, fand, for, fxor, slice)
+    )
+    
+fn subcells ['a] ( 
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,
     for : fn('a, 'a) -> 'a,
@@ -106,6 +120,8 @@ fn subcells ['a] (
 ) Col Row Slice 'a =
     # let+ slice = range[Col Row](state) in 
         subcells.['a](fnot, fand, for, fxor, slice)
+        
+
     
 
 fn add_round_key ['a](

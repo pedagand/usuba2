@@ -226,7 +226,7 @@ module InsertReindex = struct
       MIdents.of_seq @@ List.to_seq letargs
     in
     let args = List.map (lift inlines cstrs) args in
-    let ty_resolve = List.map (Util.Ty.lift' cstrs) ty_resolve in
+    let ty_resolve = Option.map (Util.Ty.lift' cstrs) ty_resolve in
     let term = Ast.TFnCall { fn_name; ty_resolve; args } in
     let tterm = (term, snd tterm) in
     let tterm =

@@ -64,6 +64,8 @@ fn rev_rotate_3 ['a] (cols : Col Row 'a) Col Row 'a =
     let rows = circ(range(rows))[3] in
     # reindex[Row | Col](range(rows))
     
+    
+// Simplify range[] - thunk
 fn permbits_bitslice['a](state : Slice Col Row 'a) Slice Col Row 'a = 
     let permbits = # Slice(
         rev_rotate_1,
@@ -73,8 +75,70 @@ fn permbits_bitslice['a](state : Slice Col Row 'a) Slice Col Row 'a =
     ) in
     # let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
         f.['a](slice)
+        
+// Simplify reindex
+fn permbits_4 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
+    let permbits = # Slice(
+        rev_rotate_1,
+        rev_rotate_2,
+        rev_rotate_3,
+        rev_rotate_0
+    ) in
+    # let+ f = range[Slice](permbits) and slice = range[Slice](# range(state)) in 
+        f.['a](slice)
+        
+// Simplify range[] - thunk
+fn permbits_3 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
+    let permbits = # Slice(
+        rev_rotate_1,
+        rev_rotate_2,
+        rev_rotate_3,
+        rev_rotate_0
+    ) in
+    # reindex[Col Row | Slice](
+        reindex[Slice | Col Row](
+            let+ f = range[Slice](permbits) and slice = range[Slice](# reindex[Col Row | Slice](reindex[Slice | Col Row](range(state)))) in 
+            f.['a](slice)
+        )
+    )
+        
+// Inline let reindex
+fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
+    let permbits = # Slice(
+        rev_rotate_1,
+        rev_rotate_2,
+        rev_rotate_3,
+        rev_rotate_0
+    ) in
+    # reindex[Col Row | Slice](
+    range(
+        # reindex[Slice | Col Row](
+        let+ f = range[Slice](permbits) and slice = range[Slice](# reindex[Col Row | Slice](range(# reindex[Slice | Col Row](range(state))))) in 
+        f.['a](slice)
+        )
+    )
+)
+        
+// Un-nested let
+fn permbits_1 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
+    let state = # reindex[Slice | Col Row](range(state)) in
+    let permbits = # Slice(
+        rev_rotate_1,
+        rev_rotate_2,
+        rev_rotate_3,
+        rev_rotate_0
+    ) in
+    let state = # reindex[Col Row | Slice](range(state)) in
+    # reindex[Col Row | Slice](
+        range(
+            # reindex[Slice | Col Row](
+                let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
+                f.['a](slice)
+        )
+    )
+)
     
-fn permbits_reindexed ['a](state : Slice Col Row 'a) Slice Col Row 'a =
+fn permbits_0 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     let state = # reindex[Slice | Col Row](range(state)) in
     # reindex[Col Row | Slice](
         range(

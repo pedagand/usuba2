@@ -64,6 +64,35 @@ fn rev_rotate_3 ['a] (cols : Col Row 'a) Col Row 'a =
     let rows = circ(range(rows))[3] in
     # reindex[Row | Col](range(rows))
     
+fn permbits_bitslice['a](state : Slice Col Row 'a) Slice Col Row 'a = 
+    let permbits = # Slice(
+        rev_rotate_1,
+        rev_rotate_2,
+        rev_rotate_3,
+        rev_rotate_0
+    ) in
+    # let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
+        f.['a](slice)
+    
+fn permbits_reindexed ['a](state : Slice Col Row 'a) Slice Col Row 'a =
+    let state = # reindex[Slice | Col Row](range(state)) in
+    # reindex[Col Row | Slice](
+        range(
+            let permbits = # Slice(
+                rev_rotate_1,
+                rev_rotate_2,
+                rev_rotate_3,
+                rev_rotate_0
+            ) in
+            let state = # reindex[Col Row | Slice](range(state)) in
+            # reindex[Slice | Col Row](
+                let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
+                f.['a](slice)
+            )
+        )
+    )
+    
+    
 fn permbits ['a] (state : Col Row Slice 'a) Col Row Slice 'a = 
     let permbits = # Slice(
         rev_rotate_1,
@@ -97,7 +126,17 @@ fn subcells ['a](
     let s2 = fxor.(s2, fand.(s0, s1)) in
     # Slice(s3, s1, s2, s0)
     
+  
+fn subcells_bitslice ['a](
+    fnot : fn(Col Row 'a) -> Col Row 'a,
+    fand : fn(Col Row 'a, Col Row 'a) -> Col Row 'a,
+    for : fn(Col Row 'a, Col Row 'a) -> Col Row  'a,
+    fxor : fn(Col Row 'a, Col Row 'a) -> Col Row 'a,
+    state : Slice Col Row 'a
+) Slice Col Row 'a = 
+    subcells.[Col Row 'a](fnot, fand, for, fxor, state)
     
+  
 fn subcells_reindexed ['a] (
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,
@@ -123,7 +162,19 @@ fn subcells ['a] (
         subcells.['a](fnot, fand, for, fxor, slice)
         
 
-    
+fn add_round_key_reindexed['a](
+    fxor: fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a = 
+    let key = # reindex[Slice | Col Row](range(key)) in
+    let state = # reindex[Slice | Col Row](range(state)) in
+    # reindex[Col Row | Slice](
+        range(
+            # let+ state = range[Col Row Slice](state) and key = range[Col Row Slice](key) in
+                fxor.(state, key)
+        )
+    )
 
 fn add_round_key ['a](
     fxor: fn('a, 'a) -> 'a,

@@ -345,5 +345,5 @@ let of_ua0_node env = function
       (env, Ast.NFun fn_decl)
   | Ua0.Ast.NTy type_decl -> (add_typedecl env type_decl, Ast.NTy type_decl)
 
-let of_ua0_module env = List.fold_left_map of_ua0_node env
-let of_ua0_module = of_ua0_module Env.empty
+let of_ua0_prog env = List.fold_left_map of_ua0_node env
+let of_ua0_prog = of_ua0_prog Env.empty

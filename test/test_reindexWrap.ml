@@ -9,7 +9,7 @@ let ast file =
         Ua0.Parser.module_ Ua0.Lexer.token lexbuf)
   in
   let ua0env, ast = Ua0.Pass.Idents.of_string_ast_env ast in
-  let uatenv, ast = Uat.Typecheck.of_ua0_module ast in
+  let uatenv, ast = Uat.Typecheck.of_ua0_prog ast in
   (ua0env, uatenv, ast)
 
 module Subcells = struct

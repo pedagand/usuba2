@@ -11,14 +11,8 @@ module Env = struct
 
   type t = {
     variables : Ast.ty Vars.t;
-    functions :
-      ( Ast.TyDeclIdent.t,
-        Ast.FnIdent.t,
-        Ast.TyIdent.t,
-        Ast.TermIdent.t )
-      Ua0.Ast.fn_declaration
-      Fns.t;
-    types : (Ast.TyDeclIdent.t, Ast.TyIdent.t) Ua0.Ast.ty_declaration Types.t;
+    functions : Ua0.Ast.fn_declaration Fns.t;
+    types : Ua0.Ast.ty_declaration Types.t;
   }
 
   let empty =
@@ -96,7 +90,7 @@ module Env = struct
 
   let rec range acc prefix ty env =
     match prefix with
-    | [] -> Ua0.Ast.Lty { t = List.rev acc; ty }
+    | [] -> { Ua0.Ast.t = List.rev acc; ty }
     | t :: q ->
         let name, size, ty =
           match ty with

@@ -51,6 +51,6 @@ type fn_declaration = {
   body : term tys;
 }
 
-type ty_declaration = (TyDeclIdent.t, TyIdent.t) Ua0.Ast.ty_declaration
+type ty_declaration = Ua0.Ast.ty_declaration
 type node = NFun of fn_declaration | NTy of ty_declaration
-type module' = node list
+type prog = node list

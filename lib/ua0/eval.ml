@@ -18,14 +18,8 @@ module Env = struct
 
   type t = {
     current_function : Ast.FnIdent.t option;
-    types : (Ast.TyDeclIdent.t, Ast.TyIdent.t) Ast.ty_declaration Types.t;
-    functions :
-      ( Ast.TyDeclIdent.t,
-        Ast.FnIdent.t,
-        Ast.TyIdent.t,
-        Ast.TermIdent.t )
-      Ast.fn_declaration
-      Functions.t;
+    types : Ast.ty_declaration Types.t;
+    functions : Ast.fn_declaration Functions.t;
     variables : (Value.t * Value.Ty.ty) Variables.t;
     type_variables : Value.Ty.ty TyVariables.t;
   }
@@ -39,10 +33,10 @@ module Env = struct
       type_variables = TyVariables.empty;
     }
 
-  let add_function (fn : _ Ast.fn_declaration) env =
+  let add_function (fn : Ast.fn_declaration) env =
     { env with functions = Functions.add fn.fn_name fn env.functions }
 
-  let add_types (ty : _ Ast.ty_declaration) env =
+  let add_types (ty : Ast.ty_declaration) env =
     { env with types = Types.add ty.name ty env.types }
 
   let bind_variable variable value ty env =
@@ -424,7 +418,7 @@ and eval_lterm env = function
       let lty = Value.Ty.lty [] lty in
       (value, lty)
 
-and eval env (fn : _ Ast.fn_declaration) ty_args args =
+and eval env (fn : Ast.fn_declaration) ty_args args =
   let Ast.
         {
           fn_name = current_function;

@@ -97,16 +97,15 @@ type ('ty_decl, 'ty_var) ty =
   | TyApp of { name : 'ty_decl; ty : ('ty_decl, 'ty_var) ty }
   | TyFun of ('ty_decl, 'ty_var) signature
 
-and lty =
-  | Lty of {
-      t : (TyDeclIdent.t * int) list;
-      ty : (TyDeclIdent.t, TyIdent.t) ty;
-    }
-
 and ('ty_decl, 'ty_var) signature = {
   tyvars : 'ty_var option;
   parameters : ('ty_decl, 'ty_var) ty list;
   return_type : ('ty_decl, 'ty_var) ty;
+}
+
+type lty = {
+  t : (TyDeclIdent.t * int) list;
+  ty : (TyDeclIdent.t, TyIdent.t) ty;
 }
 
 type 'a operator =
@@ -115,76 +114,86 @@ type 'a operator =
   | OAnd of ('a * 'a)
   | OOr of ('a * 'a)
 
-type ('ty_decl, 'fn_ident, 'ty_var, 'term_id) lterm =
+type 't lterm =
   | LLetPlus of {
       variable : 'term_id;
-      lterm : ('ty_decl, 'fn_ident, 'ty_var, 'term_id) lterm;
-      ands : ('term_id * ('ty_decl, 'fn_ident, 'ty_var, 'term_id) lterm) list;
-      term : ('ty_decl, 'fn_ident, 'ty_var, 'term_id) term;
+      lterm : 't lterm;
+      ands : ('term_id * 't lterm) list;
+      term : 't term;
     }
-  | LConstructor of {
-      ty : 'ty_decl;
-      terms : ('ty_decl, 'fn_ident, 'ty_var, 'term_id) term list;
-    }
-  | LRange of {
-      ty : 'ty_decl list;
-      term : ('ty_decl, 'fn_ident, 'ty_var, 'term_id) term;
-    }
-  | LReindex of {
-      lhs : 'ty_decl list;
-      rhs : 'ty_decl list;
-      lterm : ('ty_decl, 'fn_ident, 'ty_var, 'term_id) lterm;
-    }
-  | LCirc of ('ty_decl, 'fn_ident, 'ty_var, 'term_id) lterm
+  | LConstructor of { ty : 'ty_decl; terms : 't term list }
+  | LRange of { ty : 'ty_decl list; term : 't term }
+  | LReindex of { lhs : 'ty_decl list; rhs : 'ty_decl list; lterm : 't lterm }
+  | LCirc of 't lterm
+  constraint
+    't =
+    < ty_decl : 'ty_decl
+    ; fn_ident : 'fn_ident
+    ; ty_var : 'ty_var
+    ; term_id : 'term_id >
 
-and ('ty_decl, 'fn_ident, 'ty_var, 'term_id) term =
+and 't term =
   | TFalse
   | TTrue
   | TVar of 'term_id
   | TFn of { fn_ident : 'fn_ident; tyresolve : ('ty_decl, 'ty_var) ty option }
-  | TLet of {
-      variable : 'term_id;
-      term : ('ty_decl, 'fn_ident, 'ty_var, 'term_id) term;
-      k : ('ty_decl, 'fn_ident, 'ty_var, 'term_id) term;
-    }
-  | TLookup of {
-      lterm : ('ty_decl, 'fn_ident, 'ty_var, 'term_id) lterm;
-      index : int;
-    }
-  | TThunk of { lterm : ('ty_decl, 'fn_ident, 'ty_var, 'term_id) lterm }
-  | TLog of {
-      message : string;
-      variables : 'term_id list;
-      k : ('ty_decl, 'fn_ident, 'ty_var, 'term_id) term;
-    }
-  | TOperator of ('ty_decl, 'fn_ident, 'ty_var, 'term_id) term operator
+  | TLet of { variable : 'term_id; term : 't term; k : 't term }
+  | TLookup of { lterm : 't lterm; index : int }
+  | TThunk of { lterm : 't lterm }
+  | TLog of { message : string; variables : 'term_id list; k : 't term }
+  | TOperator of 't term operator
   | TFnCall of {
       fn_name : ('fn_ident, 'term_id) Either.t;
       ty_resolve : ('ty_decl, 'ty_var) ty option;
-      args : ('ty_decl, 'fn_ident, 'ty_var, 'term_id) term list;
+      args : 't term list;
     }
+  constraint
+    't =
+    < ty_decl : 'ty_decl
+    ; fn_ident : 'fn_ident
+    ; ty_var : 'ty_var
+    ; term_id : 'term_id >
 
-type ('ty_decl, 'fn_ident, 'ty_var, 'term_id) fn_declaration = {
+type 't fn_declaration_ = {
   fn_name : 'fn_ident;
   tyvars : 'ty_var option;
   parameters : ('term_id * ('ty_decl, 'ty_var) ty) list;
   return_type : ('ty_decl, 'ty_var) ty;
-  body : ('ty_decl, 'fn_ident, 'ty_var, 'term_id) term;
+  body : 't term;
 }
+  constraint
+    't =
+    < ty_decl : 'ty_decl
+    ; fn_ident : 'fn_ident
+    ; ty_var : 'ty_var
+    ; term_id : 'term_id >
 
 (* Type decl only create alias. *)
-type ('ty_decl, 'ty_var) ty_declaration = {
+type 't ty_declaration_ = {
   tyvar : 'ty_var;
   name : 'ty_decl;
   size : int;
 }
+  constraint 't = < ty_decl : 'ty_decl ; ty_var : 'ty_var ; .. >
 
-type ('ty_decl, 'fn_ident, 'ty_var, 'term_id) node =
-  | NFun of ('ty_decl, 'fn_ident, 'ty_var, 'term_id) fn_declaration
-  | NTy of ('ty_decl, 'ty_var) ty_declaration
+type 't node_ = NFun of 't fn_declaration_ | NTy of 't ty_declaration_
+type 't prog_ = 't node_ list
 
-type ('ty_decl, 'fn_ident, 'ty_var, 'term_id) gmodule' =
-  ('ty_decl, 'fn_ident, 'ty_var, 'term_id) node list
+type pre =
+  < ty_decl : string ; fn_ident : string ; ty_var : string ; term_id : string >
 
-type module_ast = (string, string, string, string) gmodule'
-type module' = (TyDeclIdent.t, FnIdent.t, TyIdent.t, TermIdent.t) gmodule'
+type pre_ty_declaration = pre ty_declaration_
+type pre_fn_declaration = pre fn_declaration_
+type pre_node = pre node_
+type pre_prog = pre prog_
+
+type scoped =
+  < ty_decl : TyDeclIdent.t
+  ; fn_ident : FnIdent.t
+  ; ty_var : TyIdent.t
+  ; term_id : TermIdent.t >
+
+type ty_declaration = scoped ty_declaration_
+type fn_declaration = scoped fn_declaration_
+type node = scoped node_
+type prog = scoped prog_

@@ -1,77 +1,3 @@
-(*
-  
-// https://github.com/Lelio-Brun/Obelisk
-// bnf grammar generator from .mly file
-
-<parenthesis(X)> ::= LPARENT X RPARENT
-
-<bracketed(X)> ::= LBRACE X RBRACE
-
-<sqrbracketed(X)> ::= LSQBRACE X RSQBRACE
-
-<splitted(lhs, sep, rhs)> ::= lhs sep rhs
-
-<module_> ::= <node>* EOF
-
-<node> ::= <type_decl>
-         | <fn_decl>
-
-<type_decl> ::= TYPE TypeCstrIdentifier EQUAL TUPLE
-                <sqrbracketed(IntegerLitteral)>
-
-<fn_decl> ::= FUNCTION Identifier [<sqrbracketed(TypeVariable)>]
-              <parenthesis([<splitted(Identifier, COLON, <ty>)> (COMMA
-              <splitted(Identifier, COLON, <ty>)>)*])> <ty> EQUAL <term>
-
-<ty> ::= TypeCstrIdentifier <ty>
-       | TypeVariable
-       | BOOL
-       | FUNCTION <signature>
-
-<signature> ::= [<sqrbracketed(TypeVariable)>] <parenthesis([<ty> (COMMA
-                <ty>)*])> MINUS_SUP <ty>
-
-<fn_identifier> ::= Identifier DOT [<sqrbracketed(<ty>)>]
-
-<term> ::= TRUE
-         | FALSE
-         | Identifier
-         | AMPERSAND Identifier
-         | LET Identifier EQUAL <term> IN <term>
-         | <lterm> <sqrbracketed(IntegerLitteral)>
-         | FOLD <sqrbracketed(IntegerLitteral)> <parenthesis(<fn_identifier>
-           [<parenthesis([<term> (COMMA <term>)*])>])>
-           <parenthesis(<splitted(<term>, COMMA, <lterm>)>)>
-         | HASH <lterm>
-         | <fn_identifier> <parenthesis([<term> (COMMA <term>)*])>
-         | <parenthesis(<term>)>
-         | <operator>
-
-<operator> ::= EXCLAMATION <term>
-             | <term> PIPE <term>
-             | <term> AMPERSAND <term>
-             | <term> CARET <term>
-
-<lterm> ::= LET_PLUS Identifier EQUAL <lterm> (AND <splitted(Identifier,
-            EQUAL, <lterm>)>)* IN <term>
-          | TypeCstrIdentifier <parenthesis(<term> (COMMA <term>)* )>
-          | RANGE [<sqrbracketed(TypeCstrIdentifier* )>] <parenthesis(<term>)>
-          | REINDEX <sqrbracketed(<splitted(TypeCstrIdentifier+, PIPE,
-            TypeCstrIdentifier+)>)> <parenthesis(<lterm>)>
-          | CIRC <parenthesis(<lterm>)>
-          | <parenthesis(<lterm>)>
-          
-TypeVariable ::= '<lower_identifier>
-<lower_identifier> ::= (a-z)+
-
-TypeCstrIdentifier ::= <type_cstr_identifier>
-<type_cstr_identifier> ::= [A-Z][a-zA-Z0-9_]*
-
-Identifier ::= <identifiant>
-<identifiant> ::= [a-z][a-zA-Z0-9_]*
-
-*)
-
 module Ident () = struct
   type t = { id : int; pretty : string }
 
@@ -92,9 +18,9 @@ module TyDeclIdent = Ident ()
 module FnIdent = Ident ()
 
 type ('ty_decl, 'ty_var) ty =
-  | TyBool
-  | TyVar of 'ty_var
-  | TyApp of { name : 'ty_decl; ty : ('ty_decl, 'ty_var) ty }
+  | TyBool  (** [bool] *)
+  | TyVar of 'ty_var  (** ['a] *)
+  | TyApp of { name : 'ty_decl; ty : ('ty_decl, 'ty_var) ty }  (** [tname ty] *)
   | TyFun of ('ty_decl, 'ty_var) signature
 
 and ('ty_decl, 'ty_var) signature = {
@@ -102,6 +28,7 @@ and ('ty_decl, 'ty_var) signature = {
   parameters : ('ty_decl, 'ty_var) ty list;
   return_type : ('ty_decl, 'ty_var) ty;
 }
+(** [['a]^? (ty1, ty2, ...) -> ty] *)
 
 type lty = {
   t : (TyDeclIdent.t * int) list;
@@ -109,10 +36,10 @@ type lty = {
 }
 
 type 'a operator =
-  | ONot of 'a
-  | OXor of ('a * 'a)
-  | OAnd of ('a * 'a)
-  | OOr of ('a * 'a)
+  | ONot of 'a  (** [!t] *)
+  | OXor of ('a * 'a)  (** [t1 ^ t2] *)
+  | OAnd of ('a * 'a)  (** [t1 & t2] *)
+  | OOr of ('a * 'a)  (** [t1 | t2] *)
 
 type 't lterm =
   | LLetPlus of {
@@ -120,11 +47,14 @@ type 't lterm =
       lterm : 't lterm;
       ands : ('term_id * 't lterm) list;
       term : 't term;
-    }
+    }  (** [let+ x = l {and y1 = l1 and y2 = l2 ...}^? in t] *)
   | LConstructor of { ty : 'ty_decl; terms : 't term list }
+      (** [F(t1, t2, ...)] *)
   | LRange of { ty : 'ty_decl list; term : 't term }
+      (** [range[F1 F2 ...](t)] *)
   | LReindex of { lhs : 'ty_decl list; rhs : 'ty_decl list; lterm : 't lterm }
-  | LCirc of 't lterm
+      (** [reindex[ F1 F2 ... | G1 G2 ... ](l) *)
+  | LCirc of 't lterm  (** [circ(l)] *)
   constraint
     't =
     < ty_decl : 'ty_decl
@@ -133,20 +63,22 @@ type 't lterm =
     ; term_id : 'term_id >
 
 and 't term =
-  | TFalse
-  | TTrue
+  | TFalse  (** [false] *)
+  | TTrue  (** [true] *)
   | TVar of 'term_id
   | TFn of { fn_ident : 'fn_ident; tyresolve : ('ty_decl, 'ty_var) ty option }
+      (** [&f] *)
   | TLet of { variable : 'term_id; term : 't term; k : 't term }
-  | TLookup of { lterm : 't lterm; index : int }
-  | TThunk of { lterm : 't lterm }
+      (** [let x = t1 in t2] *)
+  | TLookup of { lterm : 't lterm; index : int }  (** [l[i]] *)
+  | TThunk of { lterm : 't lterm }  (** [#l] *)
   | TLog of { message : string; variables : 'term_id list; k : 't term }
-  | TOperator of 't term operator
   | TFnCall of {
       fn_name : ('fn_ident, 'term_id) Either.t;
       ty_resolve : ('ty_decl, 'ty_var) ty option;
       args : 't term list;
-    }
+    }  (** [f.[ty](t1, t2, ...)] *)
+  | TOperator of 't term operator
   constraint
     't =
     < ty_decl : 'ty_decl
@@ -167,6 +99,7 @@ type 't fn_declaration_ = {
     ; fn_ident : 'fn_ident
     ; ty_var : 'ty_var
     ; term_id : 'term_id >
+(** [fn f [a](x1: ty1, x2: ty2, ...) ty = t] *)
 
 (* Type decl only create alias. *)
 type 't ty_declaration_ = {
@@ -175,6 +108,7 @@ type 't ty_declaration_ = {
   size : int;
 }
   constraint 't = < ty_decl : 'ty_decl ; ty_var : 'ty_var ; .. >
+(** [type ty = tuple[i]] *)
 
 type 't node_ = NFun of 't fn_declaration_ | NTy of 't ty_declaration_
 type 't prog_ = 't node_ list

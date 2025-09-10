@@ -117,7 +117,7 @@ module Ty = struct
         let parameters = List.map (lift_boolean cstrs) parameters in
         TyFun { tyvars; parameters; return_type }
 
-  let lty t ty = Ast.Lty { t; ty }
+  let lty t ty = { Ast.t; ty }
 
   let rec ty_cstrs = function
     | (Ast.TyBool | TyVar _ | TyFun _) as e -> ([], e)
@@ -125,9 +125,8 @@ module Ty = struct
         let r, ty = ty_cstrs ty in
         (name :: r, ty)
 
-  let to_ty = function
-    | Ast.Lty { t; ty } ->
-        List.fold_right (fun (name, _) ty -> Ast.TyApp { name; ty }) t ty
+  let to_ty { Ast.t; ty } =
+    List.fold_right (fun (name, _) ty -> Ast.TyApp { name; ty }) t ty
 
   let rec remove_prefix ctsrs ty =
     match ctsrs with
@@ -138,12 +137,12 @@ module Ty = struct
         | TyApp { name; ty; _ } ->
             if Ast.TyDeclIdent.equal t name then remove_prefix q ty else None)
 
-  let prefix = function Ast.Lty { t; _ } -> t
-  let nest = function Ast.Lty { t; _ } -> List.length t
+  let prefix lty = lty.Ast.t
+  let nest lty = List.length lty.Ast.t
 
   let hd = function
-    | Ast.Lty { t = (ty, _) :: _; ty = _ }
-    | Lty { t = []; ty = TyApp { name = ty; _ } } ->
+    | { Ast.t = (ty, _) :: _; ty = _ } | { t = []; ty = TyApp { name = ty; _ } }
+      ->
         Some ty
     | _ -> None
 
@@ -160,7 +159,7 @@ module Ty = struct
 
   let lcstreq lhs rhs =
     match (lhs, rhs) with
-    | Ast.Lty { t = lt; ty = lty }, Ast.Lty { t = rt; ty = rty } -> (
+    | { Ast.t = lt; ty = lty }, { Ast.t = rt; ty = rty } -> (
         match (lt, rt) with
         | [], [] -> cstrql lty rty
         | (l, _) :: _, (r, _) :: _ -> Ast.TyDeclIdent.equal l r

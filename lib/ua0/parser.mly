@@ -23,7 +23,7 @@
 
 %start module_
 
-%type <Ast.module_ast> module_
+%type <Ast.pre_prog> module_
 
 %%
 

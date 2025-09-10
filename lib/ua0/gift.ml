@@ -288,7 +288,7 @@ let fnnot, node_fnnot =
   in
   (fn_name, node)
 
-let colrow_not, node_colrow_not =
+let colrow_not, (node_colrow_not : node) =
   let fn_name = FnIdent.fresh "colrow_not" in
   let ty = Ty.(app col @@ app row bool) in
   let tlhs = TermIdent.fresh "lhs" in
@@ -355,14 +355,14 @@ let colrow_bin name bin =
   in
   (fn_name, node)
 
-let colrow_xor, node_colrow_xor = colrow_bin "colrow_xor" Term.( lxor )
-let colrow_and, node_colrow_and = colrow_bin "colrow_and" Term.( land )
-let colrow_or, node_colrow_or = colrow_bin "colrow_or" Term.( lor )
-let fnxor, node_fnxor = bin "fnxor" Term.( lxor )
-let fnand, node_fnand = bin "fnand" Term.( land )
-let fnor, node_fnor = bin "fnor" Term.( lor )
+let colrow_xor, (node_colrow_xor : node) = colrow_bin "colrow_xor" Term.( lxor )
+let colrow_and, (node_colrow_and : node) = colrow_bin "colrow_and" Term.( land )
+let colrow_or, (node_colrow_or : node) = colrow_bin "colrow_or" Term.( lor )
+let fnxor, (node_fnxor : node) = bin "fnxor" Term.( lxor )
+let fnand, (node_fnand : node) = bin "fnand" Term.( land )
+let fnor, (node_fnor : node) = bin "fnor" Term.( lor )
 
-let subcells, node_subcells =
+let subcells, (node_subcells : node) =
   let subcells = FnIdent.fresh "subcells" in
   let alpha = TyIdent.fresh "'a" in
   let ty_alpha = Ty.v alpha in

@@ -88,19 +88,12 @@ module LiftBoolean = struct
     module Vars = Map.Make (String)
     module Fns = Map.Make (Ast.FnIdent)
     module FnsBool = Map.Make (BoolOperator)
-    open Ast
 
     type t = {
       cstrs : (Ast.TyDeclIdent.t * int) list;
-      lifted_functions :
-        (TyDeclIdent.t, FnIdent.t, TyIdent.t, TermIdent.t) Ast.fn_declaration
-        Fns.t;
-      env_functions :
-        (TyDeclIdent.t, FnIdent.t, TyIdent.t, TermIdent.t) Ast.fn_declaration
-        Fns.t;
-      bool_functions :
-        (TyDeclIdent.t, FnIdent.t, TyIdent.t, TermIdent.t) Ast.fn_declaration
-        FnsBool.t;
+      lifted_functions : Ast.fn_declaration Fns.t;
+      env_functions : Ast.fn_declaration Fns.t;
+      bool_functions : Ast.fn_declaration FnsBool.t;
     }
 
     let init cstrs env_functions bool_functions =

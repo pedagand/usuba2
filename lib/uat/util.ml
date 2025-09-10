@@ -38,13 +38,14 @@ module Ty = struct
         (name :: names, elt)
     | (TyBool | TyVar _ | TyFun _) as t -> ([], t)
 
-  let lprefix = function Ua0.Ast.Lty { t; ty = _ } -> t
+  let lprefix lty = lty.Ua0.Ast.t
 
-  let to_ty = function
-    | Ua0.Ast.Lty { t; ty } ->
-        List.fold_right (fun (name, _) ty -> Ua0.Ast.TyApp { name; ty }) t ty
+  let to_ty lty =
+    List.fold_right
+      (fun (name, _) ty -> Ua0.Ast.TyApp { name; ty })
+      lty.Ua0.Ast.t lty.ty
 
-  let lty t ty = Ua0.Ast.Lty { t; ty }
+  let lty t ty = { Ua0.Ast.t; ty }
 
   let lift' cstrs =
     List.fold_right (fun (name, _) ty -> Ua0.Ast.TyApp { name; ty }) cstrs

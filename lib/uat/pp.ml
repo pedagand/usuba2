@@ -81,3 +81,16 @@ let pp_fn format fn =
   in
   Format.fprintf format "fn %a %a(%a) %a = %a" Ast.FnIdent.pp fn_name pp_tyvars
     tyvars pp_parameters parameters Ua0.Pp.pp_ty return_type pp_term' body
+
+let pp_tydecl format ty =
+  let Ua0.Ast.{ size; name; tyvar = _ } = ty in
+  Format.fprintf format "type %a = tuple[%u]" Ast.TyDeclIdent.pp name size
+
+let pp_node format = function
+  | Ast.NFun fn -> pp_fn format fn
+  | Ast.NTy ty -> pp_tydecl format ty
+
+let pp_prog format =
+  Format.pp_print_list
+    ~pp_sep:(fun format () -> Format.fprintf format "\n\n")
+    pp_node format

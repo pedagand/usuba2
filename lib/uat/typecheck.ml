@@ -300,10 +300,6 @@ and typecheck_lterm env = function
           (fun name ty -> Ua0.Ast.TyApp { name; ty })
           cstrs_reindexed ty
       in
-      let () =
-        Format.eprintf "source = %a - reindex = %a\n" Ua0.Pp.pp_ty
-          (Util.Ty.to_ty lty') Ua0.Pp.pp_ty ty_new
-      in
       (LReindex { lhs; rhs; lterm }, Util.Ty.lty [] ty_new)
   | LCirc lterm ->
       let ((_, lty) as lterm) = typecheck_lterm env lterm in

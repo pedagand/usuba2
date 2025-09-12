@@ -261,3 +261,10 @@ module Eq = struct
     in
     term env lhs.body rhs.body
 end
+
+module Prog = struct
+  let apply_pass pass prog =
+    List.map
+      (function Ast.NFun fn -> Ast.NFun (pass fn) | Ast.NTy _ as e -> e)
+      prog
+end

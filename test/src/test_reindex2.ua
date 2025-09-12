@@ -63,21 +63,9 @@ fn rev_rotate_3 ['a] (cols : Col Row 'a) Col Row 'a =
     let rows = transpose.['a](cols) in
     let rows = circ(range(rows))[3] in
     # reindex[Row | Col](range(rows))
-    
-    
-// Simplify range[] - thunk
-fn permbits_bitslice['a](state : Slice Col Row 'a) Slice Col Row 'a = 
-    let permbits = # Slice(
-        rev_rotate_1,
-        rev_rotate_2,
-        rev_rotate_3,
-        rev_rotate_0
-    ) in
-    # let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
-        f.['a](slice)
         
 // Simplify reindex
-fn permbits_3 ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
+fn permbits_bitslice ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
     let permbits = # Slice(
         rev_rotate_1,
         rev_rotate_2,
@@ -86,8 +74,6 @@ fn permbits_3 ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
     ) in
     # let+ f = range[Slice](permbits) and slice = range[Slice](state_) in 
         f.['a](slice)
-        
-        
     
 // simplify range thunk
 fn permbits_3 ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
@@ -105,8 +91,9 @@ fn permbits_3 ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
     )
     
 // Maybe we can inline only if we manage to simplify the expression ?
+// Should we try to inline the perbits ?
     
-// simplify inline term 3
+// simplify inline term 4
 fn permbits_2 ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
     let permbits = # Slice(
         rev_rotate_1,
@@ -123,7 +110,7 @@ fn permbits_2 ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
         )
     )
     
-// simplify inline term 2
+// simplify inline term 3
 fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     let permbits = # Slice(
         rev_rotate_1,
@@ -153,8 +140,8 @@ fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     # reindex[Col Row | Slice](
         range(
             # reindex[Slice | Col Row](
-            let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
-            f.['a](slice)
+                let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
+                    f.['a](slice)
             )
         )
     )
@@ -171,8 +158,8 @@ fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     # reindex[Col Row | Slice](
         range(
             # reindex[Slice | Col Row](
-            let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
-                f.['a](slice)
+                let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
+                    f.['a](slice)
             )
         )
     )
@@ -189,8 +176,8 @@ fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     # reindex[Col Row | Slice](
         range(
             # reindex[Slice | Col Row](
-            let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
-            f.['a](slice)
+                let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
+                    f.['a](slice)
             )
         )
     )

@@ -262,6 +262,74 @@ fn subcells_bitslice ['a](
     state : Slice Col Row 'a
 ) Slice Col Row 'a = 
     subcells.[Col Row 'a](fnot, fand, for, fxor, state)
+  
+// let+ - empty range 
+fn subcells_3 ['a] (
+    fnot : fn('a) -> 'a,
+    fand : fn('a, 'a) -> 'a,
+    for : fn('a, 'a) -> 'a,
+    fxor : fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a
+) Slice Col Row 'a = 
+    subcells.[Col Row 'a](lift_fnot, lift_fand, 
+        lift_for, lift_fxor, state)
+    
+// Simplify reindex
+fn subcells_3 ['a] (
+    fnot : fn('a) -> 'a,
+    fand : fn('a, 'a) -> 'a,
+    for : fn('a, 'a) -> 'a,
+    fxor : fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a
+) Slice Col Row 'a = 
+# let+ slice = range(state) in 
+    subcells.[Col Row 'a](lift_fnot, lift_fand, 
+        lift_for, lift_fxor, lift_slice)
+ 
+    
+// ? range [X.. ] reindex[Y | X..]
+fn subcells_2 ['a] (
+    fnot : fn('a) -> 'a,
+    fand : fn('a, 'a) -> 'a,
+    for : fn('a, 'a) -> 'a,
+    fxor : fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a
+) Slice Col Row 'a = 
+    # reindex[Col Row | Slice](
+        reindex[Slice | Col Row](
+            let+ slice = range(state) in 
+                subcells.[Col Row 'a](lift_fnot, lift_fand, 
+                    lift_for, lift_fxor, lift_slice)
+        )
+    )
+        
+ 
+// inline
+fn subcells_1 ['a] (
+    fnot : fn('a) -> 'a,
+    fand : fn('a, 'a) -> 'a,
+    for : fn('a, 'a) -> 'a,
+    fxor : fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a
+) Slice Col Row 'a = 
+    # reindex[Col Row | Slice](
+        let+ slice = range[Col Row](# reindex[Slice | Col Row](range(state))) in 
+            subcells.['a](fnot, fand, for, fxor, slice)
+    )
+    
+// Simplify thunk range
+fn subcells_0 ['a] (
+    fnot : fn('a) -> 'a,
+    fand : fn('a, 'a) -> 'a,
+    for : fn('a, 'a) -> 'a,
+    fxor : fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a
+) Slice Col Row 'a = 
+    let state = # reindex[Slice | Col Row](range(state)) in
+    # reindex[Col Row | Slice](
+        let+ slice = range[Col Row](state) in 
+            subcells.['a](fnot, fand, for, fxor, slice)
+    )
     
   
 fn subcells_reindexed ['a] (

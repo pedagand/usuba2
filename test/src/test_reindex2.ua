@@ -357,6 +357,60 @@ fn subcells ['a] (
         subcells.['a](fnot, fand, for, fxor, slice)
         
 
+fn add_round_key_bitslice ['a](
+    fxor: fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a = 
+    lift[Slice Col Row](fxor).(state, key)
+    
+// let+ - empty range
+fn add_round_key_4 ['a](
+    fxor: fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a =
+    lift[Slice Col Row](fxor).(state, key)
+    
+// simplify reindex
+fn add_round_key_3 ['a](
+    fxor: fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a =
+    # let+ state = range(state) and key = range(key) in
+        lift[Slice Col Row](fxor).(state, key)
+
+    
+// ? range [X.. ] reindex[Y | X..] + lift
+fn add_round_key_2 ['a](
+    fxor: fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a =
+    # reindex[Col Row | Slice](
+        reindex[Slice | Col Row](
+            let+ state = range(state) and key = range(key) in
+                lift[Slice Col Row](fxor).(state, key)
+        )
+    )
+    
+// inline    
+fn add_round_key_1 ['a](
+    fxor: fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a =
+    # reindex[Col Row | Slice](
+        range(
+            # let+ state = range[Col Row Slice](# reindex[Slice | Col Row](range(state))) 
+                and key = range[Col Row Slice](# reindex[Slice | Col Row](range(key))) 
+            in
+                fxor.(state, key)
+        )
+    )
+        
+
 fn add_round_key_reindexed['a](
     fxor: fn('a, 'a) -> 'a,
     state : Slice Col Row 'a,
@@ -390,6 +444,30 @@ fn round ['a] (
     let state = subcells.['a](fnot, fand, for, fxor, state) in
     let state = permbits.['a](state) in
     add_round_key.['a](fxor, state, key)
+    
+fn round_1 ['a](
+    fnot : fn('a) -> 'a,
+    fand : fn('a, 'a) -> 'a,
+    for : fn('a, 'a) -> 'a,
+    fxor : fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a = 
+    let state = subcells.['a](fnot, fand, for, fxor, state) in
+    let state = permbits.['a](state) in
+    add_round_key.['a](fxor, state, key)
+    
+fn round_bitslice ['a](
+    fnot : fn('a) -> 'a,
+    fand : fn('a, 'a) -> 'a,
+    for : fn('a, 'a) -> 'a,
+    fxor : fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a = 
+    let state = subcells_bitslice.['a](fnot, fand, for, fxor, state) in
+    let state = permbits_bitslice.['a](state) in
+    add_round_key_bitslice.['a](fxor, state, key)
     
 fn gift ['a] (
     fnot : fn('a) -> 'a,

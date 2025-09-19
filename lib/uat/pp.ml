@@ -14,6 +14,8 @@ and pp_term format = function
       Format.fprintf format "%a[%u]" pp_lterm' lterm index
   | TThunk { lterm } -> Format.fprintf format "# %a" pp_lterm' lterm
   | TLog { k; _ } -> pp_term' format k
+  | TLift { tys; term } ->
+      Format.fprintf format "lift[%a](%a)" pp_list_ty tys pp_term' term
   | TOperator operation -> pp_operation format operation
   | TFnCall { fn_name; ty_resolve; args } ->
       let pp_fn_name =

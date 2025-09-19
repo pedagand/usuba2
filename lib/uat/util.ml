@@ -84,6 +84,7 @@ module Term = struct
     | Ast.TFnCall { fn_name; ty_resolve; args } ->
         Some (fn_name, ty_resolve, args)
     | TLog { k = k, _; _ } -> as_function_call k
+    | TLift _ -> None
     | TFalse | TTrue | TVar _ | TFn _ | TLet _ | TLookup _ | TThunk _
     | TOperator _ ->
         None
@@ -91,6 +92,7 @@ module Term = struct
   let rec as_funk = function
     | Ast.TThunk { lterm } -> Some lterm
     | TLog { k = k, _; _ } -> as_funk k
+    | TLift _ -> None
     | TFalse | TTrue | TVar _ | TFn _ | TLet _ | TLookup _ | TOperator _
     | TFnCall _ ->
         None
@@ -98,6 +100,7 @@ module Term = struct
   let rec as_variable = function
     | Ast.TVar v -> Some v
     | TLog { k = k, _; _ } -> as_variable k
+    | TLift _ -> None
     | TFalse | TTrue | TFn _ | TLet _ | TLookup _ | TOperator _ | TFnCall _
     | TThunk _ ->
         None

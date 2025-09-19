@@ -10,6 +10,9 @@ let rec lu_term = function
   | TThunk { lterm } ->
       let lets, lterm = lu_lterm' lterm in
       (lets, Ast.TThunk { lterm })
+  | TLift { tys; term } ->
+      let lets, term = lu_term' term in
+      (lets, TLift { tys; term })
   | TLog { message; variables; k } ->
       let lets, k = lu_term' k in
       (lets, TLog { message; variables; k })

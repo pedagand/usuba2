@@ -33,6 +33,7 @@ and term =
   | TVar of TermIdent.t
   | TFn of { fn_ident : FnIdent.t }
   | TLet of { variable : TermIdent.t; term : term tys; k : term tys }
+  | TLift of { tys : TyDeclIdent.t list; term : term tys }
   | TLookup of { lterm : lterm ltys; index : int }
   | TThunk of { lterm : lterm ltys }
   | TLog of { message : string; variables : TermIdent.t tys list; k : term tys }

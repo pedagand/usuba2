@@ -309,7 +309,7 @@ module ReSimplify = struct
           (fun lterm -> (Ast.TThunk { lterm }, ty))
           (simplify_reindex' slhs srhs env lterm)
     | TFalse | TTrue | TFn _ | TLet _ | TLookup _ | TLog _ | TOperator _
-    | TFnCall _ ->
+    | TLift _ | TFnCall _ ->
         None
 
   and simplify_reindex_term' slhs srhs env term =
@@ -339,6 +339,9 @@ module ReSimplify = struct
     | TFnCall { fn_name; ty_resolve; args } ->
         let args = List.map (simplify_term' env) args in
         TFnCall { fn_name; ty_resolve; args }
+    | TLift { tys; term } ->
+        let term = simplify_term' env term in
+        TLift { tys; term }
     | (TFn _ | TFalse | TTrue) as e -> e
 
   and simplify_term' env term =

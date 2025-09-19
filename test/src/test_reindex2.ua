@@ -232,6 +232,7 @@ fn permbits ['a] (state : Col Row Slice 'a) Col Row Slice 'a =
         let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
         f.['a](slice)
     )
+    
 
 fn subcells ['a](
     fnot : fn('a) -> 'a,
@@ -274,7 +275,7 @@ fn subcells_3 ['a] (
     subcells.[Col Row 'a](lift_fnot, lift_fand, 
         lift_for, lift_fxor, state)
     
-// Simplify reindex
+// simplify reindex
 fn subcells_3 ['a] (
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,
@@ -282,12 +283,11 @@ fn subcells_3 ['a] (
     fxor : fn('a, 'a) -> 'a,
     state : Slice Col Row 'a
 ) Slice Col Row 'a = 
-# let+ slice = range(state) in 
-    subcells.[Col Row 'a](lift_fnot, lift_fand, 
-        lift_for, lift_fxor, lift_slice)
- 
-    
-// ? range [X.. ] reindex[Y | X..]
+    # let+ slice = range(state) in 
+        subcells.[Col Row 'a](lift_fnot, lift_fand, 
+            lift_for, lift_fxor, slice)
+        
+// ? range [X.. ] reindex[Y | X..] + lift
 fn subcells_2 ['a] (
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,
@@ -298,8 +298,8 @@ fn subcells_2 ['a] (
     # reindex[Col Row | Slice](
         reindex[Slice | Col Row](
             let+ slice = range(state) in 
-                subcells.[Col Row 'a](lift_fnot, lift_fand, 
-                    lift_for, lift_fxor, lift_slice)
+                subcells.[Col Row 'a](lift[Col Row](fnot), lift[Col Row](fand), 
+                    lift[Col Row](for), lift[Col Row](fxor), lift[Col Row](slice))
         )
     )
         

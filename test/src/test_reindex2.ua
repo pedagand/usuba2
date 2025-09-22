@@ -64,53 +64,60 @@ fn rev_rotate_3 ['a] (cols : Col Row 'a) Col Row 'a =
     let rows = circ(range(rows))[3] in
     # reindex[Row | Col](range(rows))
         
-// Simplify reindex
-fn permbits_bitslice ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
+
+fn permbits ['a] (state : Col Row Slice 'a) Col Row Slice 'a = 
     let permbits = # Slice(
         rev_rotate_1,
         rev_rotate_2,
         rev_rotate_3,
         rev_rotate_0
     ) in
-    # let+ f = range[Slice](permbits) and slice = range[Slice](state_) in 
+    let state = # reindex[Col Row | Slice](range(state)) in
+    # reindex[Slice | Col Row](
+        let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
         f.['a](slice)
-    
-// simplify range thunk
-fn permbits_3 ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
-    let permbits = # Slice(
-        rev_rotate_1,
-        rev_rotate_2,
-        rev_rotate_3,
-        rev_rotate_0
-    ) in
-    # reindex[Col Row | Slice](
-        reindex[Slice | Col Row](
-            let+ f = range[Slice](permbits) and slice = range[Slice](state_) in 
-                f.['a](slice)
-        )
     )
     
-// Maybe we can inline only if we manage to simplify the expression ?
-// Should we try to inline the perbits ?
     
-// simplify inline term 4
-fn permbits_2 ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
-    let permbits = # Slice(
-        rev_rotate_1,
-        rev_rotate_2,
-        rev_rotate_3,
-        rev_rotate_0
-    ) in
+// wrap reindex
+fn permbits_0 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
+    let state = # reindex[Slice | Col Row](range(state)) in
     # reindex[Col Row | Slice](
         range(
+            let permbits = # Slice(
+                rev_rotate_1,
+                rev_rotate_2,
+                rev_rotate_3,
+                rev_rotate_0
+            ) in
+            let state = # reindex[Col Row | Slice](range(state)) in
             # reindex[Slice | Col Row](
-                let+ f = range[Slice](permbits) and slice = range[Slice](state_) in 
+                let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
                 f.['a](slice)
             )
         )
     )
     
-// simplify inline term 3
+// Un-nested let
+fn permbits_1 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
+    let state = # reindex[Slice | Col Row](range(state)) in
+    let permbits = # Slice(
+        rev_rotate_1,
+        rev_rotate_2,
+        rev_rotate_3,
+        rev_rotate_0
+    ) in
+    let state = # reindex[Col Row | Slice](range(state)) in
+    # reindex[Col Row | Slice](
+        range(
+            # reindex[Slice | Col Row](
+                let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
+                f.['a](slice)
+        )
+    )
+)
+    
+// Inline term
 fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     let permbits = # Slice(
         rev_rotate_1,
@@ -118,25 +125,7 @@ fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
         rev_rotate_3,
         rev_rotate_0
     ) in
-    let state = state in
-    # reindex[Col Row | Slice](
-        range(
-            # reindex[Slice | Col Row](
-            let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
-            f.['a](slice)
-            )
-        )
-    )
-    
-// simplify inline term 2
-fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
-    let permbits = # Slice(
-        rev_rotate_1,
-        rev_rotate_2,
-        rev_rotate_3,
-        rev_rotate_0
-    ) in
-    let state = # range(state) in
+    let state = # reindex[Col Row | Slice](range(# reindex[Slice | Col Row](range(state)))) in
     # reindex[Col Row | Slice](
         range(
             # reindex[Slice | Col Row](
@@ -163,8 +152,8 @@ fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
             )
         )
     )
-        
-// Inline term
+    
+// simplify inline term 2
 fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     let permbits = # Slice(
         rev_rotate_1,
@@ -172,7 +161,7 @@ fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
         rev_rotate_3,
         rev_rotate_0
     ) in
-    let state = # reindex[Col Row | Slice](range(# reindex[Slice | Col Row](range(state)))) in
+    let state = # range(state) in
     # reindex[Col Row | Slice](
         range(
             # reindex[Slice | Col Row](
@@ -181,57 +170,71 @@ fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
             )
         )
     )
-        
-// Un-nested let
-fn permbits_1 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
-    let state = # reindex[Slice | Col Row](range(state)) in
+    
+// simplify inline term 3
+fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     let permbits = # Slice(
         rev_rotate_1,
         rev_rotate_2,
         rev_rotate_3,
         rev_rotate_0
     ) in
-    let state = # reindex[Col Row | Slice](range(state)) in
+    let state = state in
     # reindex[Col Row | Slice](
         range(
             # reindex[Slice | Col Row](
-                let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
-                f.['a](slice)
-        )
-    )
-)
-    
-fn permbits_0 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
-    let state = # reindex[Slice | Col Row](range(state)) in
-    # reindex[Col Row | Slice](
-        range(
-            let permbits = # Slice(
-                rev_rotate_1,
-                rev_rotate_2,
-                rev_rotate_3,
-                rev_rotate_0
-            ) in
-            let state = # reindex[Col Row | Slice](range(state)) in
-            # reindex[Slice | Col Row](
-                let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
-                f.['a](slice)
+            let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
+            f.['a](slice)
             )
         )
     )
     
     
-fn permbits ['a] (state : Col Row Slice 'a) Col Row Slice 'a = 
+// Maybe we can inline only if we manage to simplify the expression ?
+// Should we try to inline the perbits ?
+// simplify inline term 4
+fn permbits_2 ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
     let permbits = # Slice(
         rev_rotate_1,
         rev_rotate_2,
         rev_rotate_3,
         rev_rotate_0
     ) in
-    let state = # reindex[Col Row | Slice](range(state)) in
-    # reindex[Slice | Col Row](
-        let+ f = range[Slice](permbits) and slice = range[Slice](state) in 
-        f.['a](slice)
+    # reindex[Col Row | Slice](
+        range(
+            # reindex[Slice | Col Row](
+                let+ f = range[Slice](permbits) and slice = range[Slice](state_) in 
+                f.['a](slice)
+            )
+        )
     )
+
+// simplify range thunk
+fn permbits_3 ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
+    let permbits = # Slice(
+        rev_rotate_1,
+        rev_rotate_2,
+        rev_rotate_3,
+        rev_rotate_0
+    ) in
+    # reindex[Col Row | Slice](
+        reindex[Slice | Col Row](
+            let+ f = range[Slice](permbits) and slice = range[Slice](state_) in 
+                f.['a](slice)
+        )
+    )
+    
+// Simplify reindex
+fn permbits_bitslice ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
+    let permbits = # Slice(
+        rev_rotate_1,
+        rev_rotate_2,
+        rev_rotate_3,
+        rev_rotate_0
+    ) in
+    # let+ f = range[Slice](permbits) and slice = range[Slice](state_) in 
+        f.['a](slice)
+
     
 
 fn subcells ['a](
@@ -254,67 +257,29 @@ fn subcells ['a](
     let s2 = fxor.(s2, fand.(s0, s1)) in
     # Slice(s3, s1, s2, s0)
     
-  
-fn subcells_bitslice ['a](
-    fnot : fn(Col Row 'a) -> Col Row 'a,
-    fand : fn(Col Row 'a, Col Row 'a) -> Col Row 'a,
-    for : fn(Col Row 'a, Col Row 'a) -> Col Row  'a,
-    fxor : fn(Col Row 'a, Col Row 'a) -> Col Row 'a,
-    state : Slice Col Row 'a
-) Slice Col Row 'a = 
-    subcells.[Col Row 'a](fnot, fand, for, fxor, state)
-  
-// let+ - empty range 
-fn subcells_3 ['a] (
-    fnot : fn('a) -> 'a,
-    fand : fn('a, 'a) -> 'a,
-    for : fn('a, 'a) -> 'a,
-    fxor : fn('a, 'a) -> 'a,
-    state : Slice Col Row 'a
-) Slice Col Row 'a = 
-    subcells.[Col Row 'a](lift_fnot, lift_fand, 
-        lift_for, lift_fxor, state)
     
-// simplify reindex
-fn subcells_3 ['a] (
+fn subcells ['a] ( 
+    fnot : fn('a) -> 'a,
+    fand : fn('a, 'a) -> 'a,
+    for : fn('a, 'a) -> 'a,
+    fxor : fn('a, 'a) -> 'a,
+    state : Col Row Slice 'a
+) Col Row Slice 'a =
+    # let+ slice = range[Col Row](state) in 
+        subcells.['a](fnot, fand, for, fxor, slice)
+    
+fn subcells_reindexed ['a] (
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,
     for : fn('a, 'a) -> 'a,
     fxor : fn('a, 'a) -> 'a,
     state : Slice Col Row 'a
 ) Slice Col Row 'a = 
-    # let+ slice = range(state) in 
-        subcells.[Col Row 'a](lift_fnot, lift_fand, 
-            lift_for, lift_fxor, slice)
-        
-// ? range [X.. ] reindex[Y | X..] + lift
-fn subcells_2 ['a] (
-    fnot : fn('a) -> 'a,
-    fand : fn('a, 'a) -> 'a,
-    for : fn('a, 'a) -> 'a,
-    fxor : fn('a, 'a) -> 'a,
-    state : Slice Col Row 'a
-) Slice Col Row 'a = 
+    let state = # reindex[Slice | Col Row](range(state)) in
     # reindex[Col Row | Slice](
-        reindex[Slice | Col Row](
-            let+ slice = range(state) in 
-                subcells.[Col Row 'a](lift[Col Row](fnot), lift[Col Row](fand), 
-                    lift[Col Row](for), lift[Col Row](fxor), lift[Col Row](slice))
-        )
-    )
-        
- 
-// inline
-fn subcells_1 ['a] (
-    fnot : fn('a) -> 'a,
-    fand : fn('a, 'a) -> 'a,
-    for : fn('a, 'a) -> 'a,
-    fxor : fn('a, 'a) -> 'a,
-    state : Slice Col Row 'a
-) Slice Col Row 'a = 
-    # reindex[Col Row | Slice](
-        let+ slice = range[Col Row](# reindex[Slice | Col Row](range(state))) in 
+        range(# let+ slice = range[Col Row](state) in 
             subcells.['a](fnot, fand, for, fxor, slice)
+        )
     )
     
 // Simplify thunk range
@@ -331,86 +296,69 @@ fn subcells_0 ['a] (
             subcells.['a](fnot, fand, for, fxor, slice)
     )
     
-  
-fn subcells_reindexed ['a] (
+// inline
+fn subcells_1 ['a] (
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,
     for : fn('a, 'a) -> 'a,
     fxor : fn('a, 'a) -> 'a,
     state : Slice Col Row 'a
 ) Slice Col Row 'a = 
-    let state = # reindex[Slice | Col Row](range(state)) in
     # reindex[Col Row | Slice](
-        range(# let+ slice = range[Col Row](state) in 
+        let+ slice = range[Col Row](# reindex[Slice | Col Row](range(state))) in 
             subcells.['a](fnot, fand, for, fxor, slice)
-        )
     )
     
-fn subcells ['a] ( 
+
+// ? range [X.. ] reindex[Y | X..] + lift
+fn subcells_2 ['a] (
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,
     for : fn('a, 'a) -> 'a,
     fxor : fn('a, 'a) -> 'a,
-    state : Col Row Slice 'a
-) Col Row Slice 'a =
-    # let+ slice = range[Col Row](state) in 
-        subcells.['a](fnot, fand, for, fxor, slice)
-        
-
-fn add_round_key_bitslice ['a](
-    fxor: fn('a, 'a) -> 'a,
-    state : Slice Col Row 'a,
-    key : Slice Col Row 'a
+    state : Slice Col Row 'a
 ) Slice Col Row 'a = 
-    lift[Slice Col Row](fxor).(state, key)
-    
-// let+ - empty range
-fn add_round_key_4 ['a](
-    fxor: fn('a, 'a) -> 'a,
-    state : Slice Col Row 'a,
-    key : Slice Col Row 'a
-) Slice Col Row 'a =
-    lift[Slice Col Row](fxor).(state, key)
-    
-// simplify reindex
-fn add_round_key_3 ['a](
-    fxor: fn('a, 'a) -> 'a,
-    state : Slice Col Row 'a,
-    key : Slice Col Row 'a
-) Slice Col Row 'a =
-    # let+ state = range(state) and key = range(key) in
-        lift[Slice Col Row](fxor).(state, key)
-
-    
-// ? range [X.. ] reindex[Y | X..] + lift
-fn add_round_key_2 ['a](
-    fxor: fn('a, 'a) -> 'a,
-    state : Slice Col Row 'a,
-    key : Slice Col Row 'a
-) Slice Col Row 'a =
     # reindex[Col Row | Slice](
         reindex[Slice | Col Row](
-            let+ state = range(state) and key = range(key) in
-                lift[Slice Col Row](fxor).(state, key)
+            let+ slice = range(state) in 
+                subcells.[Col Row 'a](lift[Col Row](fnot), lift[Col Row](fand), 
+                    lift[Col Row](for), lift[Col Row](fxor), lift[Col Row](slice))
         )
     )
-    
-// inline    
-fn add_round_key_1 ['a](
-    fxor: fn('a, 'a) -> 'a,
-    state : Slice Col Row 'a,
-    key : Slice Col Row 'a
-) Slice Col Row 'a =
-    # reindex[Col Row | Slice](
-        range(
-            # let+ state = range[Col Row Slice](# reindex[Slice | Col Row](range(state))) 
-                and key = range[Col Row Slice](# reindex[Slice | Col Row](range(key))) 
-            in
-                fxor.(state, key)
-        )
-    )
+ 
+// simplify reindex
+fn subcells_3 ['a] (
+    fnot : fn('a) -> 'a,
+    fand : fn('a, 'a) -> 'a,
+    for : fn('a, 'a) -> 'a,
+    fxor : fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a
+) Slice Col Row 'a = 
+    # let+ slice = range(state) in 
+        subcells.[Col Row 'a](lift[Col Row](fnot), lift[Col Row](fand), 
+            lift[Col Row](for), lift[Col Row](fxor), lift[Col Row](slice))
         
+// let+ - empty range 
+fn subcells_bitslice ['a] (
+    fnot : fn('a) -> 'a,
+    fand : fn('a, 'a) -> 'a,
+    for : fn('a, 'a) -> 'a,
+    fxor : fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a
+) Slice Col Row 'a = 
+    subcells.[Col Row 'a](lift[Col Row](fnot), lift[Col Row](fand), 
+            lift[Col Row](for), lift[Col Row](fxor), lift[Col Row](slice))
+    
 
+
+fn add_round_key ['a](
+    fxor: fn('a, 'a) -> 'a,
+    state : Col Row Slice 'a,
+    key : Col Row Slice 'a
+) Col Row Slice 'a =
+    # let+ state = range[Col Row Slice](state) and key = range[Col Row Slice](key) in
+        fxor.(state, key)
+        
 fn add_round_key_reindexed['a](
     fxor: fn('a, 'a) -> 'a,
     state : Slice Col Row 'a,
@@ -424,14 +372,58 @@ fn add_round_key_reindexed['a](
                 fxor.(state, key)
         )
     )
-
-fn add_round_key ['a](
+        
+// inline    
+fn add_round_key_1 ['a](
     fxor: fn('a, 'a) -> 'a,
-    state : Col Row Slice 'a,
-    key : Col Row Slice 'a
-) Col Row Slice 'a =
-    # let+ state = range[Col Row Slice](state) and key = range[Col Row Slice](key) in
-        fxor.(state, key)
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a =
+    # reindex[Col Row | Slice](
+        range(
+            # let+ state = range[Col Row Slice](# reindex[Slice | Col Row](range(state))) 
+                and key = range[Col Row Slice](# reindex[Slice | Col Row](range(key))) 
+            in
+                fxor.(state, key)
+        )
+    )   
+    
+// ? range [X.. ] reindex[Y | X..] + lift
+fn add_round_key_2 ['a](
+    fxor: fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a =
+    # reindex[Col Row | Slice](
+        reindex[Slice | Col Row](
+            let+ state = range(state) and key = range(key) in
+                lift[Slice Col Row](fxor).(state, key)
+        )
+    )
+
+// simplify reindex
+fn add_round_key_3 ['a](
+    fxor: fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a =
+    # let+ state = range(state) and key = range(key) in
+        lift[Slice Col Row](fxor).(state, key)
+
+// let+ - empty range
+fn add_round_key_4 ['a](
+    fxor: fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a =
+    lift[Slice Col Row](fxor).(state, key)
+        
+fn add_round_key_bitslice ['a](
+    fxor: fn('a, 'a) -> 'a,
+    state : Slice Col Row 'a,
+    key : Slice Col Row 'a
+) Slice Col Row 'a = 
+    lift[Slice Col Row](fxor).(state, key)
     
 fn round ['a] (
     fnot : fn('a) -> 'a,
@@ -441,18 +433,6 @@ fn round ['a] (
     state : Col Row Slice 'a,
     key : Col Row Slice 'a
 ) Col Row Slice 'a = 
-    let state = subcells.['a](fnot, fand, for, fxor, state) in
-    let state = permbits.['a](state) in
-    add_round_key.['a](fxor, state, key)
-    
-fn round_1 ['a](
-    fnot : fn('a) -> 'a,
-    fand : fn('a, 'a) -> 'a,
-    for : fn('a, 'a) -> 'a,
-    fxor : fn('a, 'a) -> 'a,
-    state : Slice Col Row 'a,
-    key : Slice Col Row 'a
-) Slice Col Row 'a = 
     let state = subcells.['a](fnot, fand, for, fxor, state) in
     let state = permbits.['a](state) in
     add_round_key.['a](fxor, state, key)

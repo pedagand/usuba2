@@ -4,6 +4,8 @@ type Row = tuple[4]
 type Slice = tuple[4]
 type Keys = tuple[28]
 
+fn id ['a] (x : 'a) = x
+
 fn col_reverse ['a]  (cols : Col 'a) Col 'a = 
     # Col(
         range(cols)[3],
@@ -234,6 +236,31 @@ fn permbits_bitslice ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
     ) in
     # let+ f = range[Slice](permbits) and slice = range[Slice](state_) in 
         f.['a](slice)
+        
+        
+// Fix the first slice and compose the inv the fixed permutation to the normal
+// permutation for the slice i.
+// inv and o are fake construction for now        
+fn permbits_fmod_0 ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
+    let permbits = # Slice(
+        id,
+        inv(rev_rotate_1) o rev_rotate_2,
+        inv(rev_rotate_1) o rev_rotate_3,
+        inv(rev_rotate_1) o rev_rotate_0
+    ) in
+    # let+ f = range[Slice](permbits) and slice = range[Slice](state_) in 
+        f.['a](slice)
+        
+fn permbits_fmod_1 ['a](state_ : Slice Col Row 'a) Slice Col Row 'a =
+    let permbits = # Slice(
+        id,
+        inv(rev_rotate_1) o rev_rotate_2,
+        inv(rev_rotate_1) o rev_rotate_3,
+        inv(rev_rotate_1) o rev_rotate_0
+    ) in
+    # let+ f = range[Slice](permbits) and slice = range[Slice](state_) in 
+        f.['a](slice)
+
 
     
 

@@ -349,7 +349,7 @@ fn subcells_2 ['a] (
         reindex[Slice | Col Row](
             let+ slice = range(state) in 
                 subcells.[Col Row 'a](lift[Col Row](fnot), lift[Col Row](fand), 
-                    lift[Col Row](for), lift[Col Row](fxor), lift[Col Row](slice))
+                    lift[Col Row](for), lift[Col Row](fxor), slice)
         )
     )
  
@@ -363,7 +363,7 @@ fn subcells_3 ['a] (
 ) Slice Col Row 'a = 
     # let+ slice = range(state) in 
         subcells.[Col Row 'a](lift[Col Row](fnot), lift[Col Row](fand), 
-            lift[Col Row](for), lift[Col Row](fxor), lift[Col Row](slice))
+            lift[Col Row](for), lift[Col Row](fxor), slice)
         
 // let+ - empty range 
 fn subcells_bitslice ['a] (
@@ -374,7 +374,7 @@ fn subcells_bitslice ['a] (
     state : Slice Col Row 'a
 ) Slice Col Row 'a = 
     subcells.[Col Row 'a](lift[Col Row](fnot), lift[Col Row](fand), 
-            lift[Col Row](for), lift[Col Row](fxor), lift[Col Row](slice))
+            lift[Col Row](for), lift[Col Row](fxor), state)
     
 
 

@@ -10,10 +10,9 @@ module Ty = struct
 end
 
 module LTerm = struct
-  let range ty term = LRange { ty; term }
-  let cstr ty terms = LConstructor { ty; terms }
-  let reindex lhs rhs lterm = LReindex { lhs; rhs; lterm }
-  let circ term = LCirc term
+  let cstr ty terms = Constructor { ty; terms }
+  let reindex lhs rhs lterm = Reindex { lhs; rhs; lterm }
+  let circ term = Circ term
 
   let let_plus variable lterm ands k =
     let variable = TermIdent.fresh variable in
@@ -26,39 +25,38 @@ module LTerm = struct
     in
     let vand = List.map fst ands in
     let term = k variable vand in
-    LLetPlus { variable; lterm; ands; term }
+    LetPlus { variable; lterm; ands; term }
 end
 
 module Term = struct
-  let true' = TTrue
-  let false' = TFalse
-  let v variable = TVar variable
-  let vfn ?resolve fn_ident = TFn { fn_ident; tyresolve = resolve }
+  let true' = True
+  let false' = False
+  let v variable = Var variable
+  let vfn ?resolve fn_ident = Fn { fn_ident; tyresolve = resolve }
 
   let log message variables k =
     let k = k () in
-    TLog { message; variables; k }
+    Log { message; variables; k }
 
-  let log_ message variables k = TLog { message; variables; k }
+  let log_ message variables k = Log { message; variables; k }
 
   (* haha *)
-  let funk lterm = TThunk { lterm }
-  let lookup lterm index = TLookup { lterm; index }
+  let lookup lterm index = Lookup { lterm; index }
   let ( .%() ) = lookup
-  let let_ variable term k = TLet { variable; term; k }
+  let let_ variable term k = Let { variable; term; k }
 
   let let' variable term k =
     let variable = TermIdent.fresh variable in
-    TLet { variable; term; k = k variable }
+    Let { variable; term; k = k variable }
 
   let fn_call ?resolve fn_name args =
-    TFnCall { fn_name = Left fn_name; ty_resolve = resolve; args }
+    FnCall { fn_name = Left fn_name; ty_resolve = resolve; args }
 
   let v_call ?resolve variable_name args =
-    TFnCall { fn_name = Right variable_name; ty_resolve = resolve; args }
+    FnCall { fn_name = Right variable_name; ty_resolve = resolve; args }
 
-  let ( lxor ) lhs rhs = TOperator (OXor (lhs, rhs))
-  let ( land ) lhs rhs = TOperator (OAnd (lhs, rhs))
-  let ( lor ) lhs rhs = TOperator (OOr (lhs, rhs))
-  let lnot term = TOperator (ONot term)
+  let ( lxor ) lhs rhs = Operator (Xor (lhs, rhs))
+  let ( land ) lhs rhs = Operator (And (lhs, rhs))
+  let ( lor ) lhs rhs = Operator (Or (lhs, rhs))
+  let lnot term = Operator (Not term)
 end

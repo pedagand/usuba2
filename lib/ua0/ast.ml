@@ -35,56 +35,68 @@ type lty = {
   ty : (TyDeclIdent.t, TyIdent.t) ty;
 }
 
-type 'a operator =
-  | ONot of 'a  (** [!t] *)
-  | OXor of ('a * 'a)  (** [t1 ^ t2] *)
-  | OAnd of ('a * 'a)  (** [t1 & t2] *)
-  | OOr of ('a * 'a)  (** [t1 | t2] *)
+module Operator = struct
+  type 'a t =
+    | Not of 'a  (** [!t] *)
+    | Xor of ('a * 'a)  (** [t1 ^ t2] *)
+    | And of ('a * 'a)  (** [t1 & t2] *)
+    | Or of ('a * 'a)  (** [t1 | t2] *)
 
-type 't lterm =
-  | LLetPlus of {
-      variable : 'term_id;
-      lterm : 't lterm;
-      ands : ('term_id * 't lterm) list;
-      term : 't term;
-    }  (** [let+ x = l {and y1 = l1 and y2 = l2 ...}^? in t] *)
-  | LConstructor of { ty : 'ty_decl; terms : 't term list }
-      (** [F(t1, t2, ...)] *)
-  | LRange of { ty : 'ty_decl list; term : 't term }
-      (** [range[F1 F2 ...](t)] *)
-  | LReindex of { lhs : 'ty_decl list; rhs : 'ty_decl list; lterm : 't lterm }
+  let iter f = function
+    | Not a -> f a
+    | Xor (a, b) | And (a, b) | Or (a, b) ->
+        f a;
+        f b
+end
+
+type 't sterm =
+  | Var of 'term_id
+  | Fn of {
+      fn_ident : 'fn_ident;
+      tyresolve : ('ty_decl, 'ty_var) ty option (* XXX: remove *);
+    }  (** [&f] *)
+  | Lookup of { lterm : 't sterm; index : int }  (** [l[i]] *)
+  | Reindex of { lhs : 'ty_decl list; rhs : 'ty_decl list; lterm : 't sterm }
       (** [reindex[ F1 F2 ... | G1 G2 ... ](l) *)
-  | LCirc of 't lterm  (** [circ(l)] *)
-  constraint
-    't =
-    < ty_decl : 'ty_decl
-    ; fn_ident : 'fn_ident
-    ; ty_var : 'ty_var
-    ; term_id : 'term_id >
-
-and 't term =
-  | TFalse  (** [false] *)
-  | TTrue  (** [true] *)
-  | TVar of 'term_id
-  | TFn of { fn_ident : 'fn_ident; tyresolve : ('ty_decl, 'ty_var) ty option }
-      (** [&f] *)
-  | TLet of { variable : 'term_id; term : 't term; k : 't term }
-      (** [let x = t1 in t2] *)
-  | TLookup of { lterm : 't lterm; index : int }  (** [l[i]] *)
-  | TThunk of { lterm : 't lterm }  (** [#l] *)
-  | TLog of { message : string; variables : 'term_id list; k : 't term }
-  | TFnCall of {
+  | Circ of 't sterm  (** [circ(l)] *)
+  | FnCall of {
       fn_name : ('fn_ident, 'term_id) Either.t;
       ty_resolve : ('ty_decl, 'ty_var) ty option;
-      args : 't term list;
+      args : 't cterm list;
     }  (** [f.[ty](t1, t2, ...)] *)
-  | TOperator of 't term operator
+  | Operator of 't cterm Operator.t
+  | Ann of 't cterm * ('ty_decl, 'ty_var) ty
   constraint
     't =
     < ty_decl : 'ty_decl
     ; fn_ident : 'fn_ident
     ; ty_var : 'ty_var
     ; term_id : 'term_id >
+
+and 't cterm =
+  | False  (** [false] *)
+  | True  (** [true] *)
+  | Constructor of { ty : 'ty_decl; terms : 't cterm list }
+      (** [F(t1, t2, ...)] *)
+  (* XXX: [ty] not necessary here *)
+  | Let of { variable : 'term_id; term : 't sterm; k : 't cterm }
+      (** [let x = t1 in t2] *)
+  | LetPlus of {
+      variable : 'term_id;
+      lterm : 't sterm;
+      ands : ('term_id * 't sterm) list;
+      term : 't cterm;
+    }  (** [let+ x = l {and y1 = l1 and y2 = l2 ...}^? in t] *)
+  | Log of { message : string; variables : 'term_id list; k : 't cterm }
+  | Synth of 't sterm
+  constraint
+    't =
+    < ty_decl : 'ty_decl
+    ; fn_ident : 'fn_ident
+    ; ty_var : 'ty_var
+    ; term_id : 'term_id >
+
+type 'a term = 'a cterm
 
 type 't fn_declaration_ = {
   fn_name : 'fn_ident;

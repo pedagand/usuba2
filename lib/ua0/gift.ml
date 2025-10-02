@@ -1,3 +1,4 @@
+(*
 open Ast
 module Ty = Scstr.Ty
 module LTerm = Scstr.LTerm
@@ -7,6 +8,7 @@ let row = TyDeclIdent.fresh "row"
 let col = TyDeclIdent.fresh "col"
 let slice = TyDeclIdent.fresh "slice"
 let keys = TyDeclIdent.fresh "keys"
+
 
 let transpose, node_transpose =
   let transpose = FnIdent.fresh "transpose" in
@@ -586,3 +588,4 @@ let ast =
     node_round;
     node_gift;
   ]
+*)

@@ -1,3 +1,4 @@
+(*
 module BoolOperator = struct
   type t = BNot | BXor | BAnd | BOr
 
@@ -470,3 +471,4 @@ module Idents = struct
     let _, ast = List.fold_left_map node Env.empty modules in
     ast
 end
+*)

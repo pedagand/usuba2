@@ -1,3 +1,4 @@
+(*
 let rec find_fold_map f acc = function
   | [] -> Either.left acc
   | t :: q -> (
@@ -462,3 +463,4 @@ let eval ast fn_name ty_args args =
   ast
   |> find_fold_map (eval_node fn_name ty_args args) Env.init
   |> Either.find_right
+*)

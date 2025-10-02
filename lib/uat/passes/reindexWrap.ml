@@ -6,6 +6,7 @@ let ty_reindex lcstrs rcstrs ty =
   let cstrs_reindexed = Ua0.Util.Cstrs.reorder lcstrs rcstrs cstrs in
   List.fold_right (fun name ty -> Ua0.Ast.TyApp { name; ty }) cstrs_reindexed ty
 
+(*
 let reindex_term ty ty_new lcstrs rcstrs term =
   let lty = Util.Ty.lty [] ty in
   let lty_new = Util.Ty.lty [] ty_new in
@@ -69,3 +70,4 @@ let wr_function lcstrs rcstrs fn =
   in
   let return_type = ty_reindex rcstrs lcstrs return_type in
   Ast.{ fn_name; tyvars; parameters; return_type; body }
+*)

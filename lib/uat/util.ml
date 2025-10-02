@@ -23,8 +23,7 @@ module Ty = struct
     | TyVar v as t -> (
         match List.assoc_opt v types with None -> t | Some t -> t)
 
-  and instanciate_signature types =
-   fun { tyvars; parameters; return_type } ->
+  and instanciate_signature types { tyvars; parameters; return_type } =
     let types =
       match tyvars with None -> types | Some ty -> List.remove_assoc ty types
     in
@@ -77,6 +76,7 @@ module Lty = struct
   let range prefix = range [] prefix
 end
 
+(*
 module Term = struct
   let v ty term = (Ast.TVar term, ty)
 
@@ -158,7 +158,8 @@ module FunctionDecl = struct
     let parameters = List.map snd parameters in
     Ua0.Ast.{ tyvars; parameters; return_type }
 end
-
+*)
+(*
 module Eq = struct
   module Env = Map.Make (Ast.TermIdent)
 
@@ -211,10 +212,10 @@ module Eq = struct
 
   and operator env lhs rhs =
     match (lhs, rhs) with
-    | Ua0.Ast.ONot lhs, Ua0.Ast.ONot rhs -> term env lhs rhs
-    | OAnd (llhs, lrhs), OAnd (rlhs, rrhs)
-    | OOr (llhs, lrhs), OOr (rlhs, rrhs)
-    | OXor (llhs, lrhs), OXor (rlhs, rrhs) ->
+    | Ua0.Ast.Operator.Not lhs, Ua0.Ast.Operator.Not rhs -> term env lhs rhs
+    | And (llhs, lrhs), And (rlhs, rrhs)
+    | Or (llhs, lrhs), Or (rlhs, rrhs)
+    | Xor (llhs, lrhs), Xor (rlhs, rrhs) ->
         let* () = term env llhs rlhs in
         term env lrhs rrhs
     | _, _ -> false
@@ -271,3 +272,5 @@ module Prog = struct
       (function Ast.NFun fn -> Ast.NFun (pass fn) | Ast.NTy _ as e -> e)
       prog
 end
+
+*)

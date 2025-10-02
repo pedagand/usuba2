@@ -1,6 +1,6 @@
-let pp_list_ty = Format.pp_print_list Ast.TyDeclIdent.pp
+(*let pp_list_ty = Format.pp_print_list Ast.TyDeclIdent.pp
 
-let rec pp_term' format term = pp_term format (fst term)
+  let rec pp_term' format term = pp_term format (fst term)
 
 and pp_term format = function
   | Ast.TFalse -> Format.fprintf format "false"
@@ -33,39 +33,39 @@ and pp_term format = function
       Format.fprintf format "%a.%a(%a)" pp_fn_name fn_name pp_ty_resolve
         ty_resolve pp_args args
 
-and pp_operation format = function
-  | Ua0.Ast.ONot term -> Format.fprintf format "! %a" pp_term' term
-  | Ua0.Ast.OAnd (lhs, rhs) ->
-      Format.fprintf format "(%a & %a)" pp_term' lhs pp_term' rhs
-  | Ua0.Ast.OXor (lhs, rhs) ->
-      Format.fprintf format "(%a ^ %a)" pp_term' lhs pp_term' rhs
-  | Ua0.Ast.OOr (lhs, rhs) ->
-      Format.fprintf format "(%a | %a)" pp_term' lhs pp_term' rhs
+  and pp_operation format = function
+    | Ua0.Ast.ONot term -> Format.fprintf format "! %a" pp_term' term
+    | Ua0.Ast.OAnd (lhs, rhs) ->
+        Format.fprintf format "(%a & %a)" pp_term' lhs pp_term' rhs
+    | Ua0.Ast.OXor (lhs, rhs) ->
+        Format.fprintf format "(%a ^ %a)" pp_term' lhs pp_term' rhs
+    | Ua0.Ast.OOr (lhs, rhs) ->
+        Format.fprintf format "(%a | %a)" pp_term' lhs pp_term' rhs
 
-and pp_lterm' format lterm = pp_lterm format (fst lterm)
+  and pp_lterm' format lterm = pp_lterm format (fst lterm)
 
-and pp_lterm format = function
-  | Ast.LLetPlus { variable; lterm; ands; term } ->
-      let pp_and format (variable, lterm) =
-        Format.fprintf format "and %a = %a" Ast.TermIdent.pp variable pp_lterm'
-          lterm
-      in
-      let pp_ands = Format.pp_print_list pp_and in
-      Format.fprintf format "let+ %a = %a %a in %a" Ast.TermIdent.pp variable
-        pp_lterm' lterm pp_ands ands pp_term' term
-  | LConstructor { ty; terms } ->
-      let pp_terms =
-        Format.pp_print_list
-          ~pp_sep:(fun format () -> Format.fprintf format ", ")
-          pp_term'
-      in
-      Format.fprintf format "%a (%a)" Ast.TyDeclIdent.pp ty pp_terms terms
-  | LRange { ty; term } ->
-      Format.fprintf format "range[%a](%a)" pp_list_ty ty pp_term' term
-  | LReindex { lhs; rhs; lterm } ->
-      Format.fprintf format "reindex[%a | %a](%a)" pp_list_ty lhs pp_list_ty rhs
-        pp_lterm' lterm
-  | LCirc lterm -> Format.fprintf format "circ(%a)" pp_lterm' lterm
+  and pp_lterm format = function
+    | Ast.LLetPlus { variable; lterm; ands; term } ->
+        let pp_and format (variable, lterm) =
+          Format.fprintf format "and %a = %a" Ast.TermIdent.pp variable pp_lterm'
+            lterm
+        in
+        let pp_ands = Format.pp_print_list pp_and in
+        Format.fprintf format "let+ %a = %a %a in %a" Ast.TermIdent.pp variable
+          pp_lterm' lterm pp_ands ands pp_term' term
+    | LConstructor { ty; terms } ->
+        let pp_terms =
+          Format.pp_print_list
+            ~pp_sep:(fun format () -> Format.fprintf format ", ")
+            pp_term'
+        in
+        Format.fprintf format "%a (%a)" Ast.TyDeclIdent.pp ty pp_terms terms
+    | LRange { ty; term } ->
+        Format.fprintf format "range[%a](%a)" pp_list_ty ty pp_term' term
+    | LReindex { lhs; rhs; lterm } ->
+        Format.fprintf format "reindex[%a | %a](%a)" pp_list_ty lhs pp_list_ty rhs
+          pp_lterm' lterm
+    | LCirc lterm -> Format.fprintf format "circ(%a)" pp_lterm' lterm
 
 let pp_fn format fn =
   let Ast.{ fn_name; tyvars; parameters; return_type; body } = fn in
@@ -96,3 +96,4 @@ let pp_prog format =
   Format.pp_print_list
     ~pp_sep:(fun format () -> Format.fprintf format "\n\n")
     pp_node format
+*)

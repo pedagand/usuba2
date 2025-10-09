@@ -14,7 +14,7 @@ end
 module Gift = struct
   let round_constants =
     List.map
-      (Ex.Util.Bits.of_int ~pad:16)
+      (Ua0.Ex.Bits.of_int ~pad:16)
       [
         0x80_01L;
         0x80_03L;
@@ -192,7 +192,7 @@ module Gift = struct
     pp Format.err_formatter chars
 
   let uvconsts key =
-    let key = Ex.Util.ListUtil.chunks 16 key in
+    let key = Ua0.Ex.ListUtil.chunks 16 key in
     let us, vs = uvs key in
     let bottom = List.map (Ua0.Value.map' (Fun.const false)) us in
     let consts =
@@ -249,8 +249,8 @@ let eval ~double ast symbole keys texts =
   let kps =
     Seq.map2
       (fun k t ->
-        let k = Ex.Util.Common.file_to_bools k in
-        let t = Ex.Util.Common.file_to_bools t in
+        let k = Ua0.Ex.Common.file_to_bools k in
+        let t = Ua0.Ex.Common.file_to_bools t in
         (k, t))
       (Queue.to_seq keys) (Queue.to_seq texts)
   in

@@ -1,0 +1,5 @@
+(tests
+ (names test_typecheck)
+ (libraries ua0 uat alcotest fmt)
+ (deps
+  (source_tree src)))

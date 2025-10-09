@@ -5,12 +5,12 @@ module Pp = Ua0.Pp
 let err fmt = Format.kasprintf failwith fmt
 
 module Env = struct
-  module Vars = Map.Make (Ast.TermIdent)
-  module Fns = Map.Make (Ast.FnIdent)
-  module Types = Map.Make (Ast.TyDeclIdent)
+  module Vars = Map.Make (Ua0.Ast.TermIdent)
+  module Fns = Map.Make (Ua0.Ast.FnIdent)
+  module Types = Map.Make (Ua0.Ast.TyDeclIdent)
 
   type t = {
-    variables : Ast.ty Vars.t;
+    variables : Ua0.Ast.scoped Ua0.Ast.ty Vars.t;
     functions : Ua0.Ast.fn_declaration Fns.t;
     types : Ua0.Ast.ty_declaration Types.t;
   }
@@ -42,15 +42,16 @@ module Env = struct
         let () =
           Vars.iter
             (fun variable ty ->
-              Format.eprintf "%a : %a - " Ast.TermIdent.pp variable Pp.pp_ty ty)
+              Format.eprintf "%a : %a - " Ua0.Ast.TermIdent.pp variable Pp.pp_ty
+                ty)
             env.variables
         in
-        err "Unbound variable : %a" Ast.TermIdent.pp variable
+        err "Unbound variable : %a" Ua0.Ast.TermIdent.pp variable
     | Some ty -> ty
 
   let fn_declaration fn_name env =
     match Fns.find_opt fn_name env.functions with
-    | None -> err "Unbound fn : %a" Ast.FnIdent.pp fn_name
+    | None -> err "Unbound fn : %a" Ua0.Ast.FnIdent.pp fn_name
     | Some fn -> fn
 
   let arity name env =
@@ -59,7 +60,8 @@ module Env = struct
 
   let signature ~instance variable tyvar env =
     let pp =
-      Format.pp_print_either ~left:Ast.FnIdent.pp ~right:Ast.TermIdent.pp
+      Format.pp_print_either ~left:Ua0.Ast.FnIdent.pp
+        ~right:Ua0.Ast.TermIdent.pp
     in
     let signature =
       match variable with
@@ -69,8 +71,8 @@ module Env = struct
           match ty_variable variable env with
           | Ua0.Ast.Fun signature -> signature
           | ty ->
-              err "%a should be a function ty not %a" Ast.TermIdent.pp variable
-                Ua0.Pp.pp_ty ty)
+              err "%a should be a function ty not %a" Ua0.Ast.TermIdent.pp
+                variable Ua0.Pp.pp_ty ty)
     in
     match instance with
     | false -> signature
@@ -86,8 +88,9 @@ module Env = struct
         in
         (* Remove tyvars from signature since instance with remove free type variables.*)
         let signature = { signature with tyvars = None } in
-        Util.Ty.instanciate_signature tyvars signature
+        Ua0.Util.Ty.instanciate_signature tyvars signature
 
+  (*
   let rec range acc prefix ty env =
     match prefix with
     | [] -> { Ua0.Ast.t = List.rev acc; ty }
@@ -109,6 +112,7 @@ module Env = struct
         range ((name, size) :: acc) q ty env
 
   let range prefix = range [] prefix
+*)
 
   let rec skip eq to_skip list =
     match (to_skip, list) with
@@ -124,21 +128,23 @@ module Env = struct
     | t :: q ->
         let lhd, ltail = uncons re_lindex in
         let rhd, rtail = uncons re_rindex in
-        let is_head = Option.equal Ast.TyDeclIdent.equal (Some t) in
+        let is_head = Option.equal Ua0.Ast.TyDeclIdent.equal (Some t) in
 
         if is_head lhd then
-          let q = skip Ast.TyDeclIdent.equal ltail q in
+          let q = skip Ua0.Ast.TyDeclIdent.equal ltail q in
           re_rindex @ destination q re_lindex re_rindex
         else if is_head rhd then
-          let q = skip Ast.TyDeclIdent.equal rtail q in
+          let q = skip Ua0.Ast.TyDeclIdent.equal rtail q in
           re_lindex @ destination q re_rindex re_lindex
         else t :: destination q re_lindex re_rindex
 
+  (*
   let reindex ~lhs ~rhs lty =
-    let ty = Util.Ty.to_ty lty in
+    let ty = Ua0.Util.Ty.to_ty lty in
     let to_reindex, ty = Ua0.Util.Ty.ty_cstrs ty in
     let cstrs = destination to_reindex lhs rhs in
-    Util.Ty.lift cstrs ty
+    Ua0.Util.Ty.lift cstrs ty
+*)
 end
 
 exception IllTyped
@@ -206,15 +212,18 @@ and typesynth env = function
         signature.parameters args;
       signature.return_type
   | Reindex { lhs; rhs; lterm } ->
-      let ty = typesynth env lterm in
-      let cstrs, ty = Util.Ty.(prefix ty) in
+      ignore (lhs, rhs);
+      let _ty = typesynth env lterm in
+      failwith "NYI"
+  (*
+      let cstrs, ty = Ua0.Util.Ty.(prefix ty) in
       let cstrs_reindexed = Ua0.Util.Cstrs.reorder lhs rhs cstrs in
       let ty_new =
         List.fold_right
           (fun name ty -> Ua0.Ast.TyApp { name; ty })
           cstrs_reindexed ty
       in
-      ty_new
+      ty_new *)
   (*
       let ((_, lty') as lterm) = typecheck_lterm env lterm in
       let cstrs, ty = Util.Ty.(prefix @@ to_ty lty') in
@@ -225,15 +234,16 @@ and typesynth env = function
           cstrs_reindexed ty
       in
       (LReindex { lhs; rhs; lterm }, Util.Ty.lty [] ty_new) *)
-  | Circ term ->
+  | Circ _term -> failwith "NYI"
+  (*
       let ty = typesynth env term in
-      let lty = Util.Ty.lty [] ty in
+      let lty = Ua0.Util.Ty.lty [] ty in
       let wrapper =
         match Ua0.Util.Ty.hd lty with
         | None -> err "Not a tuple type"
         | Some hd -> hd
       in
-      Ua0.Ast.TyApp { name = wrapper; ty = Util.Ty.to_ty lty }
+      Ua0.Ast.TyApp { name = wrapper; ty = Util.Ty.to_ty lty } *)
   | Ann (tm, ty) ->
       typecheck env ty tm;
       ty

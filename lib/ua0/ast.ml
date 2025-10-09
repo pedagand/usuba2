@@ -17,23 +17,20 @@ module TyIdent = Ident ()
 module TyDeclIdent = Ident ()
 module FnIdent = Ident ()
 
-type ('ty_decl, 'ty_var) ty =
-  | TyBool  (** [bool] *)
-  | TyVar of 'ty_var  (** ['a] *)
-  | TyApp of { name : 'ty_decl; ty : ('ty_decl, 'ty_var) ty }  (** [tname ty] *)
-  | TyFun of ('ty_decl, 'ty_var) signature
+type 't ty =
+  | Bool  (** [bool] *)
+  | Var of 'ty_var  (** ['a] *)
+  | App of { name : 'ty_decl; ty : 't ty }  (** [tname ty] *)
+  | Fun of 't signature
+  constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
 
-and ('ty_decl, 'ty_var) signature = {
+and 't signature = {
   tyvars : 'ty_var option;
-  parameters : ('ty_decl, 'ty_var) ty list;
-  return_type : ('ty_decl, 'ty_var) ty;
+  parameters : 't ty list;
+  return_type : 't ty;
 }
+  constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
 (** [['a]^? (ty1, ty2, ...) -> ty] *)
-
-type lty = {
-  t : (TyDeclIdent.t * int) list;
-  ty : (TyDeclIdent.t, TyIdent.t) ty;
-}
 
 module Operator = struct
   type 'a t =
@@ -50,22 +47,20 @@ module Operator = struct
 end
 
 type 't sterm =
-  | Var of 'term_id
-  | Fn of {
-      fn_ident : 'fn_ident;
-      tyresolve : ('ty_decl, 'ty_var) ty option (* XXX: remove *);
-    }  (** [&f] *)
+  | Var of 'term_id  (** [x ] *)
+  | Fn of { fn_ident : 'fn_ident; tyresolve : 't ty option (* XXX: remove *) }
+      (** [&f] *)
   | Lookup of { lterm : 't sterm; index : int }  (** [l[i]] *)
   | Reindex of { lhs : 'ty_decl list; rhs : 'ty_decl list; lterm : 't sterm }
       (** [reindex[ F1 F2 ... | G1 G2 ... ](l) *)
   | Circ of 't sterm  (** [circ(l)] *)
   | FnCall of {
       fn_name : ('fn_ident, 'term_id) Either.t;
-      ty_resolve : ('ty_decl, 'ty_var) ty option;
+      ty_resolve : 't ty option;
       args : 't cterm list;
     }  (** [f.[ty](t1, t2, ...)] *)
   | Operator of 't cterm Operator.t
-  | Ann of 't cterm * ('ty_decl, 'ty_var) ty
+  | Ann of 't cterm * 't ty
   constraint
     't =
     < ty_decl : 'ty_decl
@@ -101,8 +96,8 @@ type 'a term = 'a cterm
 type 't fn_declaration_ = {
   fn_name : 'fn_ident;
   tyvars : 'ty_var option;
-  parameters : ('term_id * ('ty_decl, 'ty_var) ty) list;
-  return_type : ('ty_decl, 'ty_var) ty;
+  parameters : ('term_id * 't ty) list;
+  return_type : 't ty;
   body : 't term;
 }
   constraint

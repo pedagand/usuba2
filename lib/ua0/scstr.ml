@@ -1,12 +1,12 @@
 open Ast
 
 module Ty = struct
-  let bool = TyBool
-  let v v = TyVar v
-  let app name ty = TyApp { name; ty }
+  let bool = Bool
+  let v v = Var v
+  let app name ty = App { name; ty }
 
   let fn ?tyvars parameters return_type =
-    TyFun { tyvars; parameters; return_type }
+    Fun { tyvars; parameters; return_type }
 end
 
 module LTerm = struct

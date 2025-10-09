@@ -67,7 +67,7 @@ module Env = struct
           env |> fn_declaration fn_ident |> Ua0.Util.FunctionDecl.signature
       | Either.Right variable -> (
           match ty_variable variable env with
-          | Ua0.Ast.TyFun signature -> signature
+          | Ua0.Ast.Fun signature -> signature
           | ty ->
               err "%a should be a function ty not %a" Ast.TermIdent.pp variable
                 Ua0.Pp.pp_ty ty)
@@ -148,9 +148,9 @@ let tl _ty = failwith "NYI"
 
 let rec typecheck env ty tm =
   match (ty, tm) with
-  | Ua0.Ast.TyBool, Ua0.Ast.False -> ()
-  | TyBool, True -> ()
-  | TyApp { name; ty }, Constructor { ty = name'; terms } ->
+  | Ua0.Ast.Bool, Ua0.Ast.False -> ()
+  | Bool, True -> ()
+  | App { name; ty }, Constructor { ty = name'; terms } ->
       ignore ty;
       assert (name = name');
       (* XXX: remove `ty` from `LConstructor` *)
@@ -159,7 +159,7 @@ let rec typecheck env ty tm =
       let ty = typesynth env term in
       let env = Env.add_variable variable ty env in
       typecheck env ty0 k
-  | TyApp { name; ty }, LetPlus { variable; lterm; ands; term } ->
+  | App { name; ty }, LetPlus { variable; lterm; ands; term } ->
       let ty_var = lterm |> typesynth env |> take_app name in
       let ty_ands =
         List.map
@@ -185,7 +185,7 @@ and typesynth env = function
       let signature =
         Env.signature ~instance:false (Left fn_ident) tyresolve env
       in
-      TyFun signature
+      Fun signature
   | Lookup { lterm; index } ->
       let ty = typesynth env lterm in
       (* XXX: check indexing *)
@@ -239,8 +239,8 @@ and typesynth env = function
       ty
 
 and typesynth_operator env op =
-  Ua0.Ast.Operator.iter (typecheck env Ua0.Ast.TyBool) op;
-  Ua0.Ast.TyBool
+  Ua0.Ast.Operator.iter (typecheck env Ua0.Ast.Bool) op;
+  Ua0.Ast.Bool
 
 let typecheck_function env fn =
   let Ua0.Ast.{ fn_name; tyvars; parameters; return_type; body } = fn in

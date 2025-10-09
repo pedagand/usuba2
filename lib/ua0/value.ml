@@ -99,11 +99,7 @@ module Ty = struct
             if Ast.TyDeclIdent.equal t name then remove_prefix q ty else None)
 end
 
-type t =
-  | VBool of bool
-  | VArray of t Array.t
-  | VFunction of
-      Ast.FnIdent.t * (Ast.TyDeclIdent.t, Ast.TyIdent.t) Ast.ty option
+type t = VBool of bool | VArray of t Array.t | VFunction of Ast.FnIdent.t
 
 let rec pp format = function
   | VBool true -> Format.fprintf format "1"
@@ -111,8 +107,7 @@ let rec pp format = function
   | VArray array ->
       let pp_sep format () = Format.pp_print_string format ", " in
       Format.fprintf format "[%a]" (Format.pp_print_array ~pp_sep pp) array
-  | VFunction (fn, tys) ->
-      Format.fprintf format "%a%a" Ast.FnIdent.pp fn Pp.pp_ty_opt_args tys
+  | VFunction fn -> Format.fprintf format "%a" Ast.FnIdent.pp fn
 
 let true' = VBool true
 let false' = VBool false
@@ -155,7 +150,7 @@ let as_array = function
   | VBool _ | VFunction _ -> None
 
 let as_function = function
-  | VFunction (fn_ident, e) -> Some (fn_ident, e)
+  | VFunction fn_ident -> Some fn_ident
   | VBool _ | VArray _ -> None
 
 let rec split2 lhs =

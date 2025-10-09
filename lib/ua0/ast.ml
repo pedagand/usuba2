@@ -72,7 +72,7 @@ and 't cterm =
   | False  (** [false] *)
   | True  (** [true] *)
   | Constructor of { ty : 'ty_decl; terms : 't cterm list }
-      (** [F(t1, t2, ...)] *)
+      (** [[t1; t2; ...]] *)
   (* XXX: [ty] not necessary here *)
   | Let of { variable : 'term_id; term : 't sterm; k : 't cterm }
       (** [let x = t1 in t2] *)
@@ -83,7 +83,7 @@ and 't cterm =
       term : 't cterm;
     }  (** [let+ x = l {and y1 = l1 and y2 = l2 ...}^? in t] *)
   | Log of { message : string; variables : 'term_id list; k : 't cterm }
-  | Synth of 't sterm
+  | Synth of 't sterm  (** [n] *)
   constraint
     't =
     < ty_decl : 'ty_decl

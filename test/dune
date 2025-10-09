@@ -1,5 +1,0 @@
-(tests
- (names test_reindexWrap)
- (libraries ua0 uat alcotest fmt)
- (deps
-  (source_tree src)))

@@ -1,13 +1,3 @@
-module TermIdent = struct
-  let prepend prefix base =
-    Ast.TermIdent.(fresh @@ Format.asprintf "%s%a" prefix pp base)
-end
-
-module FnIdent = struct
-  let prepend prefix base =
-    Ast.FnIdent.(fresh @@ Format.asprintf "%s%a" prefix pp base)
-end
-
 module Cstrs = struct
   (* Should be here : More in list util equivalent. *)
   let rec remove_prefix f p list =

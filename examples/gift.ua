@@ -12,8 +12,6 @@ fn col_reverse ['a]  (cols : Col 'a) Col 'a =
         cols[0]
     ]
 
-    
-
 fn transpose ['a] (cols : Col Row 'a) Row Col 'a = 
     Row[
         Col[
@@ -41,8 +39,6 @@ fn transpose ['a] (cols : Col Row 'a) Row Col 'a =
             cols[3][3] 
         ]
     ] 
-
-    
 
 fn rev_rotate_0['a](cols : Col Row 'a) Col Row 'a = 
     let cols = col_reverse.[Row 'a](cols) in

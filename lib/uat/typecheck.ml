@@ -192,18 +192,14 @@ and typesynth env = function
         Env.signature ~instance:false (Left fn_ident) tyresolve env
       in
       Fun signature
-  | Lookup { lterm; index } ->
+  | Lookup { lterm; index } -> (
       let ty = typesynth env lterm in
-      (* XXX: check indexing *)
       ignore index;
-      tl ty
-      (*
-      let ty =
-        match Ua0.Util.Ty.(elt @@ to_ty ty) with
-        | None -> err "lookup: not a tuple type"
-        | Some ty -> ty
-      in
-      (TLookup { lterm; index }, ty) *)
+      match ty with
+      | App { ty; _ } ->
+          (* XXX: check indexing *)
+          ty
+      | _ -> err "lookup: not a type application")
   | Operator operator -> typesynth_operator env operator
   | FnCall { fn_name; ty_resolve; args } ->
       let signature = Env.signature ~instance:true fn_name ty_resolve env in

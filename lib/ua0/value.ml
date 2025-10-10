@@ -76,14 +76,18 @@ module Ty = struct
           (fun (name, size) ty -> TNamedTuple { name; size; ty })
           t ty
 
-  let prefix = function
+  (* let prefix = function
     | Lty { t = (ty, _) :: _; ty = _ }
     | Lty { t = []; ty = TNamedTuple { name = ty; _ } } ->
         Some ty
-    | _ -> None
+    | _ -> None *)
+
+  let cstr = function
+    | TNamedTuple { name; _ } -> Some name
+    | TBool | TFun _ | TVar _ -> None
 
   let view = function Lty { t; _ } -> t
-  let nest = function Lty { t; _ } -> List.length t
+  let length_view = function Lty { t; _ } -> List.length t
 
   let elt = function
     | TNamedTuple { ty; _ } -> Some ty

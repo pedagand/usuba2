@@ -1,25 +1,23 @@
 (*[@@@warning "-27"]*)
 
-module Pp = Ua0.Pp
-
 let err fmt = Format.kasprintf failwith fmt
 
 module Env = struct
-  module Vars = Map.Make (Ua0.Ast.TermIdent)
-  module Fns = Map.Make (Ua0.Ast.FnIdent)
-  module Types = Map.Make (Ua0.Ast.TyDeclIdent)
+  module Vars = Map.Make (Ast.TermIdent)
+  module Fns = Map.Make (Ast.FnIdent)
+  module Types = Map.Make (Ast.TyDeclIdent)
 
   type t = {
-    variables : Ua0.Ast.scoped Ua0.Ast.ty Vars.t;
-    functions : Ua0.Ast.fn_declaration Fns.t;
-    types : Ua0.Ast.ty_declaration Types.t;
+    variables : Ast.scoped Ast.ty Vars.t;
+    functions : Ast.fn_declaration Fns.t;
+    types : Ast.ty_declaration Types.t;
   }
 
   let empty =
     { variables = Vars.empty; functions = Fns.empty; types = Types.empty }
 
   let add_function fn env =
-    let functions = Fns.add fn.Ua0.Ast.fn_name fn env.functions in
+    let functions = Fns.add fn.Ast.fn_name fn env.functions in
     { env with functions }
 
   let add_variable variable ty env =
@@ -27,7 +25,7 @@ module Env = struct
     { env with variables }
 
   let add_type ty_decl env =
-    let types = Types.add ty_decl.Ua0.Ast.name ty_decl env.types in
+    let types = Types.add ty_decl.Ast.name ty_decl env.types in
     { env with types }
 
   let clear_variables env = { env with variables = Vars.empty }
@@ -42,16 +40,15 @@ module Env = struct
         let () =
           Vars.iter
             (fun variable ty ->
-              Format.eprintf "%a : %a - " Ua0.Ast.TermIdent.pp variable Pp.pp_ty
-                ty)
+              Format.eprintf "%a : %a - " Ast.TermIdent.pp variable Pp.pp_ty ty)
             env.variables
         in
-        err "Unbound variable : %a" Ua0.Ast.TermIdent.pp variable
+        err "Unbound variable : %a" Ast.TermIdent.pp variable
     | Some ty -> ty
 
   let fn_declaration fn_name env =
     match Fns.find_opt fn_name env.functions with
-    | None -> err "Unbound fn : %a" Ua0.Ast.FnIdent.pp fn_name
+    | None -> err "Unbound fn : %a" Ast.FnIdent.pp fn_name
     | Some fn -> fn
 
   let arity name env =
@@ -60,19 +57,18 @@ module Env = struct
 
   let signature ~instance variable tyvar env =
     let pp =
-      Format.pp_print_either ~left:Ua0.Ast.FnIdent.pp
-        ~right:Ua0.Ast.TermIdent.pp
+      Format.pp_print_either ~left:Ast.FnIdent.pp ~right:Ast.TermIdent.pp
     in
     let signature =
       match variable with
       | Either.Left fn_ident ->
-          env |> fn_declaration fn_ident |> Ua0.Util.FunctionDecl.signature
+          env |> fn_declaration fn_ident |> Util.FunctionDecl.signature
       | Either.Right variable -> (
           match ty_variable variable env with
-          | Ua0.Ast.Fun signature -> signature
+          | Ast.Fun signature -> signature
           | ty ->
-              err "%a should be a function ty not %a" Ua0.Ast.TermIdent.pp
-                variable Ua0.Pp.pp_ty ty)
+              err "%a should be a function ty not %a" Ast.TermIdent.pp variable
+                Pp.pp_ty ty)
     in
     match instance with
     | false -> signature
@@ -88,16 +84,16 @@ module Env = struct
         in
         (* Remove tyvars from signature since instance with remove free type variables.*)
         let signature = { signature with tyvars = None } in
-        Ua0.Util.Ty.instanciate_signature tyvars signature
+        Util.Ty.instanciate_signature tyvars signature
 
   (*
   let rec range acc prefix ty env =
     match prefix with
-    | [] -> { Ua0.Ast.t = List.rev acc; ty }
+    | [] -> { Ast.t = List.rev acc; ty }
     | t :: q ->
         let name, size, ty =
           match ty with
-          | Ua0.Ast.TyApp { name; ty } ->
+          | Ast.TyApp { name; ty } ->
               let size = arity name env in
               (name, size, ty)
           | TyBool | TyFun _ | TyVar _ -> err "Not a named tuple."
@@ -128,22 +124,22 @@ module Env = struct
     | t :: q ->
         let lhd, ltail = uncons re_lindex in
         let rhd, rtail = uncons re_rindex in
-        let is_head = Option.equal Ua0.Ast.TyDeclIdent.equal (Some t) in
+        let is_head = Option.equal Ast.TyDeclIdent.equal (Some t) in
 
         if is_head lhd then
-          let q = skip Ua0.Ast.TyDeclIdent.equal ltail q in
+          let q = skip Ast.TyDeclIdent.equal ltail q in
           re_rindex @ destination q re_lindex re_rindex
         else if is_head rhd then
-          let q = skip Ua0.Ast.TyDeclIdent.equal rtail q in
+          let q = skip Ast.TyDeclIdent.equal rtail q in
           re_lindex @ destination q re_rindex re_lindex
         else t :: destination q re_lindex re_rindex
 
   (*
   let reindex ~lhs ~rhs lty =
-    let ty = Ua0.Util.Ty.to_ty lty in
-    let to_reindex, ty = Ua0.Util.Ty.ty_cstrs ty in
+    let ty = Util.Ty.to_ty lty in
+    let to_reindex, ty = Util.Ty.ty_cstrs ty in
     let cstrs = destination to_reindex lhs rhs in
-    Ua0.Util.Ty.lift cstrs ty
+    Util.Ty.lift cstrs ty
 *)
 end
 
@@ -154,7 +150,7 @@ let tl _ty = failwith "NYI"
 
 let rec typecheck env ty tm =
   match (ty, tm) with
-  | Ua0.Ast.Bool, Ua0.Ast.False -> ()
+  | Ast.Bool, Ast.False -> ()
   | Bool, True -> ()
   | App { name; ty }, Constructor { ty = name'; terms } ->
       ignore ty;
@@ -187,10 +183,8 @@ let rec typecheck env ty tm =
 
 and typesynth env = function
   | Var variable -> Env.ty_variable variable env
-  | Fn { fn_ident; tyresolve } ->
-      let signature =
-        Env.signature ~instance:false (Left fn_ident) tyresolve env
-      in
+  | Fn { fn_ident } ->
+      let signature = Env.signature ~instance:false (Left fn_ident) None env in
       Fun signature
   | Lookup { lterm; index } -> (
       let ty = typesynth env lterm in
@@ -212,44 +206,44 @@ and typesynth env = function
       let _ty = typesynth env lterm in
       failwith "NYI"
   (*
-      let cstrs, ty = Ua0.Util.Ty.(prefix ty) in
-      let cstrs_reindexed = Ua0.Util.Cstrs.reorder lhs rhs cstrs in
+      let cstrs, ty = Util.Ty.(prefix ty) in
+      let cstrs_reindexed = Util.Cstrs.reorder lhs rhs cstrs in
       let ty_new =
         List.fold_right
-          (fun name ty -> Ua0.Ast.TyApp { name; ty })
+          (fun name ty -> Ast.TyApp { name; ty })
           cstrs_reindexed ty
       in
       ty_new *)
   (*
       let ((_, lty') as lterm) = typecheck_lterm env lterm in
       let cstrs, ty = Util.Ty.(prefix @@ to_ty lty') in
-      let cstrs_reindexed = Ua0.Util.Cstrs.reorder lhs rhs cstrs in
+      let cstrs_reindexed = Util.Cstrs.reorder lhs rhs cstrs in
       let ty_new =
         List.fold_right
-          (fun name ty -> Ua0.Ast.TyApp { name; ty })
+          (fun name ty -> Ast.TyApp { name; ty })
           cstrs_reindexed ty
       in
       (LReindex { lhs; rhs; lterm }, Util.Ty.lty [] ty_new) *)
   | Circ _term -> failwith "NYI"
   (*
       let ty = typesynth env term in
-      let lty = Ua0.Util.Ty.lty [] ty in
+      let lty = Util.Ty.lty [] ty in
       let wrapper =
-        match Ua0.Util.Ty.hd lty with
+        match Util.Ty.hd lty with
         | None -> err "Not a tuple type"
         | Some hd -> hd
       in
-      Ua0.Ast.TyApp { name = wrapper; ty = Util.Ty.to_ty lty } *)
+      Ast.TyApp { name = wrapper; ty = Util.Ty.to_ty lty } *)
   | Ann (tm, ty) ->
       typecheck env ty tm;
       ty
 
 and typesynth_operator env op =
-  Ua0.Ast.Operator.iter (typecheck env Ua0.Ast.Bool) op;
-  Ua0.Ast.Bool
+  Ast.Operator.iter (typecheck env Ast.Bool) op;
+  Ast.Bool
 
 let typecheck_function env fn =
-  let Ua0.Ast.{ fn_name; tyvars; parameters; return_type; body } = fn in
+  let Ast.{ fn_name; tyvars; parameters; return_type; body } = fn in
   ignore fn_name;
   ignore tyvars;
   let env =
@@ -267,8 +261,8 @@ let typecheck_function env fn =
 let add_typedecl = Fun.flip Env.add_type
 
 let of_ua0_node env = function
-  | Ua0.Ast.NFun fn_declaration -> typecheck_function env fn_declaration
-  | Ua0.Ast.NTy type_decl -> add_typedecl env type_decl
+  | Ast.NFun fn_declaration -> typecheck_function env fn_declaration
+  | Ast.NTy type_decl -> add_typedecl env type_decl
 
 let of_ua0_prog env = List.fold_left of_ua0_node env
 let of_ua0_prog = of_ua0_prog Env.empty

@@ -177,7 +177,7 @@ let rec typecheck env ty tm =
   | ty0, Log { message = _; variables = _; k } -> typecheck env ty0 k
   | ty0, Synth t ->
       let ty = typesynth env t in
-      if ty != ty0 then raise IllTyped;
+      if not (Util.Ty.equal ty ty0) then raise IllTyped;
       ()
   | _, _ -> failwith "Ill-typed"
 

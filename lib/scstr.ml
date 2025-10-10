@@ -32,6 +32,8 @@ module LTerm = struct
 end
 
 module Term = struct
+  let s sterm = Synth sterm
+  let ann tm ty = Ann (tm, ty)
   let true' = True
   let false' = False
   let v variable = Var variable

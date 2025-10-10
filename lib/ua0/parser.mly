@@ -1,5 +1,10 @@
 %{
     open Ast
+    
+    let fail_at start end' fmt = 
+        let range = MenhirLib.LexerUtil.range (start, end') in
+        Format.kasprintf failwith ( "%s" ^^ fmt ) range
+    ;;
 %}
 
 %token <string> Identifier
@@ -7,8 +12,8 @@
 %token <string> TypeCstrIdentifier
 %token <int> IntegerLitteral
 %token LPARENT RPARENT LBRACE RBRACE LSQBRACE RSQBRACE
-%token EQUAL DOT COMMA PIPE HASH CARET EXCLAMATION COLON
-%token AND LET LET_PLUS IN RANGE REINDEX CIRC FOLD
+%token EQUAL DOT COMMA PIPE CARET EXCLAMATION COLON
+%token AND LET LET_PLUS IN REINDEX CIRC FOLD
 %token TRUE FALSE BOOL
 %token AMPERSAND MINUS_SUP
 %token FUNCTION TYPE TUPLE
@@ -45,6 +50,9 @@
 
 module_:
     | list(node) EOF { $1 }
+    | error {
+        fail_at $startpos $endpos "parser error"
+    }
     
 node:
     | type_decl { Ast.NTy $1 }
@@ -60,19 +68,19 @@ type_decl:
 fn_decl:
     | FUNCTION fn_name=Identifier
         tyvars=option(sqrbracketed(TypeVariable)) parameters=parenthesis(separated_list(COMMA, splitted(Identifier, COLON, ty)))
-        return_type=ty EQUAL body=term
+        return_type=ty EQUAL body=cterm
     { 
         {tyvars; fn_name; parameters; return_type; body }
     }
     
 ty:
     | name=TypeCstrIdentifier ty=ty {
-        TyApp {name; ty}
+        App {name; ty}
     }
-    | TypeVariable { TyVar $1 }
-    | BOOL { TyBool }
+    | TypeVariable { Var $1 }
+    | BOOL { Bool }
     | FUNCTION signature {
-        TyFun $2
+        Fun $2
     }
     
 %inline signature:
@@ -87,10 +95,79 @@ ty:
         fn_name, ty_resolve 
     }
     
-term:
+%inline identifier_typed:
+    | splitted(Identifier, COLON, ty) { $1 }
+    
+sterm:
+    | Identifier { Var $1 } 
+    | AMPERSAND fn_ident=Identifier { Fn {fn_ident} }
+    | lterm=sterm index=sqrbracketed(IntegerLitteral) {
+        Lookup { lterm; index}
+    }
+    | REINDEX ls=sqrbracketed(splitted(
+        nonempty_list(TypeCstrIdentifier), PIPE,
+        nonempty_list(TypeCstrIdentifier)
+    )) lterm=parenthesis(sterm) {
+        let (lhs, rhs) = ls in
+        Reindex {lhs; rhs; lterm}
+    }
+    | CIRC lterm=parenthesis(sterm) {
+        Circ lterm
+    }
+    | fn=fn_identifier args=parenthesis(separated_list(COMMA, cterm)) {
+        let fn_name, ty_resolve = fn in
+        FnCall {fn_name = Either.Left fn_name; ty_resolve; args}
+    }
+    | operator {
+        Ast.Operator $1
+    }
+    | c_ty=parenthesis(splitted(cterm, COLON, ty)) {
+        let cterm, ty = c_ty in
+        Ann (cterm, ty)
+    }
+    | FOLD i=sqrbracketed(IntegerLitteral) 
+        fi=parenthesis(fi=fn_identifier const_args=option(parenthesis(separated_list(COMMA, cterm))) {fi, const_args} ) 
+        args10=parenthesis(splitted(sterm, COMMA, sterm))
+    {
+        let acc, lterm = args10 in
+        let (fn_name, ty_resolve), const_args = fi in
+        let const_args = Option.fold ~none:[] ~some:Fun.id const_args in
+        List.init i Fun.id |> List.fold_left (fun acc i -> 
+            let args = const_args @ (Synth acc) :: (Synth (Lookup {lterm; index = i})) :: [] in
+            FnCall {fn_name = Either.Left fn_name; ty_resolve; args }
+        ) acc 
+    }
+    
+cterm:
+    | FALSE { False }
+    | TRUE { True }
+    | ty=TypeCstrIdentifier terms=sqrbracketed(separated_nonempty_list(COMMA, cterm)) {
+      Constructor { ty; terms}
+    }
+    | LET variable=Identifier EQUAL term=sterm IN k=cterm {
+        Let {variable; term; k}
+    }
+    | LET ty_var=identifier_typed EQUAL cterm=cterm IN k=cterm {
+        let variable, ty = ty_var in 
+        Let {variable; term = Ann(cterm, ty); k }
+    }
+    | LET_PLUS variable=Identifier EQUAL lterm=sterm 
+        ands=list(preceded(AND, splitted(Identifier, EQUAL, sterm))) 
+        IN term=cterm {
+            LetPlus { variable; lterm; ands; term }
+    }
+    | sterm { Synth $1 }
+    
+%inline operator:
+    | EXCLAMATION t=cterm { Operator.Not t }
+    | lhs=cterm PIPE rhs=cterm { Operator.Or (lhs, rhs) }
+    | lhs=cterm AMPERSAND rhs=cterm { Operator.And (lhs, rhs) }
+    | lhs=cterm CARET rhs=cterm { Operator.Xor (lhs, rhs) }
+    
+/*term:
     | TRUE { TTrue }
     | FALSE { TFalse }
-    | Identifier { TVar $1 }
+   
     | AMPERSAND fn_ident=Identifier { TFn {fn_ident; tyresolve = None} }
     | LET variable=Identifier EQUAL term=term IN k=term {
         TLet {variable; term; k}
@@ -107,26 +184,22 @@ term:
         let const_args = Option.fold ~none:[] ~some:Fun.id const_args in
         List.init i (Fun.id) |> List.fold_left (fun acc i -> 
             let args = const_args @ acc :: (TLookup {lterm; index = i}) :: [] in
-            TFnCall {fn_name = Either.Left fn_name; ty_resolve; args }
+            FnCall {fn_name = Either.Left fn_name; ty_resolve; args }
         ) acc 
     }
     | HASH lterm=lterm { TThunk {lterm} }
     | fn=fn_identifier args=parenthesis(separated_list(COMMA, term)) {
         let fn_name, ty_resolve = fn in
-        TFnCall {fn_name = Either.Left fn_name; ty_resolve; args}
+        FnCall {fn_name = Either.Left fn_name; ty_resolve; args}
     }
     | parenthesis(term) { $1 }
     | operator {
-        TOperator $1
-    }
+        Operator $1
+    }*/
     
-%inline operator:
-    | EXCLAMATION term { ONot $2 }
-    | lhs=term PIPE rhs=term { OOr (lhs, rhs) }
-    | lhs=term AMPERSAND rhs=term { OAnd (lhs, rhs) }
-    | lhs=term CARET rhs=term { OXor (lhs, rhs) }
 
-lterm:
+
+/*lterm:
     | LET_PLUS variable=Identifier EQUAL lterm=lterm 
         ands=list(preceded(AND, splitted(Identifier, EQUAL, lterm))) 
         IN term=term {
@@ -148,5 +221,5 @@ lterm:
     | CIRC lterm=parenthesis(lterm) {
         LCirc lterm
     }
-    | parenthesis(lterm) { $1 }
+    | parenthesis(lterm) { $1 }*/
     

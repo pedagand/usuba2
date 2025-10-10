@@ -20,8 +20,8 @@ let ty_f =
       signature =
         {
           tyvars = Some alpha;
-          parameters = [ Ast.Bool; Ast.Var alpha ];
-          return_type = Ast.Var alpha;
+          parameters = [ Ast.Ty.Bool; Ast.Ty.Var alpha ];
+          return_type = Ast.Ty.Var alpha;
         };
       args = [ x; y ];
       body = Synth (Var y);
@@ -59,7 +59,7 @@ let () =
           test_case "in" `Quick (fun () ->
               check ty "`&f` has signatue `('a, 'a) -> 'a` in `env0`"
                 (Ua0.Typecheck.typesynth env0 Ua0.Ast.(Fn { fn_ident = f }))
-                (Ua0.Ast.Fun ty_f.signature));
+                (Ua0.Ast.Ty.Fun ty_f.signature));
           test_case "unbound" `Quick (fun () ->
               match_raises "`_` is not bound in `env0`"
                 (function Failure _ -> true | _ -> false)
@@ -74,6 +74,6 @@ let () =
               check ty "`z[2]` has type `bool` in `env0`"
                 (Ua0.Typecheck.typesynth env0
                    (Lookup { lterm = Var z; index = 2 }))
-                Ua0.Ast.(App { name = _G; ty = Bool }));
+                (App { name = _G; ty = Bool }));
         ] );
     ]

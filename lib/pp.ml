@@ -14,7 +14,7 @@ let pp_tyvars format ty_vars =
 let pp_tyvar_opt format = Format.pp_print_option TyIdent.pp format
 
 let rec pp_ty format = function
-  | Bool -> Format.fprintf format "bool"
+  | Ty.Bool -> Format.fprintf format "bool"
   | App { name; ty } ->
       Format.fprintf format "%a %a" TyDeclIdent.pp name pp_ty ty
   | Fun { tyvars; parameters; return_type } ->
@@ -30,12 +30,12 @@ and pp_tys format =
 and pp_ty_args format ty_args =
   match ty_args with
   | [] -> ()
-  | (Fun _ as ty) :: [] -> Format.fprintf format "(%a) " pp_ty ty
+  | (Ty.Fun _ as ty) :: [] -> Format.fprintf format "(%a) " pp_ty ty
   | ty :: [] -> Format.fprintf format "%a " pp_ty ty
   | _ :: _ as ty_args -> Format.fprintf format "(%a) " pp_tys ty_args
 
 and pp_ty_opt_args format ty_args =
   match ty_args with
   | None -> ()
-  | Some (Fun _ as ty) -> Format.fprintf format "(%a) " pp_ty ty
+  | Some (Ty.Fun _ as ty) -> Format.fprintf format "(%a) " pp_ty ty
   | Some ty -> Format.fprintf format "%a " pp_ty ty

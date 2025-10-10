@@ -23,11 +23,13 @@ module Cstrs = struct
 end
 
 module Ty = struct
+  open Ast.Ty
+
   let rec instanciate types = function
-    | Ast.Bool -> Ast.Bool
+    | Bool -> Bool
     | Fun signature ->
         let signature = instanciate_signature types signature in
-        Ast.Fun signature
+        Fun signature
     | App { name; ty } ->
         let ty = instanciate types ty in
         App { name; ty }
@@ -35,7 +37,7 @@ module Ty = struct
         match List.assoc_opt v types with None -> t | Some t -> t)
 
   and instanciate_signature types =
-   fun Ast.{ tyvars; parameters; return_type } ->
+   fun { tyvars; parameters; return_type } ->
     let types =
       match tyvars with None -> types | Some ty -> List.remove_assoc ty types
     in
@@ -51,17 +53,17 @@ module Ty = struct
 
   let rec equal assocs lhs rhs =
     match (lhs, rhs) with
-    | Ast.Bool, Ast.Bool -> true
-    | Ast.Var lhs, Ast.Var rhs ->
+    | Bool, Bool -> true
+    | Var lhs, Var rhs ->
         Ast.TyIdent.equal lhs rhs
         || assocs
            |> List.find_map (fun (l, r) ->
                   if Ast.TyIdent.equal l lhs then Some r else None)
            |> Option.map (Ast.TyIdent.equal rhs)
            |> Option.value ~default:false
-    | Ast.App { ty = lty; name = lname }, Ast.App { ty = rty; name = rname } ->
+    | App { ty = lty; name = lname }, App { ty = rty; name = rname } ->
         Ast.TyDeclIdent.equal lname rname && equal assocs lty rty
-    | Ast.Fun lsignature, Ast.Fun rsignature ->
+    | Fun lsignature, Fun rsignature ->
         equal_signature assocs lsignature rsignature
     | _, _ -> false
 
@@ -86,20 +88,18 @@ module Ty = struct
     equal assocs lsignature.return_type rsignature.return_type
 
   let equal xs ys = equal [] xs ys
-
-  let lift cstrs ty =
-    List.fold_right (fun name ty -> Ast.App { name; ty }) cstrs ty
+  let lift cstrs ty = List.fold_right (fun name ty -> App { name; ty }) cstrs ty
 
   let rec contains_boolean = function
-    | Ast.Bool -> true
-    | Ast.Var _ -> false
+    | Bool -> true
+    | Var _ -> false
     | App { ty; name = _ } -> contains_boolean ty
     | Fun { parameters; return_type; tyvars = _ } ->
         contains_boolean return_type || List.exists contains_boolean parameters
 
   let rec lift_boolean cstrs = function
-    | Ast.Bool as ty -> lift cstrs ty
-    | Ast.Var _ as ty -> ty
+    | Bool as ty -> lift cstrs ty
+    | Var _ as ty -> ty
     | App { ty; name } -> App { name; ty = lift_boolean cstrs ty }
     | Fun { parameters; return_type; tyvars } ->
         let return_type = lift_boolean cstrs return_type in
@@ -111,7 +111,7 @@ module Ty = struct
 *)
 
   let rec ty_cstrs = function
-    | (Ast.Bool | Var _ | Fun _) as e -> ([], e)
+    | (Bool | Var _ | Fun _) as e -> ([], e)
     | App { name; ty } ->
         let r, ty = ty_cstrs ty in
         (name :: r, ty)
@@ -125,7 +125,7 @@ module Ty = struct
     | [] -> Some ty
     | t :: q -> (
         match ty with
-        | Ast.Bool | Ast.Fun _ | Ast.Var _ -> None
+        | Bool | Fun _ | Var _ -> None
         | App { name; ty; _ } ->
             if Ast.TyDeclIdent.equal t name then remove_prefix q ty else None)
 
@@ -140,13 +140,11 @@ module Ty = struct
     | _ -> None
 *)
 
-  let elt = function
-    | Ast.App { ty; _ } -> Some ty
-    | Bool | Fun _ | Var _ -> None
+  let elt = function App { ty; _ } -> Some ty | Bool | Fun _ | Var _ -> None
 
   let cstrql lhs rhs =
     match (lhs, rhs) with
-    | Ast.Bool, Ast.Bool -> true
+    | Bool, Bool -> true
     | App { name = lname; _ }, App { name = rname; _ } ->
         Ast.TyDeclIdent.equal lname rname
     | _, _ -> false

@@ -80,16 +80,16 @@ ty:
         App {name; ty}
     }
     | TypeVariable { Var $1 }
-    | BOOL { Bool }
+    | BOOL { Ty.Bool }
     | FUNCTION signature {
-        Fun $2
+        Ty.Fun $2
     }
     
 %inline signature:
     | tyvars=option(sqrbracketed(TypeVariable)) 
         parameters=parenthesis(separated_list(COMMA, ty)) MINUS_SUP 
         return_type=ty {
-        {tyvars; parameters; return_type}
+        {Ty.tyvars; parameters; return_type}
     }
     
 %inline fn_identifier:

@@ -3,20 +3,24 @@ module TyIdent = Ident.Make ()
 module TyDeclIdent = Ident.Make ()
 module FnIdent = Ident.Make ()
 
-type 't ty =
-  | Bool  (** [bool] *)
-  | Var of 'ty_var  (** ['a] *)
-  | App of { name : 'ty_decl; ty : 't ty }  (** [tname ty] *)
-  | Fun of 't signature
-  constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
+module Ty = struct
+  type 't ty =
+    | Bool  (** [bool] *)
+    | Var of 'ty_var  (** ['a] *)
+    | App of { name : 'ty_decl; ty : 't ty }  (** [tname ty] *)
+    | Fun of 't signature
+    constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
 
-and 't signature = {
-  tyvars : 'ty_var option;
-  parameters : 't ty list;
-  return_type : 't ty;
-}
-  constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
-(** [['a]^? (ty1, ty2, ...) -> ty] *)
+  and 't signature = {
+    tyvars : 'ty_var option;
+    parameters : 't ty list;
+    return_type : 't ty;
+  }
+    constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
+  (** [['a]^? (ty1, ty2, ...) -> ty] *)
+end
+
+open Ty
 
 module Operator = struct
   type 'a t =

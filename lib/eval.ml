@@ -92,11 +92,11 @@ module Env = struct
   let clear_tyvariables env = { env with type_variables = TyVariables.empty }
 
   let rec to_ty env = function
-    | Value.Ty.TBool -> Ast.Bool
+    | Value.Ty.TBool -> Ast.Ty.Bool
     | TNamedTuple { name; ty; size = _ } ->
         let ty = to_ty env ty in
         App { name; ty }
-    | TVar v -> Ast.Var v
+    | TVar v -> Var v
     | TFun signature ->
         let signature = to_signature env signature in
         Fun signature
@@ -109,7 +109,7 @@ module Env = struct
 
   let rec of_ty env ty =
     match ty with
-    | Ast.Bool -> Value.Ty.TBool
+    | Ast.Ty.Bool -> Value.Ty.TBool
     | App { name; ty } ->
         let Ast.{ size; _ } = type_declaration name env in
         let ty = of_ty env ty in
@@ -123,7 +123,7 @@ module Env = struct
         | Some ty -> ty)
 
   and of_signature signature env =
-    let Ast.{ tyvars; parameters; return_type } : _ Ast.signature = signature in
+    let { tyvars; parameters; return_type } : _ Ast.Ty.signature = signature in
 
     Value.Ty.
       {
@@ -200,24 +200,23 @@ module Env = struct
 end
 
 let rec ty_substitute types = function
-  | Ast.Bool -> Ast.Bool
+  | Ast.Ty.Bool -> Ast.Ty.Bool
   | App { name; ty } ->
       let ty = ty_substitute types ty in
-      Ast.App { name; ty }
+      App { name; ty }
   | Fun signature ->
       let signature = ty_substitute_sig types signature in
-      Ast.Fun signature
+      Fun signature
   | Var variable as default ->
       types |> List.assoc_opt variable |> Option.value ~default
 
 and ty_substitute_sig types signature =
-  let Ast.{ tyvars; parameters; return_type } : _ Ast.signature = signature in
-  Ast.
-    {
-      tyvars;
-      parameters = List.map (ty_substitute types) parameters;
-      return_type = ty_substitute types return_type;
-    }
+  let { tyvars; parameters; return_type } : _ Ast.Ty.signature = signature in
+  {
+    tyvars;
+    parameters = List.map (ty_substitute types) parameters;
+    return_type = ty_substitute types return_type;
+  }
 
 let rec eval_op env = function
   | Ast.Operator.Not term ->

@@ -1,6 +1,8 @@
 open Ast
 
 module Ty = struct
+  open Ty
+
   let bool = Bool
   let v v = Var v
   let app name ty = App { name; ty }

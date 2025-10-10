@@ -8,7 +8,7 @@ module Env = struct
   module Types = Map.Make (Ast.TyDeclIdent)
 
   type t = {
-    variables : Ast.scoped Ast.ty Vars.t;
+    variables : Ast.scoped Ast.Ty.ty Vars.t;
     functions : Ast.fn_declaration Fns.t;
     types : Ast.ty_declaration Types.t;
   }
@@ -65,7 +65,7 @@ module Env = struct
           env |> fn_declaration fn_ident |> Util.FunctionDecl.signature
       | Either.Right variable -> (
           match ty_variable variable env with
-          | Ast.Fun signature -> signature
+          | Fun signature -> signature
           | ty ->
               err "%a should be a function ty not %a" Ast.TermIdent.pp variable
                 Pp.pp_ty ty)
@@ -150,7 +150,7 @@ let tl _ty = failwith "NYI"
 
 let rec typecheck env ty tm =
   match (ty, tm) with
-  | Ast.Bool, Ast.False -> ()
+  | Ast.Ty.Bool, Ast.False -> ()
   | Bool, True -> ()
   | App { name; ty }, Constructor { ty = name'; terms } ->
       ignore ty;
@@ -239,8 +239,8 @@ and typesynth env = function
       ty
 
 and typesynth_operator env op =
-  Ast.Operator.iter (typecheck env Ast.Bool) op;
-  Ast.Bool
+  Ast.Operator.iter (typecheck env Ast.Ty.Bool) op;
+  Ast.Ty.Bool
 
 let typecheck_function env fn =
   let Ast.{ fn_name; signature; args; body } = fn in

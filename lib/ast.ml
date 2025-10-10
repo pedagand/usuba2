@@ -1,21 +1,7 @@
-module Ident () = struct
-  type t = { id : int; pretty : string }
-
-  let fresh =
-    let c = ref 0 in
-    fun pretty ->
-      let () = incr c in
-      { id = !c; pretty }
-
-  let compare lhs rhs = Int.compare lhs.id rhs.id
-  let equal lhs rhs = Int.equal lhs.id rhs.id
-  let pp format { id; pretty } = Format.fprintf format "%s(%u)" pretty id
-end
-
-module TermIdent = Ident ()
-module TyIdent = Ident ()
-module TyDeclIdent = Ident ()
-module FnIdent = Ident ()
+module TermIdent = Ident.Make ()
+module TyIdent = Ident.Make ()
+module TyDeclIdent = Ident.Make ()
+module FnIdent = Ident.Make ()
 
 type 't ty =
   | Bool  (** [bool] *)

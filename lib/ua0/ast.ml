@@ -48,11 +48,10 @@ end
 
 type 't sterm =
   | Var of 'term_id  (** [x ] *)
-  | Fn of { fn_ident : 'fn_ident; tyresolve : 't ty option (* XXX: remove *) }
-      (** [&f] *)
+  | Fn of { fn_ident : 'fn_ident }  (** [&f] *)
   | Lookup of { lterm : 't sterm; index : int }  (** [l[i]] *)
   | Reindex of { lhs : 'ty_decl list; rhs : 'ty_decl list; lterm : 't sterm }
-      (** [reindex[ F1 F2 ... | G1 G2 ... ](l) *)
+      (** [reindex[ F1 F2 ... | G1 G2 ... ](l)] *)
   | Circ of 't sterm  (** [circ(l)] *)
   | FnCall of {
       fn_name : ('fn_ident, 'term_id) Either.t;

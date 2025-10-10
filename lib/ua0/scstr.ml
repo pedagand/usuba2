@@ -32,7 +32,7 @@ module Term = struct
   let true' = True
   let false' = False
   let v variable = Var variable
-  let vfn ?resolve fn_ident = Fn { fn_ident; tyresolve = resolve }
+  let vfn fn_ident = Fn { fn_ident }
 
   let log message variables k =
     let k = k () in

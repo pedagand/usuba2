@@ -173,10 +173,5 @@ module Ty = struct
 end
 
 module FunctionDecl = struct
-  let signature fn_decl =
-    let Ast.{ fn_name = _; tyvars; parameters; return_type; body = _ } =
-      fn_decl
-    in
-    let parameters = List.map snd parameters in
-    Ast.{ tyvars; parameters; return_type }
+  let signature fn_decl = fn_decl.Ast.signature
 end

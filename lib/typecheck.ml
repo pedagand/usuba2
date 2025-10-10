@@ -243,19 +243,18 @@ and typesynth_operator env op =
   Ast.Bool
 
 let typecheck_function env fn =
-  let Ast.{ fn_name; tyvars; parameters; return_type; body } = fn in
+  let Ast.{ fn_name; signature; args; body } = fn in
   ignore fn_name;
-  ignore tyvars;
   let env =
     Env.clear_variables env
     (* XXX: what's [clear_variables]? *)
   in
   let env =
-    List.fold_left
-      (fun env (variable, ty) -> Env.add_variable variable ty env)
-      env parameters
+    List.fold_left2
+      (fun env variable ty -> Env.add_variable variable ty env)
+      env args signature.parameters
   in
-  typecheck env return_type body;
+  typecheck env signature.return_type body;
   Env.add_function fn env
 
 let add_typedecl = Fun.flip Env.add_type

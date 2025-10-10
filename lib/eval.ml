@@ -162,10 +162,9 @@ module Env = struct
         let signature =
           Value.Ty.
             {
-              tyvars = fn_decl.tyvars;
-              parameters =
-                List.map (fun (_, ty) -> of_ty env ty) fn_decl.parameters;
-              return_type = of_ty env fn_decl.return_type;
+              tyvars = fn_decl.signature.tyvars;
+              parameters = List.map (of_ty env) fn_decl.signature.parameters;
+              return_type = of_ty env fn_decl.signature.return_type;
             }
         in
         let signature =
@@ -173,7 +172,7 @@ module Env = struct
           | false -> signature
           | true ->
               let env =
-                match (fn_decl.tyvars, tyresolve) with
+                match (fn_decl.signature.tyvars, tyresolve) with
                 | Some tyvar, Some ty ->
                     let ty = of_ty env ty in
                     {
@@ -192,9 +191,8 @@ module Env = struct
               Value.Ty.
                 {
                   tyvars = None;
-                  parameters =
-                    List.map (fun (_, ty) -> of_ty env ty) fn_decl.parameters;
-                  return_type = of_ty env fn_decl.return_type;
+                  parameters = List.map (of_ty env) fn_decl.signature.parameters;
+                  return_type = of_ty env fn_decl.signature.return_type;
                 }
         in
         signature
@@ -404,13 +402,12 @@ and eval_cterm env = function
       eval_cterm env k
   | Synth sterm -> eval_sterm env sterm
 
-and eval env (fn : Ast.fn_declaration) ty_args args =
+and eval env (fn : Ast.fn_declaration) ty_args vals =
   let Ast.
         {
           fn_name = current_function;
-          tyvars;
-          parameters;
-          return_type = _;
+          signature = { tyvars; parameters; return_type = _ };
+          args;
           body;
         } =
     fn
@@ -428,7 +425,7 @@ and eval env (fn : Ast.fn_declaration) ty_args args =
           Ast.FnIdent.pp current_function Pp.pp_ty rhs
   in
   let env = Env.init_tyvariables types env in
-  let env = Env.init_variables parameters args env in
+  let env = Env.init_variables (List.combine args parameters) vals env in
   let env = { env with current_function = Some current_function } in
   eval_cterm env body
 

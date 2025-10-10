@@ -70,7 +70,9 @@ fn_decl:
         tyvars=option(sqrbracketed(TypeVariable)) parameters=parenthesis(separated_list(COMMA, splitted(Identifier, COLON, ty)))
         return_type=ty EQUAL body=cterm
     { 
-        {tyvars; fn_name; parameters; return_type; body }
+        let args = List.map fst parameters in
+        let parameters = List.map snd parameters in
+        {fn_name; signature = { tyvars; parameters; return_type}; args; body }
     }
     
 ty:

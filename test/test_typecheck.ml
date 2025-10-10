@@ -17,9 +17,13 @@ let ty_f =
   Ast.
     {
       fn_name = f;
-      tyvars = Some alpha;
-      parameters = [ (x, Ast.Bool); (y, Ast.Var alpha) ];
-      return_type = Ast.Var alpha;
+      signature =
+        {
+          tyvars = Some alpha;
+          parameters = [ Ast.Bool; Ast.Var alpha ];
+          return_type = Ast.Var alpha;
+        };
+      args = [ x; y ];
       body = Synth (Var y);
     }
 
@@ -55,12 +59,7 @@ let () =
           test_case "in" `Quick (fun () ->
               check ty "`&f` has signatue `('a, 'a) -> 'a` in `env0`"
                 (Ua0.Typecheck.typesynth env0 Ua0.Ast.(Fn { fn_ident = f }))
-                (Ua0.Ast.Fun
-                   {
-                     tyvars = ty_f.tyvars;
-                     parameters = List.map snd ty_f.parameters;
-                     return_type = ty_f.return_type;
-                   }));
+                (Ua0.Ast.Fun ty_f.signature));
           test_case "unbound" `Quick (fun () ->
               match_raises "`_` is not bound in `env0`"
                 (function Failure _ -> true | _ -> false)

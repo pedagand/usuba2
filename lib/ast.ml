@@ -94,9 +94,8 @@ type 'a term = 'a cterm
 
 type 't fn_declaration_ = {
   fn_name : 'fn_ident;
-  tyvars : 'ty_var option;
-  parameters : ('term_id * 't ty) list;
-  return_type : 't ty;
+  signature : 't signature;
+  args : 'term_id list;
   body : 't term;
 }
   constraint

@@ -183,13 +183,11 @@ module Idents = struct
         Ast.Operator.Xor (lhs, rhs)
 
   let fn_declaration env fn_declaration =
-    let Ast.{ fn_name; tyvars; parameters; return_type; body } =
-      fn_declaration
-    in
+    let Ast.{ fn_name; signature; args; body } = fn_declaration in
     let env = Env.clear_variables env in
     let env = Env.clear_ty_variables env in
     let env, tyvars =
-      match tyvars with
+      match signature.tyvars with
       | None -> (env, None)
       | Some t ->
           let env, t = Env.add_tyvar t env in
@@ -201,13 +199,17 @@ module Idents = struct
           let ty = ty env t in
           let env, variable = Env.add_variable variable env in
           (env, (variable, ty)))
-        env parameters
+        env
+        (List.combine args signature.parameters)
     in
-    let return_type = ty env return_type in
+    let return_type = ty env signature.return_type in
+    let args = List.map fst parameters in
+    let parameters = List.map snd parameters in
+    let signature = { Ast.tyvars; parameters; return_type } in
     let body = cterm env body in
     (* Add name at the end to allow fn_name shadowing. *)
     let env, fn_name = Env.add_fn fn_name env in
-    (env, Ast.{ fn_name; tyvars; parameters; return_type; body })
+    (env, Ast.{ fn_name; signature; args; body })
 
   let ty_declaration env ty_declaration =
     let Ast.{ tyvar; name; size } = ty_declaration in

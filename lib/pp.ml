@@ -71,8 +71,8 @@ and pp_sterm format = function
   | Fn { fn_ident; _ } -> Ast.FnIdent.pp format fn_ident
   | Lookup { lterm; index } ->
       Format.fprintf format "%a[%u]" pp_sterm lterm index
-  (*  | Lift { tys; term } ->
-      Format.fprintf format "lift[%a](%a)" pp_list_ty tys pp_term' term*)
+  | Lift { tys; func } ->
+      Format.fprintf format "lift[%a](%a)" pp_list_ty tys pp_sterm func
   | Operator operation -> pp_operation format operation
   | Reindex { lhs; rhs; lterm } ->
       Format.fprintf format "reindex[%a | %a](%a)" pp_list_ty lhs pp_list_ty rhs

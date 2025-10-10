@@ -5,7 +5,7 @@
     let keywords = [
         ("and", AND); ("bool", BOOL); ("circ", CIRC); ("false", FALSE); 
         ("fold", FOLD); ("fn", FUNCTION); ("in", IN); ("let", LET);
-        (*("range", RANGE);*) ("reindex", REINDEX); ("tuple", TUPLE); 
+        ("lift", LIFT); ("reindex", REINDEX); ("tuple", TUPLE); 
         ("true", TRUE); ("type", TYPE)
     ]
     

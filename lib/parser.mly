@@ -14,7 +14,7 @@
 %token LPARENT RPARENT LBRACE RBRACE LSQBRACE RSQBRACE
 %token EQUAL DOT COMMA PIPE CARET EXCLAMATION COLON
 %token AND LET LET_PLUS IN REINDEX CIRC FOLD
-%token TRUE FALSE BOOL
+%token TRUE FALSE BOOL LIFT
 %token AMPERSAND MINUS_SUP
 %token FUNCTION TYPE TUPLE
 %token EOF
@@ -115,6 +115,10 @@ sterm:
     }
     | CIRC lterm=parenthesis(sterm) {
         Circ lterm
+    }
+    | LIFT tys=sqrbracketed(nonempty_list(TypeCstrIdentifier)) 
+        func=parenthesis(sterm) {
+        Lift {tys; func}
     }
     | fn=fn_identifier args=parenthesis(separated_list(COMMA, cterm)) {
         let fn_name, ty_resolve = fn in

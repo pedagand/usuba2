@@ -115,6 +115,10 @@ module Idents = struct
     | Circ lterm ->
         let lterm = sterm env lterm in
         Circ lterm
+    | Lift { tys; func } ->
+        let func = sterm env func in
+        let tys = List.map (Fun.flip Env.find_tycstr env) tys in
+        Lift { tys; func }
     | FnCall { fn_name; ty_resolve; args } ->
         let fn_name = Either.fold ~left:Fun.id ~right:Fun.id fn_name in
         let fn_name = Env.find_callable fn_name env in

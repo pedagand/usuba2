@@ -43,6 +43,7 @@ type 't sterm =
   | Reindex of { lhs : 'ty_decl list; rhs : 'ty_decl list; lterm : 't sterm }
       (** [reindex[ F1 F2 ... | G1 G2 ... ](l)] *)
   | Circ of 't sterm  (** [circ(l)] *)
+  | Lift of { tys : 'ty_decl list; func : 't sterm }  (** [lift[F ...](f)] *)
   | FnCall of {
       fn_name : ('fn_ident, 'term_id) Either.t;
       ty_resolve : 't ty option;

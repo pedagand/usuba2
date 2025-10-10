@@ -290,6 +290,10 @@ and eval_sterm env = function
       let size = Env.cstr_log wrapper env in
       let lty = Value.Ty.(named_tuple wrapper size ty) in
       (value, lty)
+  | Lift { tys; func } ->
+      (* TODO: *)
+      let () = ignore (tys, func) in
+      failwith "TODO: NYI"
   | FnCall { fn_name; ty_resolve; args } ->
       let args = List.map (fun term -> fst @@ eval_cterm env term) args in
       let fnident =

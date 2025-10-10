@@ -211,6 +211,16 @@ and typesynth env = function
       match ty with
       | App { name; ty } -> App { name; ty = App { name; ty } }
       | _ -> raise IllTyped)
+  | Lift { tys = _; func = _ } -> failwith "NYI"
+  (*
+      let ty = typesynth env term in
+      let lty = Util.Ty.lty [] ty in
+      let wrapper =
+        match Util.Ty.hd lty with
+        | None -> err "Not a tuple type"
+        | Some hd -> hd
+      in
+      Ast.TyApp { name = wrapper; ty = Util.Ty.to_ty lty } *)
   | Ann (tm, ty) ->
       typecheck env ty tm;
       ty

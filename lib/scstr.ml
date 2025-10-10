@@ -6,6 +6,7 @@ module Ty = struct
   let bool = Bool
   let v v = Var v
   let app name ty = App { name; ty }
+  let ( @ ) n ty = app n ty
 
   let fn ?tyvars parameters return_type =
     Fun { tyvars; parameters; return_type }

@@ -29,51 +29,62 @@ let ty_f =
 
 let env0 =
   let open Ua0.Typecheck.Env in
-  empty |> add_variable x Ast.Bool
-  |> add_variable y (Ast.Var alpha)
-  |> add_variable z Ast.(App { name = _F; ty = App { name = _G; ty = Bool } })
+  empty |> add_variable x Ast.Ty.Bool
+  |> add_variable y Ast.Ty.(Var alpha)
+  |> add_variable z (App { name = _F; ty = App { name = _G; ty = Bool } })
   |> add_function ty_f
 
+type ctx = Env0
+
+let ctx_to_string = function Env0 -> "env0"
+let ctx_of = function Env0 -> env0
 let ty = Alcotest.testable Ua0.Pp.pp_ty Util.Ty.equal
+let pp_sterm fmt _t = Format.fprintf fmt "..."
+
+let check_typesynth ctx tm expected_ty =
+  let name =
+    Format.asprintf "`%a` has type `%a` in %s" pp_sterm tm Pp.pp_ty expected_ty
+      (ctx_to_string ctx)
+  in
+  check ty name (Ua0.Typecheck.typesynth (ctx_of ctx) tm) expected_ty
+
+let fail_typesynth ctx tm =
+  let name =
+    Format.asprintf "`%a` is ill-typed in %s" pp_sterm tm (ctx_to_string ctx)
+  in
+  match_raises name
+    (function Failure _ -> true | _ -> false)
+    (fun _ -> ignore (Ua0.Typecheck.typesynth (ctx_of ctx) tm))
 
 let () =
+  let open Scstr in
   run "typesynth"
     [
       ( "Var",
         [
           test_case "in-Bool" `Quick (fun () ->
-              check ty "`x` has type `bool` in `env0`"
-                (Ua0.Typecheck.typesynth env0 (Var x))
-                Ua0.Ast.Bool);
+              check_typesynth Env0 Term.(v x) Ty.bool);
           test_case "in-Var" `Quick (fun () ->
-              check ty "`y` has type `'a` in `env0`"
-                (Ua0.Typecheck.typesynth env0 (Var y))
-                Ua0.Ast.(Var alpha));
+              check_typesynth Env0 Term.(v y) Ty.(v alpha));
+          test_case "in-App" `Quick (fun () ->
+              check_typesynth Env0 Term.(v z) Ty.(_F @ _G @ bool));
           test_case "unbound" `Quick (fun () ->
-              match_raises "`_` is not bound in `env0`"
-                (function Failure _ -> true | _ -> false)
-                (fun _ -> ignore (Ua0.Typecheck.typesynth env0 (Var var_undef))));
+              fail_typesynth Env0 Term.(v var_undef));
         ] );
       ( "Fn",
         [
           test_case "in" `Quick (fun () ->
-              check ty "`&f` has signatue `('a, 'a) -> 'a` in `env0`"
-                (Ua0.Typecheck.typesynth env0 Ua0.Ast.(Fn { fn_ident = f }))
-                (Ua0.Ast.Ty.Fun ty_f.signature));
+              check_typesynth Env0
+                Term.(vfn f)
+                Ty.(
+                  fn ~tyvars:alpha ty_f.signature.parameters
+                    ty_f.signature.return_type));
           test_case "unbound" `Quick (fun () ->
-              match_raises "`_` is not bound in `env0`"
-                (function Failure _ -> true | _ -> false)
-                (fun () ->
-                  ignore
-                    (Ua0.Typecheck.typesynth env0
-                       (Ua0.Ast.Fn { fn_ident = fn_undef }))));
+              fail_typesynth Env0 Term.(vfn fn_undef));
         ] );
       ( "Lookup",
         [
           test_case "in range" `Quick (fun () ->
-              check ty "`z[2]` has type `bool` in `env0`"
-                (Ua0.Typecheck.typesynth env0
-                   (Lookup { lterm = Var z; index = 2 }))
-                (App { name = _G; ty = Bool }));
+              check_typesynth Env0 Term.((v z).%(2)) Ty.(_G @ bool));
         ] );
     ]

@@ -302,8 +302,8 @@ fn add_round_key_1 ['a](
     key : Slice Col Row 'a
 ) Slice Col Row 'a =
     reindex[Col Row | Slice](
-        (let+ row_state = reindex[Slice | Col Row]((state : Slice Col Row 'a)) 
-            and row_key = reindex[Slice | Col Row]((key : Slice Col Row 'a)) 
+        (let+ row_state = reindex[Slice | Col Row](state) 
+            and row_key = reindex[Slice | Col Row](key) 
         in
             let+ slice_state = row_state and slice_key = row_key in
                 let+ a_state = slice_state and a_key = slice_key in

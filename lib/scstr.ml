@@ -12,25 +12,6 @@ module Ty = struct
     Fun { tyvars; parameters; return_type }
 end
 
-module LTerm = struct
-  let cstr ty terms = Constructor { ty; terms }
-  let reindex lhs rhs lterm = Reindex { lhs; rhs; lterm }
-  let circ term = Circ term
-
-  let let_plus variable lterm ands k =
-    let variable = TermIdent.fresh variable in
-    let ands =
-      List.map
-        (fun (v, term) ->
-          let v = TermIdent.fresh v in
-          (v, term))
-        ands
-    in
-    let vand = List.map fst ands in
-    let term = k variable vand in
-    LetPlus { variable; lterm; ands; term }
-end
-
 module Term = struct
   let s sterm = Synth sterm
   let ann tm ty = Ann (tm, ty)
@@ -69,4 +50,18 @@ module Term = struct
   let ( land ) lhs rhs = Operator (And (lhs, rhs))
   let ( lor ) lhs rhs = Operator (Or (lhs, rhs))
   let lnot term = Operator (Not term)
+  let cstr ty terms = Constructor { ty; terms }
+
+  let let_plus variable lterm ands k =
+    let variable = TermIdent.fresh variable in
+    let ands =
+      List.map
+        (fun (v, term) ->
+          let v = TermIdent.fresh v in
+          (v, term))
+        ands
+    in
+    let vand = List.map fst ands in
+    let term = k variable vand in
+    LetPlus { variable; lterm; ands; term }
 end

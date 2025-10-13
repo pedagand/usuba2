@@ -156,10 +156,8 @@ let rec typecheck env ty tm =
   match (ty, tm) with
   | Ast.Ty.Bool, Ast.False -> ()
   | Bool, True -> ()
-  | App { name; ty }, Constructor { ty = name'; terms } ->
-      ignore ty;
-      assert (name = name');
-      (* XXX: remove `ty` from `LConstructor` *)
+  | App { name; ty }, Constructor { ty = _name'; terms } ->
+      if Env.arity name env <> List.length terms then raise IllTyped;
       terms |> List.iter (typecheck env ty)
   | ty0, Let { variable; term; k } ->
       let ty = typesynth env term in

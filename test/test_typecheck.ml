@@ -35,7 +35,7 @@ let env0 =
   |> add_type { tyvar = alpha; name = _F; size = 4 }
   |> add_variable y Ast.Ty.(Var alpha)
   |> add_type { tyvar = alpha; name = _G; size = 4 }
-  |> add_type { tyvar = alpha; name = _H; size = 8 }
+  |> add_type { tyvar = alpha; name = _H; size = 2 }
   |> add_variable z (App { name = _F; ty = App { name = _G; ty = Bool } })
   |> add_variable u
        (App
@@ -66,6 +66,23 @@ let fail_typesynth ctx tm =
     (function
       | Failure _ | Invalid_argument _ | Typecheck.IllTyped -> true | _ -> false)
     (fun _ -> ignore (Ua0.Typecheck.typesynth (ctx_of ctx) tm))
+
+let check_typecheck ctx tm ty =
+  let name =
+    Format.asprintf "`%a` accepts type `%a` in %s" Pp.pp_cterm tm Pp.pp_ty ty
+      (ctx_to_string ctx)
+  in
+  check unit name (Ua0.Typecheck.typecheck (ctx_of ctx) ty tm) ()
+
+let fail_typecheck ctx tm ty =
+  let name =
+    Format.asprintf "`%a : %a` is ill-typed in %s" Pp.pp_cterm tm Pp.pp_ty ty
+      (ctx_to_string ctx)
+  in
+  match_raises name
+    (function
+      | Failure _ | Invalid_argument _ | Typecheck.IllTyped -> true | _ -> false)
+    (fun _ -> ignore (Ua0.Typecheck.typecheck (ctx_of ctx) ty tm))
 
 let () =
   let open Scstr in
@@ -160,5 +177,30 @@ let () =
               fail_typesynth Env0 Term.(reindex [ _G ] [ _G ] (v z)));
           test_case "rhs mismatch" `Quick (fun () ->
               fail_typesynth Env0 Term.(reindex [ _F ] [ _F ] (v z)));
+        ] );
+      (*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*)
+      ( "True/False",
+        [
+          test_case "true well-typed" `Quick (fun () ->
+              check_typecheck Env0 Term.true' Ty.bool);
+          test_case "false well-typed" `Quick (fun () ->
+              check_typecheck Env0 Term.false' Ty.bool);
+          test_case "ill-typed" `Quick (fun () ->
+              fail_typecheck Env0 Term.true' Ty.(v alpha));
+        ] );
+      ( "Constructor",
+        [
+          test_case "well-typed" `Quick (fun () ->
+              check_typecheck Env0
+                Term.(cstr _F [ true'; false'; true'; true' ])
+                Ty.(_F @ bool));
+          test_case "ill-typed" `Quick (fun () ->
+              fail_typecheck Env0
+                Term.(cstr _F [ true'; false'; true'; true' ])
+                Ty.(v alpha));
+          test_case "arity checked" `Quick (fun () ->
+              fail_typecheck Env0
+                Term.(cstr _F [ false'; true'; true' ])
+                Ty.(_F @ bool));
         ] );
     ]

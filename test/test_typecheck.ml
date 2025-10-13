@@ -5,10 +5,12 @@ let alpha = Ast.TyIdent.fresh "'a"
 let x = Ast.TermIdent.fresh "x"
 let y = Ast.TermIdent.fresh "y"
 let z = Ast.TermIdent.fresh "z"
+let u = Ast.TermIdent.fresh "u"
 let var_undef = Ast.TermIdent.fresh "_"
 let f = Ast.FnIdent.fresh "f"
 let _F = Ast.TyDeclIdent.fresh "F"
 let _G = Ast.TyDeclIdent.fresh "G"
+let _H = Ast.TyDeclIdent.fresh "H"
 
 (* let g = Ast.FnIdent.fresh "g" *)
 let fn_undef = Ast.FnIdent.fresh "_"
@@ -30,8 +32,17 @@ let ty_f =
 let env0 =
   let open Ua0.Typecheck.Env in
   empty |> add_variable x Ast.Ty.Bool
+  |> add_type { tyvar = alpha; name = _F; size = 4 }
   |> add_variable y Ast.Ty.(Var alpha)
+  |> add_type { tyvar = alpha; name = _G; size = 4 }
+  |> add_type { tyvar = alpha; name = _H; size = 8 }
   |> add_variable z (App { name = _F; ty = App { name = _G; ty = Bool } })
+  |> add_variable u
+       (App
+          {
+            name = _F;
+            ty = App { name = _G; ty = App { name = _H; ty = Var alpha } };
+          })
   |> add_function ty_f
 
 type ctx = Env0
@@ -122,7 +133,32 @@ let () =
         [
           test_case "well-typed" `Quick (fun () ->
               check_typesynth Env0 Term.(circ (v z)) Ty.(_F @ _F @ _G @ bool));
-          test_case "ill-typed" `Quick (fun () ->
+          test_case "not applicative" `Quick (fun () ->
               fail_typesynth Env0 Term.(circ (v x)));
+        ] );
+      ( "Reindex",
+        [
+          test_case "reindex F / G over bool" `Quick (fun () ->
+              check_typesynth Env0
+                Term.(reindex [ _F ] [ _G ] (v z))
+                Ty.(_G @ _F @ bool));
+          test_case "reindex F / G over H alpha" `Quick (fun () ->
+              check_typesynth Env0
+                Term.(reindex [ _F ] [ _G ] (v u))
+                Ty.(_G @ _F @ _H @ v alpha));
+          test_case "reindex F.G / H over alpha" `Quick (fun () ->
+              check_typesynth Env0
+                Term.(reindex [ _F; _G ] [ _H ] (v u))
+                Ty.(_H @ _F @ _G @ v alpha));
+          test_case "reindex F / G.H over alpha" `Quick (fun () ->
+              check_typesynth Env0
+                Term.(reindex [ _F ] [ _G; _H ] (v u))
+                Ty.(_G @ _H @ _F @ v alpha));
+          test_case "not applicative" `Quick (fun () ->
+              fail_typesynth Env0 Term.(reindex [ _F ] [ _G ] (v x)));
+          test_case "lhs mismatch" `Quick (fun () ->
+              fail_typesynth Env0 Term.(reindex [ _G ] [ _G ] (v z)));
+          test_case "rhs mismatch" `Quick (fun () ->
+              fail_typesynth Env0 Term.(reindex [ _F ] [ _F ] (v z)));
         ] );
     ]

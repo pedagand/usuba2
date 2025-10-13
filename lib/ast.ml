@@ -98,6 +98,7 @@ type 't fn_declaration_ = {
 
 (* Type decl only create alias. *)
 type 't ty_declaration_ = {
+  (* XXX: what's this `ty_var` doing here? *)
   tyvar : 'ty_var;
   name : 'ty_decl;
   size : int;

@@ -145,8 +145,12 @@ end
 
 exception IllTyped
 
-let take_app _f _ty = failwith "NYI"
-let tl _ty = failwith "NYI"
+let rec prefix lhs ty =
+  match (lhs, ty) with
+  | [], ty -> ty
+  | decl :: lhs, Ast.Ty.App { name; ty } when Ast.TyDeclIdent.equal decl name ->
+      prefix lhs ty
+  | _, _ -> raise IllTyped
 
 let rec typecheck env ty tm =
   match (ty, tm) with
@@ -162,11 +166,11 @@ let rec typecheck env ty tm =
       let env = Env.add_variable variable ty env in
       typecheck env ty0 k
   | App { name; ty }, LetPlus { variable; lterm; ands; term } ->
-      let ty_var = lterm |> typesynth env |> take_app name in
+      let ty_var = lterm |> typesynth env |> prefix [ name ] in
       let ty_ands =
         List.map
           (fun (var, tm) ->
-            let ty = tm |> typesynth env |> take_app name in
+            let ty = tm |> typesynth env |> prefix [ name ] in
             (var, ty))
           ands
       in
@@ -202,28 +206,11 @@ and typesynth env = function
         signature.parameters args;
       signature.return_type
   | Reindex { lhs; rhs; lterm } ->
-      ignore (lhs, rhs);
-      let _ty = typesynth env lterm in
-      failwith "NYI"
-  (*
-      let cstrs, ty = Util.Ty.(prefix ty) in
-      let cstrs_reindexed = Util.Cstrs.reorder lhs rhs cstrs in
-      let ty_new =
-        List.fold_right
-          (fun name ty -> Ast.TyApp { name; ty })
-          cstrs_reindexed ty
-      in
-      ty_new *)
-  (*
-      let ((_, lty') as lterm) = typecheck_lterm env lterm in
-      let cstrs, ty = Util.Ty.(prefix @@ to_ty lty') in
-      let cstrs_reindexed = Util.Cstrs.reorder lhs rhs cstrs in
-      let ty_new =
-        List.fold_right
-          (fun name ty -> Ast.TyApp { name; ty })
-          cstrs_reindexed ty
-      in
-      (LReindex { lhs; rhs; lterm }, Util.Ty.lty [] ty_new) *)
+      let flatten = List.fold_right (fun name ty -> Ast.Ty.App { name; ty }) in
+      let ty = typesynth env lterm in
+      let ty = prefix lhs ty in
+      let ty = prefix rhs ty in
+      flatten rhs (flatten lhs ty)
   | Circ t -> (
       let ty = typesynth env t in
       match ty with

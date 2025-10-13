@@ -59,6 +59,12 @@ module Term = struct
     FnCall { fn_name = Right variable_name; ty_resolve = resolve; args }
 
   let circ t = Circ t
+
+  let reindex lhs rhs lterm =
+    assert (lhs <> []);
+    assert (rhs <> []);
+    Reindex { lhs; rhs; lterm }
+
   let ( lxor ) lhs rhs = Operator (Xor (lhs, rhs))
   let ( land ) lhs rhs = Operator (And (lhs, rhs))
   let ( lor ) lhs rhs = Operator (Or (lhs, rhs))

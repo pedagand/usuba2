@@ -44,8 +44,6 @@ module Term = struct
     Log { message; variables; k }
 
   let log_ message variables k = Log { message; variables; k }
-
-  (* haha *)
   let lookup lterm index = Lookup { lterm; index }
   let ( .%() ) = lookup
   let let_ variable term k = Let { variable; term; k }
@@ -60,6 +58,7 @@ module Term = struct
   let v_call ?resolve variable_name args =
     FnCall { fn_name = Right variable_name; ty_resolve = resolve; args }
 
+  let circ t = Circ t
   let ( lxor ) lhs rhs = Operator (Xor (lhs, rhs))
   let ( land ) lhs rhs = Operator (And (lhs, rhs))
   let ( lor ) lhs rhs = Operator (Or (lhs, rhs))

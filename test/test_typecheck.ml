@@ -118,4 +118,11 @@ let () =
           test_case "ill-typed" `Quick (fun () ->
               fail_typesynth Env0 Term.(ann (s (vfn fn_undef)) Ty.bool));
         ] );
+      ( "Circ",
+        [
+          test_case "well-typed" `Quick (fun () ->
+              check_typesynth Env0 Term.(circ (v z)) Ty.(_F @ _F @ _G @ bool));
+          test_case "ill-typed" `Quick (fun () ->
+              fail_typesynth Env0 Term.(circ (v x)));
+        ] );
     ]

@@ -224,16 +224,11 @@ and typesynth env = function
           cstrs_reindexed ty
       in
       (LReindex { lhs; rhs; lterm }, Util.Ty.lty [] ty_new) *)
-  | Circ _term -> failwith "NYI"
-  (*
-      let ty = typesynth env term in
-      let lty = Util.Ty.lty [] ty in
-      let wrapper =
-        match Util.Ty.hd lty with
-        | None -> err "Not a tuple type"
-        | Some hd -> hd
-      in
-      Ast.TyApp { name = wrapper; ty = Util.Ty.to_ty lty } *)
+  | Circ t -> (
+      let ty = typesynth env t in
+      match ty with
+      | App { name; ty } -> App { name; ty = App { name; ty } }
+      | _ -> raise IllTyped)
   | Ann (tm, ty) ->
       typecheck env ty tm;
       ty

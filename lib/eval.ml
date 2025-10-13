@@ -299,7 +299,7 @@ module Env = struct
           body;
         }
     in
-    let () = log "%a\n\n" Pp.pp_fn lift_fn in
+    (*    let () = log "%a\n\n" Pp.pp_fn lift_fn in*)
     let env = add_function lift_fn env in
     (env, (lift_fn_name, new_signature))
 end

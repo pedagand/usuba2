@@ -182,7 +182,7 @@ fn permbits_bitslice ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     let+ f = permbits and slice = state in 
         f.['a](slice)
         
-fn subcells ['a](
+fn subcells_ ['a](
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,
     for  : fn('a, 'a) -> 'a,
@@ -212,7 +212,7 @@ fn subcells ['a] (
 ) Col Row Slice 'a =
     let+ row = state in 
         let+ slice = row in
-            subcells.['a](fnot, fand, for, fxor, slice)
+            subcells_.['a](fnot, fand, for, fxor, slice)
     
 fn subcells_reindexed ['a] (
     fnot : fn('a) -> 'a,
@@ -225,7 +225,7 @@ fn subcells_reindexed ['a] (
     reindex[Col Row | Slice](
         (let+ row = state in 
             let+ slice = row in
-                subcells.['a](fnot, fand, for, fxor, slice) : Col Row Slice 'a)
+                subcells_.['a](fnot, fand, for, fxor, slice) : Col Row Slice 'a)
     )
     
 // inline
@@ -239,7 +239,7 @@ fn subcells_1 ['a] (
     reindex[Col Row | Slice](
         (let+ row = reindex[Slice | Col Row]((state : Slice Col Row 'a)) in 
             let+ slice = row in
-                subcells.['a](fnot, fand, for, fxor, slice) : Col Row Slice 'a)
+                subcells_.['a](fnot, fand, for, fxor, slice) : Col Row Slice 'a)
     )
     
 
@@ -253,7 +253,7 @@ fn subcells_2 ['a] (
 ) Slice Col Row 'a = 
     reindex[Col Row | Slice](
         reindex[Slice | Col Row](
-            subcells.[Col Row 'a](lift[Col Row](fnot), lift[Col Row](fand), 
+            subcells_.[Col Row 'a](lift[Col Row](fnot), lift[Col Row](fand), 
                 lift[Col Row](for), lift[Col Row](fxor), state)
         )
     )
@@ -266,7 +266,7 @@ fn subcells_bitslice ['a] (
     fxor : fn('a, 'a) -> 'a,
     state : Slice Col Row 'a
 ) Slice Col Row 'a = 
-    subcells.[Col Row 'a](lift[Col Row](fnot), lift[Col Row](fand), 
+    subcells_.[Col Row 'a](lift[Col Row](fnot), lift[Col Row](fand), 
         lift[Col Row](for), lift[Col Row](fxor), state)
 
 fn add_round_key ['a](
@@ -425,5 +425,5 @@ fn giftb_16(
     keys : Keys Slice Col Row bool
 ) Col Row Slice bool =
     gift_bitslice.[bool](
-        fnot, fand, for, fxor, state, keys
+        &fnot, &fand, &for, &fxor, state, keys
     ) 

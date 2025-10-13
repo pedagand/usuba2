@@ -233,24 +233,24 @@ module Env = struct
         }
     in
     let new_signature = Value.Ty.to_ast_signature new_signature in
-    let lift_fn_name = FnIdent.fresh "lift_" in
+    let lift_fn_name = FnIdent.refresh "lift_" fn_name in
     let new_args_variables =
-      List.map (fun _ -> TermIdent.fresh "l_variable") signature.parameters
+      List.map (fun _ -> TermIdent.fresh "l") signature.parameters
     in
     let variables_args_assocs =
       List.map (fun v -> (v, None)) new_args_variables
     in
     (* reverse the order of the let+ variables (most nested on head of list.) *)
-    let _, variables_stage =
-      List.fold_left_map
+    let variables_stage =
+      List.fold_left
         (fun v_previous _ ->
           let v_current =
             List.map
               (fun (variable, _) -> (TermIdent.fresh "v", Some (Var variable)))
-              v_previous
+              (List.hd v_previous)
           in
-          (v_current, v_current @ v_previous))
-        variables_args_assocs types
+          v_current :: v_previous)
+        [ variables_args_assocs ] types
     in
     let variables_stage =
       List.filter_map
@@ -278,7 +278,7 @@ module Env = struct
           variable;
           lterm = variable_letbind;
           ands;
-          term = Synth (FnCall { fn_name; ty_resolve; args });
+          term = Synth (FnCall { fn_name = Left fn_name; ty_resolve; args });
         }
     in
     let body =
@@ -299,6 +299,7 @@ module Env = struct
           body;
         }
     in
+    let () = log "%a\n\n" Pp.pp_fn lift_fn in
     let env = add_function lift_fn env in
     (env, (lift_fn_name, new_signature))
 end
@@ -406,9 +407,7 @@ and eval_sterm env = function
         | Value.VFunction fn_name -> fn_name
         | VBool _ | VArray _ -> err "lift : expect a function pointer"
       in
-      let env, (fn_name, signature) =
-        Env.lift (Left fn_name) signature tys env
-      in
+      let env, (fn_name, signature) = Env.lift fn_name signature tys env in
       let signature =
         Value.Ty.of_ast_signature (Fun.flip Env.cstr_log env) signature
       in

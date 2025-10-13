@@ -29,6 +29,37 @@ module Ty = struct
       ~pp_sep:(fun format () -> Format.pp_print_string format ", ")
       pp format
 
+  let rec of_ast_ty fsize = function
+    | Ast.Ty.Bool -> TBool
+    | Fun signature -> TFun (of_ast_signature fsize signature)
+    | Var variable -> TVar variable
+    | App { name; ty } ->
+        let size = fsize name in
+        let ty = of_ast_ty fsize ty in
+        TNamedTuple { name; size; ty }
+
+  and of_ast_signature fsize =
+   fun { tyvars; parameters; return_type } ->
+    {
+      tyvars;
+      parameters = List.map (of_ast_ty fsize) parameters;
+      return_type = of_ast_ty fsize return_type;
+    }
+
+  let rec to_ast_ty = function
+    | TBool -> Ast.Ty.Bool
+    | TFun signature -> Fun (to_ast_signature signature)
+    | TVar variable -> Var variable
+    | TNamedTuple { name; ty; size = _ } -> App { name; ty = to_ast_ty ty }
+
+  and to_ast_signature (signature : signature) : 'a Ast.Ty.signature =
+    Ast.Ty.
+      {
+        tyvars = signature.tyvars;
+        parameters = List.map to_ast_ty signature.parameters;
+        return_type = to_ast_ty signature.return_type;
+      }
+
   let rec equal lhs rhs =
     match (lhs, rhs) with
     | TBool, TBool -> true

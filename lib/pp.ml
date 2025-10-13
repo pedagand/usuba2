@@ -42,6 +42,9 @@ and pp_ty_opt_args format ty_args =
 
 let pp_list_ty = Format.pp_print_list Ast.TyDeclIdent.pp
 
+let pp_fn_name =
+  Format.pp_print_either ~left:Ast.FnIdent.pp ~right:Ast.TermIdent.pp
+
 let rec pp_cterm format = function
   | False -> Format.fprintf format "false"
   | True -> Format.fprintf format "true"
@@ -79,9 +82,6 @@ and pp_sterm format = function
         pp_sterm lterm
   | Circ lterm -> Format.fprintf format "circ(%a)" pp_sterm lterm
   | FnCall { fn_name; ty_resolve; args } ->
-      let pp_fn_name =
-        Format.pp_print_either ~left:Ast.FnIdent.pp ~right:Ast.TermIdent.pp
-      in
       let pp_ty_resolve =
         Format.pp_print_option (fun format ty ->
             Format.fprintf format "[%a]" pp_ty ty)

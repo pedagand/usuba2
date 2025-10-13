@@ -207,8 +207,7 @@ module Idents = struct
         (List.combine args signature.parameters)
     in
     let return_type = ty env signature.return_type in
-    let args = List.map fst parameters in
-    let parameters = List.map snd parameters in
+    let args, parameters = List.split parameters in
     let signature = { Ast.Ty.tyvars; parameters; return_type } in
     let body = cterm env body in
     (* Add name at the end to allow fn_name shadowing. *)

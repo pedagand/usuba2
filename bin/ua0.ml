@@ -393,7 +393,7 @@ let main () =
       let ast, symbole = ast !fn_name file in
       match eval ~double:!double ast symbole keys texts with
       | None -> Printf.eprintf "evaluation None\n"
-      | Some (value, _) ->
+      | Some (_, (value, _)) ->
           let values =
             match !double with
             | true ->

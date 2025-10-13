@@ -40,6 +40,7 @@ module Term = struct
     FnCall { fn_name = Right variable_name; ty_resolve = resolve; args }
 
   let circ t = Circ t
+  let lift tys func = Lift { tys; func }
 
   let reindex lhs rhs lterm =
     assert (lhs <> []);

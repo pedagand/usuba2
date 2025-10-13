@@ -152,6 +152,8 @@ let rec prefix lhs ty =
       prefix lhs ty
   | _, _ -> raise IllTyped
 
+let flatten = List.fold_right (fun name ty -> Ast.Ty.App { name; ty })
+
 let rec typecheck env ty tm =
   match (ty, tm) with
   | Ast.Ty.Bool, Ast.False -> ()
@@ -201,7 +203,6 @@ and typesynth env = function
         signature.parameters args;
       signature.return_type
   | Reindex { lhs; rhs; lterm } ->
-      let flatten = List.fold_right (fun name ty -> Ast.Ty.App { name; ty }) in
       let ty = typesynth env lterm in
       let ty = prefix lhs ty in
       let ty = prefix rhs ty in
@@ -211,16 +212,17 @@ and typesynth env = function
       match ty with
       | App { name; ty } -> App { name; ty = App { name; ty } }
       | _ -> raise IllTyped)
-  | Lift { tys = _; func = _ } -> failwith "NYI"
-  (*
-      let ty = typesynth env term in
-      let lty = Util.Ty.lty [] ty in
-      let wrapper =
-        match Util.Ty.hd lty with
-        | None -> err "Not a tuple type"
-        | Some hd -> hd
-      in
-      Ast.TyApp { name = wrapper; ty = Util.Ty.to_ty lty } *)
+  | Lift { tys; func = t } -> (
+      let ty = typesynth env t in
+      match ty with
+      | Fun signature ->
+          Fun
+            {
+              signature with
+              parameters = signature.parameters |> List.map (flatten tys);
+              return_type = flatten tys signature.return_type;
+            }
+      | _ -> raise IllTyped)
   | Ann (tm, ty) ->
       typecheck env ty tm;
       ty

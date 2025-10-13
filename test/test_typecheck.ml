@@ -17,18 +17,15 @@ let _H = Ast.TyDeclIdent.fresh "H"
 let fn_undef = Ast.FnIdent.fresh "_"
 
 let ty_f =
-  Ast.
+  Ast.Ty.
     {
-      fn_name = f;
-      signature =
-        {
-          tyvars = Some alpha;
-          parameters = [ Ast.Ty.Bool; Ast.Ty.Var alpha ];
-          return_type = Ast.Ty.Var alpha;
-        };
-      args = [ x; y ];
-      body = Synth (Var y);
+      tyvars = Some alpha;
+      parameters = [ Bool; Var alpha ];
+      return_type = Var alpha;
     }
+
+let def_f =
+  Ast.{ fn_name = f; signature = ty_f; args = [ x; y ]; body = Synth (Var y) }
 
 let env0 =
   let open Ua0.Typecheck.Env in
@@ -45,7 +42,7 @@ let env0 =
             ty = App { name = _G; ty = App { name = _H; ty = Var alpha } };
           })
   |> add_variable w (App { name = _G; ty = Bool })
-  |> add_function ty_f
+  |> add_function def_f
 
 type ctx = Env0
 
@@ -106,9 +103,7 @@ let () =
           test_case "in" `Quick (fun () ->
               check_typesynth Env0
                 Term.(vfn f)
-                Ty.(
-                  fn ~tyvars:alpha ty_f.signature.parameters
-                    ty_f.signature.return_type));
+                Ty.(fn ~tyvars:alpha ty_f.parameters ty_f.return_type));
           test_case "unbound" `Quick (fun () ->
               fail_typesynth Env0 Term.(vfn fn_undef));
         ] );
@@ -188,6 +183,18 @@ let () =
               fail_typesynth Env0 Term.(reindex [ _G ] [ _G ] (v z)));
           test_case "rhs mismatch" `Quick (fun () ->
               fail_typesynth Env0 Term.(reindex [ _F ] [ _F ] (v z)));
+        ] );
+      ( "Lift",
+        [
+          test_case "well-typed" `Quick (fun () ->
+              check_typesynth Env0
+                Term.(lift [ _F; _G ] (vfn f))
+                Ty.(
+                  fn ~tyvars:alpha
+                    [ _F @ _G @ bool; _F @ _G @ v alpha ]
+                    (_F @ _G @ v alpha)));
+          test_case "not applicative" `Quick (fun () ->
+              fail_typesynth Env0 Term.(circ (v x)));
         ] );
       (*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*)
       ( "True/False",

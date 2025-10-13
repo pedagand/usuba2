@@ -31,7 +31,7 @@ module Term = struct
 
   let let' variable term k =
     let variable = TermIdent.fresh variable in
-    Let { variable; term; k = k variable }
+    Let { variable; term; k = k (v variable) }
 
   let fn_call ?resolve fn_name args =
     FnCall { fn_name = Left fn_name; ty_resolve = resolve; args }

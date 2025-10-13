@@ -203,4 +203,25 @@ let () =
                 Term.(cstr _F [ false'; true'; true' ])
                 Ty.(_F @ bool));
         ] );
+      ( "Let",
+        [
+          test_case "well-typed" `Quick (fun () ->
+              check_typecheck Env0
+                Term.(
+                  let' "a" (s (v x) lxor s (v x)) (fun a -> s (s a land s a)))
+                Ty.(bool));
+          test_case "ill-typed argument" `Quick (fun () ->
+              fail_typecheck Env0
+                Term.(
+                  let' "a" (s (v x) lxor s (v y)) (fun a -> s (s a land s a)))
+                Ty.(bool));
+          test_case "ill-typed application" `Quick (fun () ->
+              fail_typecheck Env0
+                Term.(let' "a" (v y) (fun a -> s (s a land s a)))
+                Ty.(bool));
+          test_case "rejecting wrong type" `Quick (fun () ->
+              fail_typecheck Env0
+                Term.(let' "a" (v y) (fun _a -> s (v x)))
+                Ty.(v alpha));
+        ] );
     ]

@@ -190,12 +190,9 @@ and typesynth env = function
       Fun signature
   | Lookup { lterm; index } -> (
       let ty = typesynth env lterm in
-      ignore index;
       match ty with
-      | App { ty; _ } ->
-          (* XXX: check indexing *)
-          ty
-      | _ -> err "lookup: not a type application")
+      | App { ty; name } when index < Env.arity name env -> ty
+      | _ -> raise IllTyped)
   | Operator operator -> typesynth_operator env operator
   | FnCall { fn_name; ty_resolve; args } ->
       let signature = Env.signature ~instance:true fn_name ty_resolve env in

@@ -116,6 +116,8 @@ let () =
         [
           test_case "in range" `Quick (fun () ->
               check_typesynth Env0 Term.((v z).%(2)) Ty.(_G @ bool));
+          test_case "out of range" `Quick (fun () ->
+              fail_typesynth Env0 Term.((v z).%(4)));
           test_case "not Naperian" `Quick (fun () ->
               fail_typesynth Env0 Term.((v x).%(2)));
         ] );

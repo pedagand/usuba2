@@ -34,6 +34,10 @@ module Env = struct
     let variables = Vars.of_seq @@ List.to_seq variables in
     { env with variables }
 
+  let add_variables variables env =
+    let variables = Vars.add_seq (List.to_seq variables) env.variables in
+    { env with variables }
+
   let ty_variable variable env =
     match Vars.find_opt variable env.variables with
     | None ->
@@ -175,7 +179,7 @@ let rec typecheck env ty tm =
           ands
       in
       let env =
-        Env.set_variables ty_ands (Env.add_variable variable ty_var env)
+        Env.add_variables ty_ands (Env.add_variable variable ty_var env)
       in
       typecheck env ty term
   | ty0, Log { message = _; variables = _; k } -> typecheck env ty0 k

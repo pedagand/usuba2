@@ -6,6 +6,7 @@ let x = Ast.TermIdent.fresh "x"
 let y = Ast.TermIdent.fresh "y"
 let z = Ast.TermIdent.fresh "z"
 let u = Ast.TermIdent.fresh "u"
+let w = Ast.TermIdent.fresh "w"
 let var_undef = Ast.TermIdent.fresh "_"
 let f = Ast.FnIdent.fresh "f"
 let _F = Ast.TyDeclIdent.fresh "F"
@@ -43,6 +44,7 @@ let env0 =
             name = _F;
             ty = App { name = _G; ty = App { name = _H; ty = Var alpha } };
           })
+  |> add_variable w (App { name = _G; ty = Bool })
   |> add_function ty_f
 
 type ctx = Env0
@@ -130,6 +132,10 @@ let () =
               check_typesynth Env0
                 Term.(fn_call ~resolve:Ty.(v alpha) f [ s (v x); s (v y) ])
                 Ty.(v alpha));
+          test_case "well-typed instanciated" `Quick (fun () ->
+              check_typesynth Env0
+                Term.(fn_call ~resolve:Ty.bool f [ s (v x); s (v x) ])
+                Ty.bool);
           test_case "no arguments" `Quick (fun () ->
               fail_typesynth Env0 Term.(fn_call ~resolve:Ty.(v alpha) f []));
           test_case "insufficiently applied" `Quick (fun () ->
@@ -138,6 +144,9 @@ let () =
           test_case "wrong args" `Quick (fun () ->
               fail_typesynth Env0
                 Term.(fn_call ~resolve:Ty.(v alpha) f [ s (v y); s (v x) ]));
+          test_case "ill-typed instanciation" `Quick (fun () ->
+              fail_typesynth Env0
+                Term.(fn_call ~resolve:Ty.bool f [ s (v x); s (v y) ]));
         ] );
       ( "Ann",
         [
@@ -223,5 +232,44 @@ let () =
               fail_typecheck Env0
                 Term.(let' "a" (v y) (fun _a -> s (v x)))
                 Ty.(v alpha));
+        ] );
+      ( "Let+",
+        [
+          test_case "well-typed functor" `Quick (fun () ->
+              check_typecheck Env0
+                Term.(let_plus "a" (v z) [] (fun _a _ -> true'))
+                Ty.(_F @ bool));
+          test_case "well-typed monoidal functor" `Quick (fun () ->
+              check_typecheck Env0
+                Term.(
+                  let_plus "a" (v z)
+                    [ ("b", v u); ("c", v z) ]
+                    (fun _a bs ->
+                      match bs with [ _x; y ] -> s (v y) | _ -> assert false))
+                Ty.(_F @ _G @ bool));
+          test_case "well-typed monoidal functor" `Quick (fun () ->
+              check_typecheck Env0
+                Term.(
+                  let_plus "a" (v z)
+                    [ ("b", v u); ("c", v z) ]
+                    (fun _a bs ->
+                      match bs with [ x; _y ] -> s (v x) | _ -> assert false))
+                Ty.(_F @ _G @ _H @ v alpha));
+          test_case "incompatible arg / product monoidal" `Quick (fun () ->
+              fail_typecheck Env0
+                Term.(let_plus "a" (v z) [ ("b", v w) ] (fun _a _ -> true'))
+                Ty.(_F @ bool));
+          test_case "incompatible arg / product monoidal (dual)" `Quick
+            (fun () ->
+              fail_typecheck Env0
+                Term.(let_plus "a" (v z) [ ("b", v w) ] (fun _a _ -> true'))
+                Ty.(_G @ bool));
+          test_case "incompatible product / product monoidal" `Quick (fun () ->
+              fail_typecheck Env0
+                Term.(
+                  let_plus "a" (v z)
+                    [ ("b", v z); ("c", v w) ]
+                    (fun _a _ -> true'))
+                Ty.(_F @ bool));
         ] );
     ]

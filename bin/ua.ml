@@ -1,4 +1,4 @@
-let () = Printexc.record_backtrace true
+(*let () = Printexc.record_backtrace true
 let () = Printexc.print_backtrace stdout
 let files = Queue.create ()
 let passes = Queue.create ()
@@ -32,4 +32,4 @@ let main file =
   Format.(fprintf std_formatter "%a\n" Uat.Pp.pp_prog uat)
 
 let main files = match Queue.peek_opt files with None -> () | Some f -> main f
-let () = main files
+let () = main files*)

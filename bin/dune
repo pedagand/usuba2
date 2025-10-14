@@ -1,17 +1,5 @@
 (executable
- (public_name ex)
- (name ex)
- (modules ex)
- (libraries ex ua0))
-
-(executable
  (public_name ua0)
- (name ua0)
- (modules ua0)
- (libraries ex ua0))
-
-(executable
- (public_name ua)
- (name ua)
- (modules ua)
- (libraries ua0 uat))
+ (name main)
+ (modules main util)
+ (libraries ua0))

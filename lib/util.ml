@@ -1,13 +1,3 @@
-module TermIdent = struct
-  let prepend prefix base =
-    Ast.TermIdent.(fresh @@ Format.asprintf "%s%a" prefix pp base)
-end
-
-module FnIdent = struct
-  let prepend prefix base =
-    Ast.FnIdent.(fresh @@ Format.asprintf "%s%a" prefix pp base)
-end
-
 module Cstrs = struct
   (* Should be here : More in list util equivalent. *)
   let rec remove_prefix f p list =
@@ -33,19 +23,21 @@ module Cstrs = struct
 end
 
 module Ty = struct
+  open Ast.Ty
+
   let rec instanciate types = function
-    | Ast.TyBool -> Ast.TyBool
-    | TyFun signature ->
+    | Bool -> Bool
+    | Fun signature ->
         let signature = instanciate_signature types signature in
-        Ast.TyFun signature
-    | TyApp { name; ty } ->
+        Fun signature
+    | App { name; ty } ->
         let ty = instanciate types ty in
-        TyApp { name; ty }
-    | TyVar v as t -> (
+        App { name; ty }
+    | Var v as t -> (
         match List.assoc_opt v types with None -> t | Some t -> t)
 
   and instanciate_signature types =
-   fun Ast.{ tyvars; parameters; return_type } ->
+   fun { tyvars; parameters; return_type } ->
     let types =
       match tyvars with None -> types | Some ty -> List.remove_assoc ty types
     in
@@ -61,18 +53,17 @@ module Ty = struct
 
   let rec equal assocs lhs rhs =
     match (lhs, rhs) with
-    | Ast.TyBool, Ast.TyBool -> true
-    | Ast.TyVar lhs, Ast.TyVar rhs ->
+    | Bool, Bool -> true
+    | Var lhs, Var rhs ->
         Ast.TyIdent.equal lhs rhs
         || assocs
            |> List.find_map (fun (l, r) ->
                   if Ast.TyIdent.equal l lhs then Some r else None)
            |> Option.map (Ast.TyIdent.equal rhs)
            |> Option.value ~default:false
-    | Ast.TyApp { ty = lty; name = lname }, Ast.TyApp { ty = rty; name = rname }
-      ->
+    | App { ty = lty; name = lname }, App { ty = rty; name = rname } ->
         Ast.TyDeclIdent.equal lname rname && equal assocs lty rty
-    | Ast.TyFun lsignature, Ast.TyFun rsignature ->
+    | Fun lsignature, Fun rsignature ->
         equal_signature assocs lsignature rsignature
     | _, _ -> false
 
@@ -96,47 +87,49 @@ module Ty = struct
     in
     equal assocs lsignature.return_type rsignature.return_type
 
-  let equal = equal []
-
-  let lift cstrs ty =
-    List.fold_right (fun name ty -> Ast.TyApp { name; ty }) cstrs ty
+  let equal xs ys = equal [] xs ys
+  let lift cstrs ty = List.fold_right (fun name ty -> App { name; ty }) cstrs ty
 
   let rec contains_boolean = function
-    | Ast.TyBool -> true
-    | Ast.TyVar _ -> false
-    | TyApp { ty; name = _ } -> contains_boolean ty
-    | TyFun { parameters; return_type; tyvars = _ } ->
+    | Bool -> true
+    | Var _ -> false
+    | App { ty; name = _ } -> contains_boolean ty
+    | Fun { parameters; return_type; tyvars = _ } ->
         contains_boolean return_type || List.exists contains_boolean parameters
 
   let rec lift_boolean cstrs = function
-    | Ast.TyBool as ty -> lift cstrs ty
-    | Ast.TyVar _ as ty -> ty
-    | TyApp { ty; name } -> TyApp { name; ty = lift_boolean cstrs ty }
-    | TyFun { parameters; return_type; tyvars } ->
+    | Bool as ty -> lift cstrs ty
+    | Var _ as ty -> ty
+    | App { ty; name } -> App { name; ty = lift_boolean cstrs ty }
+    | Fun { parameters; return_type; tyvars } ->
         let return_type = lift_boolean cstrs return_type in
         let parameters = List.map (lift_boolean cstrs) parameters in
-        TyFun { tyvars; parameters; return_type }
+        Fun { tyvars; parameters; return_type }
 
+  (*
   let lty t ty = { Ast.t; ty }
+*)
 
   let rec ty_cstrs = function
-    | (Ast.TyBool | TyVar _ | TyFun _) as e -> ([], e)
-    | TyApp { name; ty } ->
+    | (Bool | Var _ | Fun _) as e -> ([], e)
+    | App { name; ty } ->
         let r, ty = ty_cstrs ty in
         (name :: r, ty)
 
+  (*
   let to_ty { Ast.t; ty } =
     List.fold_right (fun (name, _) ty -> Ast.TyApp { name; ty }) t ty
-
+*)
   let rec remove_prefix ctsrs ty =
     match ctsrs with
     | [] -> Some ty
     | t :: q -> (
         match ty with
-        | Ast.TyBool | Ast.TyFun _ | Ast.TyVar _ -> None
-        | TyApp { name; ty; _ } ->
+        | Bool | Fun _ | Var _ -> None
+        | App { name; ty; _ } ->
             if Ast.TyDeclIdent.equal t name then remove_prefix q ty else None)
 
+  (*
   let prefix lty = lty.Ast.t
   let nest lty = List.length lty.Ast.t
 
@@ -145,18 +138,18 @@ module Ty = struct
       ->
         Some ty
     | _ -> None
+*)
 
-  let elt = function
-    | Ast.TyApp { ty; _ } -> Some ty
-    | TyBool | TyFun _ | TyVar _ -> None
+  let elt = function App { ty; _ } -> Some ty | Bool | Fun _ | Var _ -> None
 
   let cstrql lhs rhs =
     match (lhs, rhs) with
-    | Ast.TyBool, Ast.TyBool -> true
-    | TyApp { name = lname; _ }, TyApp { name = rname; _ } ->
+    | Bool, Bool -> true
+    | App { name = lname; _ }, App { name = rname; _ } ->
         Ast.TyDeclIdent.equal lname rname
     | _, _ -> false
 
+  (*
   let lcstreq lhs rhs =
     match (lhs, rhs) with
     | { Ast.t = lt; ty = lty }, { Ast.t = rt; ty = rty } -> (
@@ -164,13 +157,9 @@ module Ty = struct
         | [], [] -> cstrql lty rty
         | (l, _) :: _, (r, _) :: _ -> Ast.TyDeclIdent.equal l r
         | _, _ -> false)
+*)
 end
 
 module FunctionDecl = struct
-  let signature fn_decl =
-    let Ast.{ fn_name = _; tyvars; parameters; return_type; body = _ } =
-      fn_decl
-    in
-    let parameters = List.map snd parameters in
-    Ast.{ tyvars; parameters; return_type }
+  let signature fn_decl = fn_decl.Ast.signature
 end

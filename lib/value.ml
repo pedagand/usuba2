@@ -29,6 +29,37 @@ module Ty = struct
       ~pp_sep:(fun format () -> Format.pp_print_string format ", ")
       pp format
 
+  let rec of_ast_ty fsize = function
+    | Ast.Ty.Bool -> TBool
+    | Fun signature -> TFun (of_ast_signature fsize signature)
+    | Var variable -> TVar variable
+    | App { name; ty } ->
+        let size = fsize name in
+        let ty = of_ast_ty fsize ty in
+        TNamedTuple { name; size; ty }
+
+  and of_ast_signature fsize =
+   fun { tyvars; parameters; return_type } ->
+    {
+      tyvars;
+      parameters = List.map (of_ast_ty fsize) parameters;
+      return_type = of_ast_ty fsize return_type;
+    }
+
+  let rec to_ast_ty = function
+    | TBool -> Ast.Ty.Bool
+    | TFun signature -> Fun (to_ast_signature signature)
+    | TVar variable -> Var variable
+    | TNamedTuple { name; ty; size = _ } -> App { name; ty = to_ast_ty ty }
+
+  and to_ast_signature (signature : signature) : 'a Ast.Ty.signature =
+    Ast.Ty.
+      {
+        tyvars = signature.tyvars;
+        parameters = List.map to_ast_ty signature.parameters;
+        return_type = to_ast_ty signature.return_type;
+      }
+
   let rec equal lhs rhs =
     match (lhs, rhs) with
     | TBool, TBool -> true
@@ -76,14 +107,18 @@ module Ty = struct
           (fun (name, size) ty -> TNamedTuple { name; size; ty })
           t ty
 
-  let prefix = function
+  (* let prefix = function
     | Lty { t = (ty, _) :: _; ty = _ }
     | Lty { t = []; ty = TNamedTuple { name = ty; _ } } ->
         Some ty
-    | _ -> None
+    | _ -> None *)
+
+  let cstr = function
+    | TNamedTuple { name; _ } -> Some name
+    | TBool | TFun _ | TVar _ -> None
 
   let view = function Lty { t; _ } -> t
-  let nest = function Lty { t; _ } -> List.length t
+  let length_view = function Lty { t; _ } -> List.length t
 
   let elt = function
     | TNamedTuple { ty; _ } -> Some ty
@@ -99,11 +134,7 @@ module Ty = struct
             if Ast.TyDeclIdent.equal t name then remove_prefix q ty else None)
 end
 
-type t =
-  | VBool of bool
-  | VArray of t Array.t
-  | VFunction of
-      Ast.FnIdent.t * (Ast.TyDeclIdent.t, Ast.TyIdent.t) Ast.ty option
+type t = VBool of bool | VArray of t Array.t | VFunction of Ast.FnIdent.t
 
 let rec pp format = function
   | VBool true -> Format.fprintf format "1"
@@ -111,8 +142,7 @@ let rec pp format = function
   | VArray array ->
       let pp_sep format () = Format.pp_print_string format ", " in
       Format.fprintf format "[%a]" (Format.pp_print_array ~pp_sep pp) array
-  | VFunction (fn, tys) ->
-      Format.fprintf format "%a%a" Ast.FnIdent.pp fn Pp.pp_ty_opt_args tys
+  | VFunction fn -> Format.fprintf format "%a" Ast.FnIdent.pp fn
 
 let true' = VBool true
 let false' = VBool false
@@ -155,7 +185,7 @@ let as_array = function
   | VBool _ | VFunction _ -> None
 
 let as_function = function
-  | VFunction (fn_ident, e) -> Some (fn_ident, e)
+  | VFunction fn_ident -> Some fn_ident
   | VBool _ | VArray _ -> None
 
 let rec split2 lhs =

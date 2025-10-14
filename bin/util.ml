@@ -1,5 +1,76 @@
-let () = Printexc.print_backtrace stderr
-let () = Printexc.record_backtrace true
+module StringUtil = struct
+  let rec chunks current acc n s =
+    match s with
+    | [] -> acc
+    | t :: q -> (
+        let s = Printf.sprintf "%s%c" current t in
+        match String.length s with
+        | l when l = n -> chunks String.empty (s :: acc) n q
+        | _ -> chunks s acc n q)
+
+  (** [chunks n s] sépare [s] en une liste de [n] strings *)
+  let chunks ?(rev = false) n s =
+    let s = chunks String.empty [] n (List.of_seq @@ String.to_seq s) in
+    if rev then s else List.rev s
+end
+
+module Bits = struct
+  let of_int64 ?pad n =
+    let ( mod ) = Int64.unsigned_rem in
+    let ( / ) = Int64.unsigned_div in
+    let rec aux n list =
+      let quotient = n / 2L in
+      let res = n mod 2L in
+      if quotient = 0L then res :: list else aux quotient (res :: list)
+    in
+    let list = aux n [] in
+    let length = List.length list in
+    match pad with
+    | None -> list
+    | Some padding ->
+        let leading = max 0 (padding - length) in
+        List.init leading (fun _ -> 0L) @ list
+
+  let of_int ?pad n = List.map (Int64.equal 1L) @@ of_int64 ?pad n
+end
+
+module Io = struct
+  let read_all_chan ch = really_input_string ch (in_channel_length ch)
+  let read_all string = In_channel.with_open_bin string read_all_chan
+end
+
+module Common = struct
+  let from_hex_string s =
+    s |> String.to_seq
+    |> Seq.filter (Fun.negate @@ ( = ) ' ')
+    |> String.of_seq |> StringUtil.chunks 2
+    |> List.map (fun s ->
+           let s = "0x" ^ s in
+           Bits.of_int ~pad:8 @@ Int64.of_string s)
+    |> List.flatten
+
+  let file_to_bools file =
+    let content = Io.read_all file in
+    from_hex_string content
+end
+
+module ListUtil = struct
+  let rec chunks current acc n s =
+    match s with
+    | [] -> current :: acc
+    | t :: q -> (
+        match List.length current with
+        | l when l = n -> chunks [ t ] (current :: acc) n q
+        | _ ->
+            let current = current @ [ t ] in
+            chunks current acc n q)
+
+  (** [chunks n s] sépare [s] en une liste de chaque liste ou chaque sous liste
+      est de longeur [n]. *)
+  let chunks ?(rev = false) n l =
+    let s = chunks [] [] n l in
+    if rev then s else List.rev s
+end
 
 module RowsCols = struct
   let tabulate f =
@@ -13,8 +84,7 @@ end
 
 module Gift = struct
   let round_constants =
-    List.map
-      (Ex.Util.Bits.of_int ~pad:16)
+    List.map (Bits.of_int ~pad:16)
       [
         0x80_01L;
         0x80_03L;
@@ -192,7 +262,7 @@ module Gift = struct
     pp Format.err_formatter chars
 
   let uvconsts key =
-    let key = Ex.Util.ListUtil.chunks 16 key in
+    let key = ListUtil.chunks 16 key in
     let us, vs = uvs key in
     let bottom = List.map (Ua0.Value.map' (Fun.const false)) us in
     let consts =
@@ -219,115 +289,3 @@ module Gift = struct
 
   (*    List.map2 (RowsCols.map2 (fun (u, v) const -> (u, v, const))) uv consts *)
 end
-
-let keys = Queue.create ()
-let texts = Queue.create ()
-let double = ref false
-let debug = ref false
-let fn_name = ref String.empty
-
-let spec =
-  Arg.align
-    [
-      ("-2", Arg.Set double, " Enable double processing");
-      ("-d", Arg.Set debug, " Debug mode");
-      ("-s", Arg.Set_string fn_name, "<fn-name> function to evaluate");
-      ("-k", Arg.String (Fun.flip Queue.add keys), "<keyfile> path to the key");
-    ]
-
-let pos_args = Fun.flip Queue.add texts
-
-let usage =
-  Printf.sprintf "%s [-2] -s <fn-name> [-k <keyfile>]... FILE PLAINTEXT..."
-    Sys.argv.(0)
-
-let () = Arg.parse spec pos_args usage
-
-let eval ~double ast symbole keys texts =
-  let () = assert (Queue.length keys = Queue.length texts) in
-  let size = if double then 2 else 1 in
-  let kps =
-    Seq.map2
-      (fun k t ->
-        let k = Ex.Util.Common.file_to_bools k in
-        let t = Ex.Util.Common.file_to_bools t in
-        (k, t))
-      (Queue.to_seq keys) (Queue.to_seq texts)
-  in
-
-  let kps =
-    Seq.map
-      (fun (k, t) ->
-        let state = Gift.spec_tabulate t in
-        let keys = Gift.uvconsts k in
-        (state, keys))
-      kps
-  in
-
-  let kps = Seq.take size kps in
-
-  match double with
-  | false ->
-      Seq.find_map
-        (fun (state, keys) ->
-          let keys = Array.of_list keys in
-          let () = assert (Array.length keys = 28) in
-          Ua0.Eval.eval ast symbole None [ state; VArray keys ])
-        kps
-  | true ->
-      let ( let* ) = Option.bind in
-      let* (c1, ks1), kps = Seq.uncons kps in
-      let* (c2, ks2), _ = Seq.uncons kps in
-      let state =
-        Ua0.Value.map2 (fun lhs rhs -> Ua0.Value.VArray [| lhs; rhs |]) c1 c2
-      in
-      let ks =
-        List.map2
-          (Ua0.Value.map2 (fun lhs rhs -> Ua0.Value.VArray [| lhs; rhs |]))
-          ks1 ks2
-      in
-      let keys = Array.of_list ks in
-      Ua0.Eval.eval ast symbole None [ state; VArray keys ]
-
-(*let print module' = Format.printf "%a\n" Ua0.Pp.pp_module module'*)
-
-let ast symbole file =
-  let ast =
-    In_channel.with_open_bin file (fun ic ->
-        let lexbuf = Lexing.from_channel ic in
-        let () = Lexing.set_filename lexbuf file in
-        Ua0.Parser.module_ Ua0.Lexer.token lexbuf)
-  in
-  let env, ast = Ua0.Pass.Idents.of_string_ast_env ast in
-  let symbole = Ua0.Pass.Idents.Env.find_fn_ident symbole env in
-  (ast, symbole)
-
-let pp_value value =
-  let () = Format.(fprintf err_formatter "%a\n" Ua0.Value.pp value) in
-  let slices = Gift.to_slice value in
-  let chars = Gift.transpose_inverse slices in
-  Gift.pp Format.err_formatter chars
-
-let main () =
-  match Queue.is_empty texts with
-  | true -> (*print Ua0.Gift.gift*) ()
-  | false -> (
-      let file =
-        match Queue.take_opt texts with
-        | None -> raise @@ Arg.Bad "Missing ua file"
-        | Some file -> file
-      in
-      let ast, symbole = ast !fn_name file in
-      match eval ~double:!double ast symbole keys texts with
-      | None -> Printf.eprintf "evaluation None\n"
-      | Some (value, _) ->
-          let values =
-            match !double with
-            | true ->
-                let lhs, rhs = Ua0.Value.split2 value in
-                [ lhs; rhs ]
-            | false -> [ value ]
-          in
-          List.iter pp_value values)
-
-let () = main ()

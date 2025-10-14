@@ -1,4 +1,4 @@
-let () = Printexc.print_backtrace stderr
+(*let () = Printexc.print_backtrace stderr
 let () = Printexc.record_backtrace true
 
 module RowsCols = struct
@@ -291,4 +291,4 @@ let main () =
           let chars = Gift.transpose_inverse slices in
           Gift.pp Format.err_formatter chars)
 
-let () = main ()
+let () = main ()*)

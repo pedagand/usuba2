@@ -6,6 +6,8 @@
 
 (using menhir 3.0)
 
+(map_workspace_root false)
+
 (source
  (github username/reponame))
 

@@ -8,6 +8,7 @@ let texts = Queue.create ()
 let double = ref false
 let debug = ref false
 let bitslice = ref false
+let typecheck = ref false
 let fn_name = ref None
 
 let spec =
@@ -15,6 +16,7 @@ let spec =
     [
       ("-2", Arg.Set double, " Enable double processing");
       ("-d", Arg.Set debug, " Debug mode");
+      ("-t", Arg.Set typecheck, " Typecheck program");
       ("-b", Arg.Set bitslice, " Bitslice bytes");
       ( "-s",
         Arg.String (fun s -> fn_name := Some s),
@@ -26,7 +28,7 @@ let pos_args = Fun.flip Queue.add texts
 
 let usage =
   Printf.sprintf
-    "%s [-2] [-d] [-b] -s <fn-name> [-k <keyfile>]... FILE PLAINTEXT..."
+    "%s [-2] [-b] [-t] [-d] -s <fn-name> [-k <keyfile>]... FILE PLAINTEXT..."
     Sys.argv.(0)
 
 let () = Arg.parse spec pos_args usage
@@ -136,6 +138,14 @@ let main () =
         match Queue.take_opt texts with
         | None -> raise @@ Arg.Bad "Missing ua file"
         | Some file -> file
+      in
+      let () =
+        match !typecheck with
+        | true ->
+            let _, ast = file |> ast_raw |> Ua0.Pass.Idents.of_string_ast_env in
+            let _ = Ua0.Typecheck.of_ua0_prog ast in
+            exit 0
+        | false -> ()
       in
       match !fn_name with
       | None -> ignore (ast_raw file)

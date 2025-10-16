@@ -1,6 +1,9 @@
 let filename = "test_reindex2.ua"
 let test_reindex2 = Filename.concat "src" filename
 
+(*let t_unit =
+  Alcotest.testable (fun format () -> Format.fprintf format "()") Unit.equal*)
+
 let ast file =
   let ast =
     In_channel.with_open_bin file (fun ic ->
@@ -21,8 +24,7 @@ let () =
       ( test_reindex2,
         [
           test_case test_reindex2 `Quick (fun () ->
-              Alcotest.match_raises ("typecheck " ^ filename)
-                (fun _ -> false)
-                (fun () -> ignore @@ Ua0.Typecheck.of_ua0_prog reindex2));
+              Alcotest.check pass ("typecheck " ^ filename) ()
+                (ignore @@ Ua0.Typecheck.of_ua0_prog reindex2));
         ] );
     ]

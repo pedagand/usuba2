@@ -376,7 +376,7 @@ fn gift_bitslice ['a] (
     fxor : fn('a, 'a) -> 'a,
     state : Slice Col Row 'a, 
     keys : Keys Slice Col Row 'a
-) Col Row Slice 'a = 
+) Slice Col Row 'a = 
     fold[28](round_bitslice.['a](fnot, fand, for, fxor))(state, keys)
     
 fn fnot(b: bool) bool = ! b
@@ -415,7 +415,7 @@ fn gift16(
 fn giftb_32(
     state : Slice Col Row Double bool,
     keys : Keys Slice Col Row Double bool
-) Col Row Slice Double bool =
+) Slice Col Row Double bool =
     gift_bitslice.[Double bool](
         double_not, double_and, double_or, double_xor, state, keys
     )
@@ -423,7 +423,7 @@ fn giftb_32(
 fn giftb_16(
     state : Slice Col Row bool,
     keys : Keys Slice Col Row bool
-) Col Row Slice bool =
+) Slice Col Row bool =
     gift_bitslice.[bool](
         &fnot, &fand, &for, &fxor, state, keys
     ) 

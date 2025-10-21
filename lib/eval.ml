@@ -101,7 +101,7 @@ module Env = struct
   let clear_tyvariables env = { env with type_variables = TyVariables.empty }
 
   let rec to_ty env = function
-    | Value.Ty.TBool -> Ast.Ty.Bool
+    | Value.Ty.TBool -> Ty.Bool
     | TNamedTuple { name; ty; size = _ } ->
         let ty = to_ty env ty in
         App { name; ty }
@@ -118,7 +118,7 @@ module Env = struct
 
   let rec of_ty env ty =
     match ty with
-    | Ast.Ty.Bool -> Value.Ty.TBool
+    | Ty.Bool -> Value.Ty.TBool
     | App { name; ty } ->
         let Ast.{ size; _ } = type_declaration name env in
         let ty = of_ty env ty in
@@ -132,7 +132,7 @@ module Env = struct
         | Some ty -> ty)
 
   and of_signature signature env =
-    let { tyvars; parameters; return_type } : _ Ast.Ty.signature = signature in
+    let { tyvars; parameters; return_type } : _ Ty.signature = signature in
 
     Value.Ty.
       {
@@ -305,7 +305,7 @@ module Env = struct
 end
 
 let rec ty_substitute types = function
-  | Ast.Ty.Bool -> Ast.Ty.Bool
+  | Ty.Bool -> Ty.Bool
   | App { name; ty } ->
       let ty = ty_substitute types ty in
       App { name; ty }
@@ -316,7 +316,7 @@ let rec ty_substitute types = function
       types |> List.assoc_opt variable |> Option.value ~default
 
 and ty_substitute_sig types signature =
-  let { tyvars; parameters; return_type } : _ Ast.Ty.signature = signature in
+  let { tyvars; parameters; return_type } : _ Ty.signature = signature in
   {
     tyvars;
     parameters = List.map (ty_substitute types) parameters;

@@ -8,7 +8,7 @@ module Env = struct
   module Types = Map.Make (Ast.TyDeclIdent)
 
   type t = {
-    variables : Ast.scoped Ast.Ty.ty Vars.t;
+    variables : Ast.scoped Ty.ty Vars.t;
     functions : Ast.fn_declaration Fns.t;
     types : Ast.ty_declaration Types.t;
   }
@@ -151,7 +151,7 @@ exception IllTyped
 
 let rec typecheck env ty tm =
   match (ty, tm) with
-  | Ast.Ty.Bool, Ast.False -> ()
+  | Ty.Bool, Ast.False -> ()
   | Bool, True -> ()
   | App { name; ty }, Constructor { ty = _name'; terms } ->
       if Env.arity name env <> List.length terms then raise IllTyped;
@@ -189,7 +189,7 @@ let rec typecheck env ty tm =
               | [] -> raise IllTyped
               | name :: spine ->
                   try_spine spine
-                    (List.map (fun ty -> Ast.Ty.App { name; ty }) btys)))
+                    (List.map (fun ty -> Ty.App { name; ty }) btys)))
         | _ -> assert false
       in
       try_spine (List.rev spine) btys
@@ -245,8 +245,8 @@ and typesynth env = function
       ty
 
 and typesynth_operator env op =
-  Operator.iter (typecheck env Ast.Ty.Bool) op;
-  Ast.Ty.Bool
+  Operator.iter (typecheck env Ty.Bool) op;
+  Ty.Bool
 
 let typecheck_function env fn =
   let Ast.{ fn_name; signature; args; body } = fn in

@@ -74,7 +74,7 @@ module Idents = struct
   end
 
   let rec ty env = function
-    | Ast.Ty.Bool -> Ast.Ty.Bool
+    | Ty.Bool -> Ty.Bool
     | Var x ->
         let name = Env.find_tyvar x env in
         Var name
@@ -87,7 +87,7 @@ module Idents = struct
         Fun signature
 
   and signature env sing =
-    let { tyvars; parameters; return_type } : _ Ast.Ty.signature = sing in
+    let { tyvars; parameters; return_type } : _ Ty.signature = sing in
     let env, tyvars =
       match tyvars with
       | None -> (env, None)
@@ -191,7 +191,7 @@ module Idents = struct
     in
     let return_type = ty env signature.return_type in
     let args, parameters = List.split parameters in
-    let signature = { Ast.Ty.tyvars; parameters; return_type } in
+    let signature = { Ty.tyvars; parameters; return_type } in
     let body = cterm env body in
     (* Add name at the end to allow fn_name shadowing. *)
     let env, fn_name = Env.add_fn fn_name env in

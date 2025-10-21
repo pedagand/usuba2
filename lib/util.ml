@@ -23,12 +23,12 @@ module Cstrs = struct
 end
 
 module Ty = struct
-  open Ast.Ty
+  open Ty
 
   let to_spine ty =
     let rec go acc ty =
       match ty with
-      | Ast.Ty.App { name; ty } -> go (name :: acc) ty
+      | App { name; ty } -> go (name :: acc) ty
       | bty -> (List.rev acc, bty)
     in
     go [] ty
@@ -38,7 +38,7 @@ module Ty = struct
     | [] -> ty
     | name :: spine ->
         let ty = from_spine (spine, ty) in
-        Ast.Ty.App { name; ty }
+        App { name; ty }
 
   let rec merge (spine1, tys) (spine2, ty2) =
     (* XXX: ugly `... @ [...]` *)
@@ -55,8 +55,7 @@ module Ty = struct
   let rec prefix lhs ty =
     match (lhs, ty) with
     | [], ty -> Some ty
-    | decl :: lhs, Ast.Ty.App { name; ty } when Ast.TyDeclIdent.equal decl name
-      ->
+    | decl :: lhs, App { name; ty } when Ast.TyDeclIdent.equal decl name ->
         prefix lhs ty
     | _, _ -> None
 

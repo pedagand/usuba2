@@ -17,7 +17,7 @@ let _H = Ast.TyDeclIdent.fresh "H"
 let fn_undef = Ast.FnIdent.fresh "_"
 
 let ty_f =
-  Ast.Ty.
+  Ty.
     {
       tyvars = Some alpha;
       parameters = [ Bool; Var alpha ];
@@ -29,9 +29,9 @@ let def_f =
 
 let env0 =
   let open Ua0.Typecheck.Env in
-  empty |> add_variable x Ast.Ty.Bool
+  empty |> add_variable x Ty.Bool
   |> add_type { tyvar = alpha; name = _F; size = 4 }
-  |> add_variable y Ast.Ty.(Var alpha)
+  |> add_variable y Ty.(Var alpha)
   |> add_type { tyvar = alpha; name = _G; size = 4 }
   |> add_type { tyvar = alpha; name = _H; size = 2 }
   |> add_variable z (App { name = _F; ty = App { name = _G; ty = Bool } })

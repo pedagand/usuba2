@@ -48,13 +48,11 @@ and 't cterm =
     ; ty_var : 'ty_var
     ; term_id : 'term_id >
 
-type 'a term = 'a cterm
-
 type 't fn_declaration_ = {
   fn_name : 'fn_ident;
   signature : 't Ty.signature;
   args : 'term_id list;
-  body : 't term;
+  body : 't cterm;
 }
   constraint
     't =
@@ -80,6 +78,7 @@ type 't prog_ = 't node_ list
 type pre =
   < ty_decl : string ; fn_ident : string ; ty_var : string ; term_id : string >
 
+type pre_term = pre cterm
 type pre_ty_declaration = pre ty_declaration_
 type pre_fn_declaration = pre fn_declaration_
 type pre_node = pre node_
@@ -91,6 +90,7 @@ type scoped =
   ; ty_var : TyIdent.t
   ; term_id : TermIdent.t >
 
+type term = scoped cterm
 type ty_declaration = scoped ty_declaration_
 type fn_declaration = scoped fn_declaration_
 type node = scoped node_

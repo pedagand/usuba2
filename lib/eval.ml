@@ -324,7 +324,7 @@ and ty_substitute_sig types signature =
   }
 
 let rec eval_op env = function
-  | Ast.Operator.Not term ->
+  | Operator.Not term ->
       let env, (value, ty) = eval_cterm env term in
       let () = assert (Value.Ty.is_bool ty) in
       let value = Value.not value in

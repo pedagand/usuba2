@@ -245,7 +245,7 @@ and typesynth env = function
       ty
 
 and typesynth_operator env op =
-  Ast.Operator.iter (typecheck env Ast.Ty.Bool) op;
+  Operator.iter (typecheck env Ast.Ty.Bool) op;
   Ast.Ty.Bool
 
 let typecheck_function env fn =

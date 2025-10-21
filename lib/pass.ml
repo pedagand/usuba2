@@ -170,21 +170,21 @@ module Idents = struct
         Synth sterm
 
   and op env = function
-    | Ast.Operator.Not t ->
+    | Operator.Not t ->
         let term = cterm env t in
-        Ast.Operator.Not term
-    | Ast.Operator.And (lhs, rhs) ->
+        Operator.Not term
+    | And (lhs, rhs) ->
         let lhs = cterm env lhs in
         let rhs = cterm env rhs in
-        Ast.Operator.And (lhs, rhs)
-    | Ast.Operator.Or (lhs, rhs) ->
+        And (lhs, rhs)
+    | Or (lhs, rhs) ->
         let lhs = cterm env lhs in
         let rhs = cterm env rhs in
-        Ast.Operator.Or (lhs, rhs)
-    | Ast.Operator.Xor (lhs, rhs) ->
+        Or (lhs, rhs)
+    | Xor (lhs, rhs) ->
         let lhs = cterm env lhs in
         let rhs = cterm env rhs in
-        Ast.Operator.Xor (lhs, rhs)
+        Xor (lhs, rhs)
 
   let fn_declaration env fn_declaration =
     let Ast.{ fn_name; signature; args; body } = fn_declaration in

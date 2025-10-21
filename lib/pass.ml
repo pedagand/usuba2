@@ -126,7 +126,7 @@ module Idents = struct
         let args = List.map (cterm env) args in
         FnCall { fn_name; ty_resolve; args }
     | Operator ops ->
-        let op = op env ops in
+        let op = Operator.map (cterm env) ops in
         Operator op
     | Ann (c, t) ->
         let cterm = cterm env c in
@@ -168,23 +168,6 @@ module Idents = struct
     | Synth s ->
         let sterm = sterm env s in
         Synth sterm
-
-  and op env = function
-    | Operator.Not t ->
-        let term = cterm env t in
-        Operator.Not term
-    | And (lhs, rhs) ->
-        let lhs = cterm env lhs in
-        let rhs = cterm env rhs in
-        And (lhs, rhs)
-    | Or (lhs, rhs) ->
-        let lhs = cterm env lhs in
-        let rhs = cterm env rhs in
-        Or (lhs, rhs)
-    | Xor (lhs, rhs) ->
-        let lhs = cterm env lhs in
-        let rhs = cterm env rhs in
-        Xor (lhs, rhs)
 
   let fn_declaration env fn_declaration =
     let Ast.{ fn_name; signature; args; body } = fn_declaration in

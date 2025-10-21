@@ -323,32 +323,21 @@ and ty_substitute_sig types signature =
     return_type = ty_substitute types return_type;
   }
 
-let rec eval_op env = function
-  | Operator.Not term ->
-      let env, (value, ty) = eval_cterm env term in
+let reduce_op = function
+  | Operator.Not (value, ty) ->
       let () = assert (Value.Ty.is_bool ty) in
-      let value = Value.not value in
-      (env, (value, ty))
-  | Xor (lhs, rhs) ->
-      let env, (lvalue, lty') = eval_cterm env lhs in
-      let env, (rvalue, rty) = eval_cterm env rhs in
+      (Value.not value, ty)
+  | Xor ((lvalue, lty'), (rvalue, rty)) ->
       let () = assert (Value.Ty.(is_bool lty' && is_bool rty)) in
-      let value = Value.( lxor ) lvalue rvalue in
-      (env, (value, lty'))
-  | And (lhs, rhs) ->
-      let env, (lvalue, lty') = eval_cterm env lhs in
-      let env, (rvalue, rty) = eval_cterm env rhs in
+      (Value.( lxor ) lvalue rvalue, lty')
+  | And ((lvalue, lty'), (rvalue, rty)) ->
       let () = assert (Value.Ty.(is_bool lty' && is_bool rty)) in
-      let value = Value.( land ) lvalue rvalue in
-      (env, (value, lty'))
-  | Or (lhs, rhs) ->
-      let env, (lvalue, lty') = eval_cterm env lhs in
-      let env, (rvalue, rty) = eval_cterm env rhs in
+      (Value.( land ) lvalue rvalue, lty')
+  | Or ((lvalue, lty'), (rvalue, rty)) ->
       let () = assert (Value.Ty.(is_bool lty' && is_bool rty)) in
-      let value = Value.( lor ) lvalue rvalue in
-      (env, (value, lty'))
+      (Value.( lor ) lvalue rvalue, lty')
 
-and eval_sterm env = function
+let rec eval_sterm env = function
   | Ast.Var variable -> (env, Env.lookup variable env)
   | Fn { fn_ident } ->
       let signature = Env.signature ~instance:false fn_ident None env in
@@ -448,7 +437,9 @@ and eval_sterm env = function
       (* ignore env of the called function, otherwise we lose the current env. *)
       let _, r = eval env fn_decl ty_resolve args in
       (env, r)
-  | Operator operator -> eval_op env operator
+  | Operator operator ->
+      let env, r = Operator.traverse eval_cterm env operator in
+      (env, reduce_op r)
   | Ann (cterm, _ty) ->
       let ((_, _cty) as c) = eval_cterm env cterm in
       c

@@ -42,35 +42,3 @@ let pp_cterm =
 let pp_sterm =
   Term.pp_sterm Prog.TermIdent.pp Prog.TyIdent.pp Prog.TyDeclIdent.pp
     Prog.FnIdent.pp
-
-let pp_fn format fn =
-  let { fn_name; signature; args; body } = fn in
-  let pp_parameter format (variable, ty) =
-    Format.fprintf format "%a : %a" Prog.TermIdent.pp variable pp_ty ty
-  in
-  let pp_tyvars =
-    Format.pp_print_option (fun format ty ->
-        Format.fprintf format "[%a]" Prog.TyIdent.pp ty)
-  in
-  let pp_parameters =
-    Format.pp_print_list
-      ~pp_sep:(fun format () -> Format.fprintf format ", ")
-      pp_parameter
-  in
-  let parameters = List.combine args signature.parameters in
-  Format.fprintf format "fn %a %a(%a) %a = %a" Prog.FnIdent.pp fn_name pp_tyvars
-    signature.tyvars pp_parameters parameters pp_ty signature.return_type
-    pp_cterm body
-
-let pp_tydecl format ty =
-  let Prog.{ size; name; tyvar = _ } = ty in
-  Format.fprintf format "type %a = tuple[%u]" Prog.TyDeclIdent.pp name size
-
-let pp_node format = function
-  | Prog.NFun fn -> pp_fn format fn
-  | Prog.NTy ty -> pp_tydecl format ty
-
-let pp_prog format =
-  Format.pp_print_list
-    ~pp_sep:(fun format () -> Format.fprintf format "\n\n")
-    pp_node format

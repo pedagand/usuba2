@@ -18,8 +18,8 @@ module Env = struct
 
   type t = {
     current_function : Prog.FnIdent.t option;
-    types : Prog.ty_declaration Types.t;
-    functions : Prog.fn_declaration Functions.t;
+    types : Prog.tydecl Types.t;
+    functions : Prog.fndecl Functions.t;
     variables : (Value.t * Value.Ty.ty) Variables.t;
     type_variables : Value.Ty.ty TyVariables.t;
   }
@@ -42,10 +42,10 @@ module Env = struct
     in
     ()
 
-  let add_function (fn : Prog.fn_declaration) env =
+  let add_function (fn : Prog.fndecl) env =
     { env with functions = Functions.add fn.fn_name fn env.functions }
 
-  let add_types (ty : Prog.ty_declaration) env =
+  let add_types (ty : Prog.tydecl) env =
     { env with types = Types.add ty.name ty env.types }
 
   let bind_variable variable value ty env =
@@ -528,7 +528,7 @@ and eval_cterm env = function
       eval_cterm env k
   | Synth sterm -> eval_sterm env sterm
 
-and eval env (fn : Prog.fn_declaration) ty_args vals =
+and eval env (fn : Prog.fndecl) ty_args vals =
   let Prog.
         {
           fn_name = current_function;

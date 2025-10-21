@@ -9,8 +9,8 @@ module Env = struct
 
   type t = {
     variables : Prog.scoped Ty.t Vars.t;
-    functions : Prog.fn_declaration Fns.t;
-    types : Prog.ty_declaration Types.t;
+    functions : Prog.fndecl Fns.t;
+    types : Prog.tydecl Types.t;
   }
 
   let empty =

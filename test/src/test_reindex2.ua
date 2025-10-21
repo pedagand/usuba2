@@ -210,9 +210,8 @@ fn subcells ['a] (
     fxor : fn('a, 'a) -> 'a,
     state : Col Row Slice 'a
 ) Col Row Slice 'a =
-    let+ row = state in 
-        let+ slice = row in
-            subcells_.['a](fnot, fand, for, fxor, slice)
+    let+ slice = state in
+    subcells_.['a](fnot, fand, for, fxor, slice)
     
 fn subcells_reindexed ['a] (
     fnot : fn('a) -> 'a,
@@ -223,9 +222,8 @@ fn subcells_reindexed ['a] (
 ) Slice Col Row 'a = 
     let state = reindex[Slice | Col Row]((state : Slice Col Row 'a)) in
     reindex[Col Row | Slice](
-        (let+ row = state in 
-            let+ slice = row in
-                subcells_.['a](fnot, fand, for, fxor, slice) : Col Row Slice 'a)
+        (let+ slice = state in
+         subcells_.['a](fnot, fand, for, fxor, slice) : Col Row Slice 'a)
     )
     
 // inline
@@ -237,9 +235,8 @@ fn subcells_1 ['a] (
     state : Slice Col Row 'a
 ) Slice Col Row 'a = 
     reindex[Col Row | Slice](
-        (let+ row = reindex[Slice | Col Row]((state : Slice Col Row 'a)) in 
-            let+ slice = row in
-                subcells_.['a](fnot, fand, for, fxor, slice) : Col Row Slice 'a)
+        (let+ slice = reindex[Slice | Col Row]((state : Slice Col Row 'a)) in
+         subcells_.['a](fnot, fand, for, fxor, slice) : Col Row Slice 'a)
     )
     
 
@@ -274,10 +271,8 @@ fn add_round_key ['a](
     state : Col Row Slice 'a,
     key : Col Row Slice 'a
 ) Col Row Slice 'a =
-    let+ row_state = state and row_key = key in
-        let+ slice_state = row_state and slice_key = row_key in
-            let+ a_state = slice_state and a_key = slice_key in
-                fxor.(a_state, a_key)
+    let+ a_state = state and a_key = key in
+    fxor.(a_state, a_key)
         
 fn add_round_key_reindexed['a](
     fxor: fn('a, 'a) -> 'a,
@@ -287,10 +282,8 @@ fn add_round_key_reindexed['a](
     let key = reindex[Slice | Col Row]((key : Slice Col Row 'a)) in
     let state = reindex[Slice | Col Row]((state : Slice Col Row 'a)) in
     reindex[Col Row | Slice](
-        (let+ row_state = state and row_key = key in
-            let+ slice_state = row_state and slice_key = row_key in
-                let+ a_state = slice_state and a_key = slice_key in
-                    fxor.(a_state, a_key) : 
+        (let+ a_state = state and a_key = key in
+         fxor.(a_state, a_key) :
             Col Row Slice 'a
         )
     )
@@ -302,12 +295,10 @@ fn add_round_key_1 ['a](
     key : Slice Col Row 'a
 ) Slice Col Row 'a =
     reindex[Col Row | Slice](
-        (let+ row_state = reindex[Slice | Col Row](state) 
-            and row_key = reindex[Slice | Col Row](key) 
+        (let+ a_state = reindex[Slice | Col Row](state)
+            and a_key = reindex[Slice | Col Row](key)
         in
-            let+ slice_state = row_state and slice_key = row_key in
-                let+ a_state = slice_state and a_key = slice_key in
-                    fxor.(a_state, a_key) : 
+        fxor.(a_state, a_key) :
             Col Row Slice 'a
         )
     ) 

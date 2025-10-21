@@ -25,6 +25,41 @@ end
 module Ty = struct
   open Ast.Ty
 
+  let to_spine ty =
+    let rec go acc ty =
+      match ty with
+      | Ast.Ty.App { name; ty } -> go (name :: acc) ty
+      | bty -> (List.rev acc, bty)
+    in
+    go [] ty
+
+  let rec from_spine (spine, ty) =
+    match spine with
+    | [] -> ty
+    | name :: spine ->
+        let ty = from_spine (spine, ty) in
+        Ast.Ty.App { name; ty }
+
+  let rec merge (spine1, tys) (spine2, ty2) =
+    (* XXX: ugly `... @ [...]` *)
+    match (spine1, spine2) with
+    | [], [] -> ([], tys @ [ ty2 ])
+    | name1 :: spine1, name2 :: spine2 when Ast.TyDeclIdent.equal name1 name2 ->
+        let spine, tys = merge (spine1, tys) (spine2, ty2) in
+        (name1 :: spine, tys)
+    | _, _ ->
+        ( [],
+          List.map (fun ty -> from_spine (spine1, ty)) tys
+          @ [ from_spine (spine2, ty2) ] )
+
+  let rec prefix lhs ty =
+    match (lhs, ty) with
+    | [], ty -> Some ty
+    | decl :: lhs, Ast.Ty.App { name; ty } when Ast.TyDeclIdent.equal decl name
+      ->
+        prefix lhs ty
+    | _, _ -> None
+
   let rec instanciate types = function
     | Bool -> Bool
     | Fun signature ->

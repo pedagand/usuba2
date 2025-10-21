@@ -149,15 +149,6 @@ end
 
 exception IllTyped
 
-let rec prefix lhs ty =
-  match (lhs, ty) with
-  | [], ty -> ty
-  | decl :: lhs, Ast.Ty.App { name; ty } when Ast.TyDeclIdent.equal decl name ->
-      prefix lhs ty
-  | _, _ -> raise IllTyped
-
-let flatten = List.fold_right (fun name ty -> Ast.Ty.App { name; ty })
-
 let rec typecheck env ty tm =
   match (ty, tm) with
   | Ast.Ty.Bool, Ast.False -> ()
@@ -169,25 +160,45 @@ let rec typecheck env ty tm =
       let ty = typesynth env term in
       let env = Env.add_variable variable ty env in
       typecheck env ty0 k
-  | App { name; ty }, LetPlus { variable; lterm; ands; term } ->
-      let ty_var = lterm |> typesynth env |> prefix [ name ] in
+  | ty0, LetPlus { variable; lterm; ands; term } ->
+      let ty_var = lterm |> typesynth env |> Util.Ty.to_spine in
       let ty_ands =
         List.map
           (fun (var, tm) ->
-            let ty = tm |> typesynth env |> prefix [ name ] in
+            let ty = tm |> typesynth env |> Util.Ty.to_spine in
             (var, ty))
           ands
       in
-      let env =
-        Env.add_variables ty_ands (Env.add_variable variable ty_var env)
+      let spine, bty = Util.Ty.to_spine ty0 in
+      let spine, btys =
+        List.fold_left Util.Ty.merge (spine, [ bty ])
+          (ty_var :: List.map snd ty_ands)
       in
-      typecheck env ty term
+      let rec try_spine spine btys =
+        match btys with
+        | bty0 :: bty_var :: bty_ands -> (
+            let env = Env.add_variable variable bty_var env in
+            let env =
+              Env.add_variables
+                (List.combine (List.map fst ty_ands) bty_ands)
+                env
+            in
+            try typecheck env bty0 term
+            with IllTyped -> (
+              match spine with
+              | [] -> raise IllTyped
+              | name :: spine ->
+                  try_spine spine
+                    (List.map (fun ty -> Ast.Ty.App { name; ty }) btys)))
+        | _ -> assert false
+      in
+      try_spine (List.rev spine) btys
   | ty0, Log { message = _; variables = _; k } -> typecheck env ty0 k
   | ty0, Synth t ->
       let ty = typesynth env t in
       if not (Util.Ty.equal ty ty0) then raise IllTyped;
       ()
-  | _, _ -> failwith "Ill-typed"
+  | _, _ -> raise IllTyped
 
 and typesynth env = function
   | Var variable -> Env.ty_variable variable env
@@ -208,9 +219,9 @@ and typesynth env = function
       signature.return_type
   | Reindex { lhs; rhs; lterm } ->
       let ty = typesynth env lterm in
-      let ty = prefix lhs ty in
-      let ty = prefix rhs ty in
-      flatten rhs (flatten lhs ty)
+      let ty = Util.Ty.prefix lhs ty |> Option.get in
+      let ty = Util.Ty.prefix rhs ty |> Option.get in
+      Util.Ty.from_spine (rhs, Util.Ty.from_spine (lhs, ty))
   | Circ t -> (
       let ty = typesynth env t in
       match ty with
@@ -223,8 +234,10 @@ and typesynth env = function
           Fun
             {
               signature with
-              parameters = signature.parameters |> List.map (flatten tys);
-              return_type = flatten tys signature.return_type;
+              parameters =
+                signature.parameters
+                |> List.map (fun bty -> Util.Ty.from_spine (tys, bty));
+              return_type = Util.Ty.from_spine (tys, signature.return_type);
             }
       | _ -> raise IllTyped)
   | Ann (tm, ty) ->

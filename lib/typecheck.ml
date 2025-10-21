@@ -8,7 +8,7 @@ module Env = struct
   module Types = Map.Make (Ast.TyDeclIdent)
 
   type t = {
-    variables : Ast.scoped Ty.ty Vars.t;
+    variables : Ast.scoped Ty.t Vars.t;
     functions : Ast.fn_declaration Fns.t;
     types : Ast.ty_declaration Types.t;
   }

@@ -1,14 +1,14 @@
-type 't ty =
+type 't t =
   | Bool  (** [bool] *)
   | Var of 'ty_var  (** ['a] *)
-  | App of { name : 'ty_decl; ty : 't ty }  (** [tname ty] *)
+  | App of { name : 'ty_decl; ty : 't t }  (** [tname ty] *)
   | Fun of 't signature
   constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
 
 and 't signature = {
   tyvars : 'ty_var option;
-  parameters : 't ty list;
-  return_type : 't ty;
+  parameters : 't t list;
+  return_type : 't t;
 }
   constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
 (** [['a]^? (ty1, ty2, ...) -> ty] *)

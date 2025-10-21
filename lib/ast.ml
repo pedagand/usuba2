@@ -2,7 +2,6 @@ module TermIdent = Ident.Make ()
 module TyIdent = Ident.Make ()
 module TyDeclIdent = Ident.Make ()
 module FnIdent = Ident.Make ()
-open Ty
 
 type 't sterm =
   | Var of 'term_id  (** [x ] *)
@@ -14,11 +13,11 @@ type 't sterm =
   | Lift of { tys : 'ty_decl list; func : 't sterm }  (** [lift[F ...](f)] *)
   | FnCall of {
       fn_name : ('fn_ident, 'term_id) Either.t;
-      ty_resolve : 't ty option;
+      ty_resolve : 't Ty.t option;
       args : 't cterm list;
     }  (** [f.[ty](t1, t2, ...)] *)
   | Operator of 't cterm Operator.t
-  | Ann of 't cterm * 't ty
+  | Ann of 't cterm * 't Ty.t
   constraint
     't =
     < ty_decl : 'ty_decl
@@ -53,7 +52,7 @@ type 'a term = 'a cterm
 
 type 't fn_declaration_ = {
   fn_name : 'fn_ident;
-  signature : 't signature;
+  signature : 't Ty.signature;
   args : 'term_id list;
   body : 't term;
 }

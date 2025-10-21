@@ -9,3 +9,9 @@ let iter f = function
   | Xor (a, b) | And (a, b) | Or (a, b) ->
       f a;
       f b
+
+let pp pp format = function
+  | Not term -> Format.fprintf format "! %a" pp term
+  | And (lhs, rhs) -> Format.fprintf format "(%a & %a)" pp lhs pp rhs
+  | Xor (lhs, rhs) -> Format.fprintf format "(%a ^ %a)" pp lhs pp rhs
+  | Or (lhs, rhs) -> Format.fprintf format "(%a | %a)" pp lhs pp rhs

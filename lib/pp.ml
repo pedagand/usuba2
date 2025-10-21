@@ -76,7 +76,7 @@ and pp_sterm format = function
       Format.fprintf format "%a[%u]" pp_sterm lterm index
   | Lift { tys; func } ->
       Format.fprintf format "lift[%a](%a)" pp_list_ty tys pp_sterm func
-  | Operator operation -> pp_operation format operation
+  | Operator operation -> Operator.pp pp_cterm format operation
   | Reindex { lhs; rhs; lterm } ->
       Format.fprintf format "reindex[%a | %a](%a)" pp_list_ty lhs pp_list_ty rhs
         pp_sterm lterm
@@ -94,14 +94,6 @@ and pp_sterm format = function
       Format.fprintf format "%a.%a(%a)" pp_fn_name fn_name pp_ty_resolve
         ty_resolve pp_args args
   | Ann (tm, ty) -> Format.fprintf format "(%a : %a)" pp_cterm tm pp_ty ty
-
-and pp_operation format = function
-  | Operator.Not term -> Format.fprintf format "! %a" pp_cterm term
-  | And (lhs, rhs) ->
-      Format.fprintf format "(%a & %a)" pp_cterm lhs pp_cterm rhs
-  | Xor (lhs, rhs) ->
-      Format.fprintf format "(%a ^ %a)" pp_cterm lhs pp_cterm rhs
-  | Or (lhs, rhs) -> Format.fprintf format "(%a | %a)" pp_cterm lhs pp_cterm rhs
 
 let pp_fn format fn =
   let { fn_name; signature; args; body } = fn in

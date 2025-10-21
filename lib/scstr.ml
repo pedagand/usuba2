@@ -13,6 +13,8 @@ module Ty = struct
 end
 
 module Term = struct
+  open Term
+
   let s sterm = Synth sterm
   let ann tm ty = Ann (tm, ty)
   let true' = True

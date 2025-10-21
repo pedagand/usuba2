@@ -68,8 +68,8 @@ module Idents = struct
 
     let find_variable_term name env =
       Either.fold
-        ~left:(fun fn_ident -> Ast.Fn { fn_ident })
-        ~right:(fun s -> Ast.Var s)
+        ~left:(fun fn_ident -> Term.Fn { fn_ident })
+        ~right:(fun s -> Var s)
         (find_callable name env)
   end
 
@@ -100,7 +100,7 @@ module Idents = struct
     { tyvars; parameters; return_type }
 
   let rec sterm env = function
-    | Ast.Var v -> Env.find_variable_term v env
+    | Term.Var v -> Env.find_variable_term v env
     | Fn { fn_ident } ->
         let fn_ident = Env.find_fn_ident fn_ident env in
         Fn { fn_ident }
@@ -134,13 +134,13 @@ module Idents = struct
         Ann (cterm, ty)
 
   and cterm env = function
-    | (Ast.False | Ast.True) as e -> e
-    | Ast.Let { variable; term = l; k } ->
+    | (Term.False | True) as e -> e
+    | Let { variable; term = l; k } ->
         let t = sterm env l in
         let env, variable = Env.add_variable variable env in
         let k = cterm env k in
         Let { variable; term = t; k }
-    | Ast.LetPlus { variable; lterm; ands; term = t } ->
+    | LetPlus { variable; lterm; ands; term = t } ->
         (*
           Evaluate the ltherm before adding variable to env.
           Otherwise variable shadowning issues.
@@ -156,7 +156,7 @@ module Idents = struct
             env ands
         in
         let term = cterm env t in
-        Ast.LetPlus { variable; lterm; ands; term }
+        LetPlus { variable; lterm; ands; term }
     | Constructor { ty; terms } ->
         let terms = List.map (cterm env) terms in
         let ty = Env.find_tycstr ty env in

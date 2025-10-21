@@ -1,5 +1,6 @@
 %{
     open Ast
+    open Term
     
     let fail_at start end' fmt = 
         let range = MenhirLib.LexerUtil.range (start, end') in
@@ -125,7 +126,7 @@ sterm:
         FnCall {fn_name = Either.Left fn_name; ty_resolve; args}
     }
     | operator {
-        Ast.Operator $1
+        Operator $1
     }
     | c_ty=parenthesis(splitted(cterm, COLON, ty)) {
         let cterm, ty = c_ty in

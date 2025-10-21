@@ -151,7 +151,7 @@ exception IllTyped
 
 let rec typecheck env ty tm =
   match (ty, tm) with
-  | Ty.Bool, Ast.False -> ()
+  | Ty.Bool, Term.False -> ()
   | Bool, True -> ()
   | App { name; ty }, Constructor { ty = _name'; terms } ->
       if Env.arity name env <> List.length terms then raise IllTyped;

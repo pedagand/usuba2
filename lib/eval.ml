@@ -246,7 +246,8 @@ module Env = struct
         (fun v_previous _ ->
           let v_current =
             List.map
-              (fun (variable, _) -> (TermIdent.fresh "v", Some (Var variable)))
+              (fun (variable, _) ->
+                (TermIdent.fresh "v", Some (Term.Var variable)))
               (List.hd v_previous)
           in
           v_current :: v_previous)
@@ -270,10 +271,10 @@ module Env = struct
         let_variables_of_variables variables
       in
       let args =
-        List.map (fun (variable, _) -> Synth (Var variable)) (vv :: ands)
+        List.map (fun (variable, _) -> Term.Synth (Var variable)) (vv :: ands)
       in
       let ty_resolve = Option.map (fun v -> Ty.Var v) new_signature.tyvars in
-      LetPlus
+      Term.LetPlus
         {
           variable;
           lterm = variable_letbind;
@@ -287,7 +288,8 @@ module Env = struct
           let (variable, variable_letbind), ands =
             let_variables_of_variables variables
           in
-          LetPlus { variable; lterm = variable_letbind; ands; term = cterm })
+          Term.LetPlus
+            { variable; lterm = variable_letbind; ands; term = cterm })
         cterm variables_stage
     in
     let lift_fn =
@@ -338,7 +340,7 @@ let reduce_op = function
       (Value.( lor ) lvalue rvalue, lty')
 
 let rec eval_sterm env = function
-  | Ast.Var variable -> (env, Env.lookup variable env)
+  | Term.Var variable -> (env, Env.lookup variable env)
   | Fn { fn_ident } ->
       let signature = Env.signature ~instance:false fn_ident None env in
       (env, (Value.VFunction fn_ident, Value.Ty.TFun signature))
@@ -445,7 +447,7 @@ let rec eval_sterm env = function
       c
 
 and eval_cterm env = function
-  | Ast.False -> (env, (Value.VBool false, Value.Ty.TBool))
+  | Term.False -> (env, (Value.VBool false, Value.Ty.TBool))
   | True -> (env, (Value.VBool true, Value.Ty.TBool))
   | Constructor { ty; terms } ->
       let cstr_log = Env.cstr_log ty env in

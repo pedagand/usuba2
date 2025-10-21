@@ -1,20 +1,20 @@
 open Alcotest
 open Ua0
 
-let alpha = Ast.TyIdent.fresh "'a"
-let x = Ast.TermIdent.fresh "x"
-let y = Ast.TermIdent.fresh "y"
-let z = Ast.TermIdent.fresh "z"
-let u = Ast.TermIdent.fresh "u"
-let w = Ast.TermIdent.fresh "w"
-let var_undef = Ast.TermIdent.fresh "_"
-let f = Ast.FnIdent.fresh "f"
-let _F = Ast.TyDeclIdent.fresh "F"
-let _G = Ast.TyDeclIdent.fresh "G"
-let _H = Ast.TyDeclIdent.fresh "H"
+let alpha = Prog.TyIdent.fresh "'a"
+let x = Prog.TermIdent.fresh "x"
+let y = Prog.TermIdent.fresh "y"
+let z = Prog.TermIdent.fresh "z"
+let u = Prog.TermIdent.fresh "u"
+let w = Prog.TermIdent.fresh "w"
+let var_undef = Prog.TermIdent.fresh "_"
+let f = Prog.FnIdent.fresh "f"
+let _F = Prog.TyDeclIdent.fresh "F"
+let _G = Prog.TyDeclIdent.fresh "G"
+let _H = Prog.TyDeclIdent.fresh "H"
 
-(* let g = Ast.FnIdent.fresh "g" *)
-let fn_undef = Ast.FnIdent.fresh "_"
+(* let g = Prog.FnIdent.fresh "g" *)
+let fn_undef = Prog.FnIdent.fresh "_"
 
 let ty_f =
   Ty.
@@ -25,7 +25,7 @@ let ty_f =
     }
 
 let def_f =
-  Ast.{ fn_name = f; signature = ty_f; args = [ x; y ]; body = Synth (Var y) }
+  Prog.{ fn_name = f; signature = ty_f; args = [ x; y ]; body = Synth (Var y) }
 
 let env0 =
   let open Ua0.Typecheck.Env in

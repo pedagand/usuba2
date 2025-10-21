@@ -1,4 +1,4 @@
-open Ast
+open Prog
 
 module Ty = struct
   open Ty

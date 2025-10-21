@@ -1,5 +1,5 @@
 %{
-    open Ast
+    open Prog
     open Term
     
     let fail_at start end' fmt = 
@@ -29,7 +29,7 @@
 
 %start module_
 
-%type <Ast.pre_prog> module_
+%type <Prog.pre_prog> module_
 
 %%
 
@@ -56,8 +56,8 @@ module_:
     }
     
 node:
-    | type_decl { Ast.NTy $1 }
-    | fn_decl { Ast.NFun $1 }
+    | type_decl { Prog.NTy $1 }
+    | fn_decl { Prog.NFun $1 }
 
 
 type_decl:

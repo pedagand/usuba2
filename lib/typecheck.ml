@@ -3,21 +3,21 @@
 let err fmt = Format.kasprintf failwith fmt
 
 module Env = struct
-  module Vars = Map.Make (Ast.TermIdent)
-  module Fns = Map.Make (Ast.FnIdent)
-  module Types = Map.Make (Ast.TyDeclIdent)
+  module Vars = Map.Make (Prog.TermIdent)
+  module Fns = Map.Make (Prog.FnIdent)
+  module Types = Map.Make (Prog.TyDeclIdent)
 
   type t = {
-    variables : Ast.scoped Ty.t Vars.t;
-    functions : Ast.fn_declaration Fns.t;
-    types : Ast.ty_declaration Types.t;
+    variables : Prog.scoped Ty.t Vars.t;
+    functions : Prog.fn_declaration Fns.t;
+    types : Prog.ty_declaration Types.t;
   }
 
   let empty =
     { variables = Vars.empty; functions = Fns.empty; types = Types.empty }
 
   let add_function fn env =
-    let functions = Fns.add fn.Ast.fn_name fn env.functions in
+    let functions = Fns.add fn.Prog.fn_name fn env.functions in
     { env with functions }
 
   let add_variable variable ty env =
@@ -25,7 +25,7 @@ module Env = struct
     { env with variables }
 
   let add_type ty_decl env =
-    let types = Types.add ty_decl.Ast.name ty_decl env.types in
+    let types = Types.add ty_decl.Prog.name ty_decl env.types in
     { env with types }
 
   let clear_variables env = { env with variables = Vars.empty }
@@ -44,15 +44,15 @@ module Env = struct
         let () =
           Vars.iter
             (fun variable ty ->
-              Format.eprintf "%a : %a - " Ast.TermIdent.pp variable Pp.pp_ty ty)
+              Format.eprintf "%a : %a - " Prog.TermIdent.pp variable Pp.pp_ty ty)
             env.variables
         in
-        err "Unbound variable : %a" Ast.TermIdent.pp variable
+        err "Unbound variable : %a" Prog.TermIdent.pp variable
     | Some ty -> ty
 
   let fn_declaration fn_name env =
     match Fns.find_opt fn_name env.functions with
-    | None -> err "Unbound fn : %a" Ast.FnIdent.pp fn_name
+    | None -> err "Unbound fn : %a" Prog.FnIdent.pp fn_name
     | Some fn -> fn
 
   let arity name env =
@@ -61,7 +61,7 @@ module Env = struct
 
   let signature ~instance variable tyvar env =
     let pp =
-      Format.pp_print_either ~left:Ast.FnIdent.pp ~right:Ast.TermIdent.pp
+      Format.pp_print_either ~left:Prog.FnIdent.pp ~right:Prog.TermIdent.pp
     in
     let signature =
       match variable with
@@ -71,7 +71,7 @@ module Env = struct
           match ty_variable variable env with
           | Fun signature -> signature
           | ty ->
-              err "%a should be a function ty not %a" Ast.TermIdent.pp variable
+              err "%a should be a function ty not %a" Prog.TermIdent.pp variable
                 Pp.pp_ty ty)
     in
     match instance with
@@ -93,21 +93,21 @@ module Env = struct
   (*
   let rec range acc prefix ty env =
     match prefix with
-    | [] -> { Ast.t = List.rev acc; ty }
+    | [] -> { Prog.t = List.rev acc; ty }
     | t :: q ->
         let name, size, ty =
           match ty with
-          | Ast.TyApp { name; ty } ->
+          | Prog.TyApp { name; ty } ->
               let size = arity name env in
               (name, size, ty)
           | TyBool | TyFun _ | TyVar _ -> err "Not a named tuple."
         in
         let () =
-          match Ast.TyDeclIdent.equal name t with
+          match Prog.TyDeclIdent.equal name t with
           | true -> ()
           | false ->
-              err "range prefix = %a - ty = %a" Ast.TyDeclIdent.pp t
-                Ast.TyDeclIdent.pp name
+              err "range prefix = %a - ty = %a" Prog.TyDeclIdent.pp t
+                Prog.TyDeclIdent.pp name
         in
         range ((name, size) :: acc) q ty env
 
@@ -128,13 +128,13 @@ module Env = struct
     | t :: q ->
         let lhd, ltail = uncons re_lindex in
         let rhd, rtail = uncons re_rindex in
-        let is_head = Option.equal Ast.TyDeclIdent.equal (Some t) in
+        let is_head = Option.equal Prog.TyDeclIdent.equal (Some t) in
 
         if is_head lhd then
-          let q = skip Ast.TyDeclIdent.equal ltail q in
+          let q = skip Prog.TyDeclIdent.equal ltail q in
           re_rindex @ destination q re_lindex re_rindex
         else if is_head rhd then
-          let q = skip Ast.TyDeclIdent.equal rtail q in
+          let q = skip Prog.TyDeclIdent.equal rtail q in
           re_lindex @ destination q re_rindex re_lindex
         else t :: destination q re_lindex re_rindex
 
@@ -249,7 +249,7 @@ and typesynth_operator env op =
   Ty.Bool
 
 let typecheck_function env fn =
-  let Ast.{ fn_name; signature; args; body } = fn in
+  let Prog.{ fn_name; signature; args; body } = fn in
   ignore fn_name;
   let env =
     Env.clear_variables env
@@ -266,8 +266,8 @@ let typecheck_function env fn =
 let add_typedecl = Fun.flip Env.add_type
 
 let of_ua0_node env = function
-  | Ast.NFun fn_declaration -> typecheck_function env fn_declaration
-  | Ast.NTy type_decl -> add_typedecl env type_decl
+  | Prog.NFun fn_declaration -> typecheck_function env fn_declaration
+  | Prog.NTy type_decl -> add_typedecl env type_decl
 
 let of_ua0_prog env = List.fold_left of_ua0_node env
 let of_ua0_prog = of_ua0_prog Env.empty

@@ -1,6 +1,6 @@
 module Ty = struct
   type signature = {
-    tyvars : Ast.TyIdent.t option;
+    tyvars : Prog.TyIdent.t option;
     parameters : ty list;
     return_type : ty;
   }
@@ -8,21 +8,21 @@ module Ty = struct
   and ty =
     | TBool
     | TFun of signature
-    | TVar of Ast.TyIdent.t
-    | TNamedTuple of { name : Ast.TyDeclIdent.t; size : int; ty : ty }
+    | TVar of Prog.TyIdent.t
+    | TNamedTuple of { name : Prog.TyDeclIdent.t; size : int; ty : ty }
 
-  type lty = Lty of { t : (Ast.TyDeclIdent.t * int) list; ty : ty }
+  type lty = Lty of { t : (Prog.TyDeclIdent.t * int) list; ty : ty }
 
-  let pp_tyvar_opt format = Format.pp_print_option Ast.TyIdent.pp format
+  let pp_tyvar_opt format = Format.pp_print_option Prog.TyIdent.pp format
 
   let rec pp format = function
     | TBool -> Format.fprintf format "bool"
     | TNamedTuple { name; size = _; ty } ->
-        Format.fprintf format "%a %a" Ast.TyDeclIdent.pp name pp ty
+        Format.fprintf format "%a %a" Prog.TyDeclIdent.pp name pp ty
     | TFun { tyvars; parameters; return_type } ->
         Format.fprintf format "fn %a(%a) -> %a" pp_tyvar_opt tyvars pps
           parameters pp return_type
-    | TVar name -> Format.fprintf format "%a" Ast.TyIdent.pp name
+    | TVar name -> Format.fprintf format "%a" Prog.TyIdent.pp name
 
   and pps format =
     Format.pp_print_list
@@ -64,10 +64,10 @@ module Ty = struct
     match (lhs, rhs) with
     | TBool, TBool -> true
     | TFun _lhs, TFun _rhs -> failwith ""
-    | TVar lhs, TVar rhs -> Ast.TyIdent.equal lhs rhs
+    | TVar lhs, TVar rhs -> Prog.TyIdent.equal lhs rhs
     | ( TNamedTuple { name = lname; size = lsize; ty = lty },
         TNamedTuple { name = rname; size = rsize; ty = rty } ) ->
-        Ast.TyDeclIdent.equal lname rname
+        Prog.TyDeclIdent.equal lname rname
         && Int.equal lsize rsize && equal lty rty
     | _, _ -> false
 
@@ -78,7 +78,7 @@ module Ty = struct
         else
           List.for_all2
             (fun (lname, lsize) (rname, rsize) ->
-              Ast.TyDeclIdent.equal lname rname && Int.equal lsize rsize)
+              Prog.TyDeclIdent.equal lname rname && Int.equal lsize rsize)
             lt rt
           && equal lty rty
 
@@ -86,7 +86,7 @@ module Ty = struct
     match (lhs, rhs) with
     | TBool, TBool -> true
     | TNamedTuple { name = lname; _ }, TNamedTuple { name = rname; _ } ->
-        Ast.TyDeclIdent.equal lname rname
+        Prog.TyDeclIdent.equal lname rname
     | _, _ -> false
 
   let lcstreq lhs rhs =
@@ -94,7 +94,7 @@ module Ty = struct
     | Lty { t = lt; ty = lty }, Lty { t = rt; ty = rty } -> (
         match (lt, rt) with
         | [], [] -> cstrql lty rty
-        | (l, _) :: _, (r, _) :: _ -> Ast.TyDeclIdent.equal l r
+        | (l, _) :: _, (r, _) :: _ -> Prog.TyDeclIdent.equal l r
         | _, _ -> false)
 
   let is_bool = ( = ) TBool
@@ -131,10 +131,10 @@ module Ty = struct
         match ty with
         | TBool | TFun _ | TVar _ -> None
         | TNamedTuple { name; ty; _ } ->
-            if Ast.TyDeclIdent.equal t name then remove_prefix q ty else None)
+            if Prog.TyDeclIdent.equal t name then remove_prefix q ty else None)
 end
 
-type t = VBool of bool | VArray of t Array.t | VFunction of Ast.FnIdent.t
+type t = VBool of bool | VArray of t Array.t | VFunction of Prog.FnIdent.t
 
 let rec pp format = function
   | VBool true -> Format.fprintf format "1"
@@ -142,7 +142,7 @@ let rec pp format = function
   | VArray array ->
       let pp_sep format () = Format.pp_print_string format ", " in
       Format.fprintf format "[%a]" (Format.pp_print_array ~pp_sep pp) array
-  | VFunction fn -> Format.fprintf format "%a" Ast.FnIdent.pp fn
+  | VFunction fn -> Format.fprintf format "%a" Prog.FnIdent.pp fn
 
 let true' = VBool true
 let false' = VBool false

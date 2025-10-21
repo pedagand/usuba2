@@ -5,10 +5,10 @@ module Idents = struct
     module SMap = Map.Make (String)
 
     type t = {
-      types : Ast.TyDeclIdent.t SMap.t;
-      variables : Ast.TermIdent.t SMap.t;
-      fns : Ast.FnIdent.t SMap.t;
-      tyvars : Ast.TyIdent.t SMap.t;
+      types : Prog.TyDeclIdent.t SMap.t;
+      variables : Prog.TermIdent.t SMap.t;
+      fns : Prog.FnIdent.t SMap.t;
+      tyvars : Prog.TyIdent.t SMap.t;
     }
 
     let empty =
@@ -20,22 +20,22 @@ module Idents = struct
       }
 
     let add_variable name env =
-      let variable = Ast.TermIdent.fresh name in
+      let variable = Prog.TermIdent.fresh name in
       let variables = SMap.add name variable env.variables in
       ({ env with variables }, variable)
 
     let add_fn name env =
-      let fresh = Ast.FnIdent.fresh name in
+      let fresh = Prog.FnIdent.fresh name in
       let fns = SMap.add name fresh env.fns in
       ({ env with fns }, fresh)
 
     let add_type name env =
-      let fresh = Ast.TyDeclIdent.fresh name in
+      let fresh = Prog.TyDeclIdent.fresh name in
       let types = SMap.add name fresh env.types in
       ({ env with types }, fresh)
 
     let add_tyvar name env =
-      let fresh = Ast.TyIdent.fresh name in
+      let fresh = Prog.TyIdent.fresh name in
       let tyvars = SMap.add name fresh env.tyvars in
       ({ env with tyvars }, fresh)
 
@@ -170,7 +170,7 @@ module Idents = struct
         Synth sterm
 
   let fn_declaration env fn_declaration =
-    let Ast.{ fn_name; signature; args; body } = fn_declaration in
+    let Prog.{ fn_name; signature; args; body } = fn_declaration in
     let env = Env.clear_variables env in
     let env = Env.clear_ty_variables env in
     let env, tyvars =
@@ -195,22 +195,22 @@ module Idents = struct
     let body = cterm env body in
     (* Add name at the end to allow fn_name shadowing. *)
     let env, fn_name = Env.add_fn fn_name env in
-    (env, Ast.{ fn_name; signature; args; body })
+    (env, Prog.{ fn_name; signature; args; body })
 
   let ty_declaration env ty_declaration =
-    let Ast.{ tyvar; name; size } = ty_declaration in
-    let tyvar = Ast.TyIdent.fresh tyvar in
+    let Prog.{ tyvar; name; size } = ty_declaration in
+    let tyvar = Prog.TyIdent.fresh tyvar in
     let env, name = Env.add_type name env in
-    let ty = Ast.{ tyvar; name; size } in
+    let ty = Prog.{ tyvar; name; size } in
     (env, ty)
 
   let node env = function
-    | Ast.NFun fn_decl ->
+    | Prog.NFun fn_decl ->
         let env, fn = fn_declaration env fn_decl in
-        (env, Ast.NFun fn)
-    | Ast.NTy type_decl ->
+        (env, Prog.NFun fn)
+    | Prog.NTy type_decl ->
         let env, ty = ty_declaration env type_decl in
-        (env, Ast.NTy ty)
+        (env, Prog.NTy ty)
 
   let of_string_ast_env modules = List.fold_left_map node Env.empty modules
 

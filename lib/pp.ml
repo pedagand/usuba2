@@ -1,4 +1,4 @@
-open Ast
+open Prog
 
 let pp_tyvars format ty_vars =
   match ty_vars with
@@ -31,26 +31,26 @@ and pp_ty_opt_args format ty_args =
   | Some (Ty.Fun _ as ty) -> Format.fprintf format "(%a) " pp_ty ty
   | Some ty -> Format.fprintf format "%a " pp_ty ty
 
-let pp_list_ty = Format.pp_print_list Ast.TyDeclIdent.pp
+let pp_list_ty = Format.pp_print_list Prog.TyDeclIdent.pp
 
 let pp_fn_name =
-  Format.pp_print_either ~left:Ast.FnIdent.pp ~right:Ast.TermIdent.pp
+  Format.pp_print_either ~left:Prog.FnIdent.pp ~right:Prog.TermIdent.pp
 
 let pp_cterm =
-  Term.pp Ast.TermIdent.pp Ast.TyIdent.pp Ast.TyDeclIdent.pp Ast.FnIdent.pp
+  Term.pp Prog.TermIdent.pp Prog.TyIdent.pp Prog.TyDeclIdent.pp Prog.FnIdent.pp
 
 let pp_sterm =
-  Term.pp_sterm Ast.TermIdent.pp Ast.TyIdent.pp Ast.TyDeclIdent.pp
-    Ast.FnIdent.pp
+  Term.pp_sterm Prog.TermIdent.pp Prog.TyIdent.pp Prog.TyDeclIdent.pp
+    Prog.FnIdent.pp
 
 let pp_fn format fn =
   let { fn_name; signature; args; body } = fn in
   let pp_parameter format (variable, ty) =
-    Format.fprintf format "%a : %a" Ast.TermIdent.pp variable pp_ty ty
+    Format.fprintf format "%a : %a" Prog.TermIdent.pp variable pp_ty ty
   in
   let pp_tyvars =
     Format.pp_print_option (fun format ty ->
-        Format.fprintf format "[%a]" Ast.TyIdent.pp ty)
+        Format.fprintf format "[%a]" Prog.TyIdent.pp ty)
   in
   let pp_parameters =
     Format.pp_print_list
@@ -58,17 +58,17 @@ let pp_fn format fn =
       pp_parameter
   in
   let parameters = List.combine args signature.parameters in
-  Format.fprintf format "fn %a %a(%a) %a = %a" Ast.FnIdent.pp fn_name pp_tyvars
+  Format.fprintf format "fn %a %a(%a) %a = %a" Prog.FnIdent.pp fn_name pp_tyvars
     signature.tyvars pp_parameters parameters pp_ty signature.return_type
     pp_cterm body
 
 let pp_tydecl format ty =
-  let Ast.{ size; name; tyvar = _ } = ty in
-  Format.fprintf format "type %a = tuple[%u]" Ast.TyDeclIdent.pp name size
+  let Prog.{ size; name; tyvar = _ } = ty in
+  Format.fprintf format "type %a = tuple[%u]" Prog.TyDeclIdent.pp name size
 
 let pp_node format = function
-  | Ast.NFun fn -> pp_fn format fn
-  | Ast.NTy ty -> pp_tydecl format ty
+  | Prog.NFun fn -> pp_fn format fn
+  | Prog.NTy ty -> pp_tydecl format ty
 
 let pp_prog format =
   Format.pp_print_list

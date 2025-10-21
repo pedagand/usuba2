@@ -2,12 +2,12 @@ open Alcotest
 open Ua0
 
 let ty = Alcotest.testable Ua0.Pp.pp_ty Util.Ty.equal
-let tydecl = Alcotest.testable Ast.TyDeclIdent.pp Ast.TyDeclIdent.equal
-let alpha = Ast.TyIdent.fresh "'a"
-let beta = Ast.TyIdent.fresh "'b"
-let _F = Ast.TyDeclIdent.fresh "F"
-let _G = Ast.TyDeclIdent.fresh "G"
-let _H = Ast.TyDeclIdent.fresh "H"
+let tydecl = Alcotest.testable Prog.TyDeclIdent.pp Prog.TyDeclIdent.equal
+let alpha = Prog.TyIdent.fresh "'a"
+let beta = Prog.TyIdent.fresh "'b"
+let _F = Prog.TyDeclIdent.fresh "F"
+let _G = Prog.TyDeclIdent.fresh "G"
+let _H = Prog.TyDeclIdent.fresh "H"
 
 let ty1 =
   let open Scstr in

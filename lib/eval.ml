@@ -11,15 +11,15 @@ let log fmt = Format.eprintf fmt
 let uncons l = match l with [] -> None | x :: xs -> Some (x, xs)
 
 module Env = struct
-  module Functions = Map.Make (Ast.FnIdent)
-  module Types = Map.Make (Ast.TyDeclIdent)
-  module Variables = Map.Make (Ast.TermIdent)
-  module TyVariables = Map.Make (Ast.TyIdent)
+  module Functions = Map.Make (Prog.FnIdent)
+  module Types = Map.Make (Prog.TyDeclIdent)
+  module Variables = Map.Make (Prog.TermIdent)
+  module TyVariables = Map.Make (Prog.TyIdent)
 
   type t = {
-    current_function : Ast.FnIdent.t option;
-    types : Ast.ty_declaration Types.t;
-    functions : Ast.fn_declaration Functions.t;
+    current_function : Prog.FnIdent.t option;
+    types : Prog.ty_declaration Types.t;
+    functions : Prog.fn_declaration Functions.t;
     variables : (Value.t * Value.Ty.ty) Variables.t;
     type_variables : Value.Ty.ty TyVariables.t;
   }
@@ -37,15 +37,15 @@ module Env = struct
     let () =
       Variables.iter
         (fun variable _ ->
-          Format.fprintf format "%a - " Ast.TermIdent.pp variable)
+          Format.fprintf format "%a - " Prog.TermIdent.pp variable)
         env.variables
     in
     ()
 
-  let add_function (fn : Ast.fn_declaration) env =
+  let add_function (fn : Prog.fn_declaration) env =
     { env with functions = Functions.add fn.fn_name fn env.functions }
 
-  let add_types (ty : Ast.ty_declaration) env =
+  let add_types (ty : Prog.ty_declaration) env =
     { env with types = Types.add ty.name ty env.types }
 
   let bind_variable variable value ty env =
@@ -53,12 +53,12 @@ module Env = struct
 
   let type_declaration name env =
     match Types.find_opt name env.types with
-    | None -> err "type %a not in env" Ast.TyDeclIdent.pp name
+    | None -> err "type %a not in env" Prog.TyDeclIdent.pp name
     | Some e -> e
 
   let fn_declaration name env =
     match Functions.find_opt name env.functions with
-    | None -> err "function %a not in env" Ast.FnIdent.pp name
+    | None -> err "function %a not in env" Prog.FnIdent.pp name
     | Some e -> e
 
   let rec range acc prefix ty env =
@@ -71,11 +71,11 @@ module Env = struct
           | TBool | TFun _ | TVar _ -> err "Not a named tuple."
         in
         let () =
-          match Ast.TyDeclIdent.equal name t with
+          match Prog.TyDeclIdent.equal name t with
           | true -> ()
           | false ->
-              err "range prefix = %a - ty = %a" Ast.TyDeclIdent.pp t
-                Ast.TyDeclIdent.pp name
+              err "range prefix = %a - ty = %a" Prog.TyDeclIdent.pp t
+                Prog.TyDeclIdent.pp name
         in
         range ((name, size) :: acc) q ty env
 
@@ -120,7 +120,7 @@ module Env = struct
     match ty with
     | Ty.Bool -> Value.Ty.TBool
     | App { name; ty } ->
-        let Ast.{ size; _ } = type_declaration name env in
+        let Prog.{ size; _ } = type_declaration name env in
         let ty = of_ty env ty in
         Value.Ty.TNamedTuple { name; size; ty }
     | Fun signature ->
@@ -163,13 +163,13 @@ module Env = struct
     match Variables.find_opt variable env.variables with
     | Some e -> e
     | None ->
-        err "variable %a not in env\nenv = %a\n" Ast.TermIdent.pp variable pp
+        err "variable %a not in env\nenv = %a\n" Prog.TermIdent.pp variable pp
           env
 
   let signature ~instance fn_name tyresolve env =
     match Functions.find_opt fn_name env.functions with
     | Some fn_decl ->
-        (*        let () = log "lookup sig : %a\n" Ast.FnIdent.pp fn_name in*)
+        (*        let () = log "lookup sig : %a\n" Prog.FnIdent.pp fn_name in*)
         let signature =
           Value.Ty.
             {
@@ -194,10 +194,10 @@ module Env = struct
                 | None, None -> env
                 | Some lhs, None ->
                     err "sig %a : expect type instance for : %a\n"
-                      Ast.FnIdent.pp fn_name Ast.TyIdent.pp lhs
+                      Prog.FnIdent.pp fn_name Prog.TyIdent.pp lhs
                 | None, Some rhs ->
                     err "sig %a : no type instance expected but found : %a\n"
-                      Ast.FnIdent.pp fn_name Pp.pp_ty rhs
+                      Prog.FnIdent.pp fn_name Pp.pp_ty rhs
               in
               Value.Ty.
                 {
@@ -207,7 +207,7 @@ module Env = struct
                 }
         in
         signature
-    | None -> err "function %a not in env" Ast.FnIdent.pp fn_name
+    | None -> err "function %a not in env" Prog.FnIdent.pp fn_name
 
   let ty_lift types ty env =
     List.fold_right
@@ -222,7 +222,7 @@ module Env = struct
     | x :: xs -> (x, xs)
 
   let lift fn_name signature types env =
-    let open Ast in
+    let open Prog in
     let new_signature =
       Value.Ty.
         {
@@ -293,7 +293,7 @@ module Env = struct
         cterm variables_stage
     in
     let lift_fn =
-      Ast.
+      Prog.
         {
           fn_name = lift_fn_name;
           signature = new_signature;
@@ -363,7 +363,7 @@ let rec eval_sterm env = function
         log "reindex lterm ty : %a\nprefix = %a\n\n" Value.Ty.pp ty
           (Format.pp_print_list
              ~pp_sep:(fun format () -> Format.pp_print_string format ", ")
-             Ast.TyDeclIdent.pp)
+             Prog.TyDeclIdent.pp)
           prefix
       in*)
       let ty_elt = Option.get @@ Value.Ty.remove_prefix prefix ty in
@@ -422,7 +422,7 @@ let rec eval_sterm env = function
             let e =
               match Value.as_function value with
               | None ->
-                  err "id %a is not a function pointer: %a" Ast.TermIdent.pp
+                  err "id %a is not a function pointer: %a" Prog.TermIdent.pp
                     termident Value.pp value
               | Some e -> e
             in
@@ -496,7 +496,7 @@ and eval_cterm env = function
               match Value.Ty.remove_prefix [ cstr ] lty with
               | Some ty -> ty
               | None ->
-                  err "Wrong prefix prefix = [%a] - ty = \n" Ast.TyDeclIdent.pp
+                  err "Wrong prefix prefix = [%a] - ty = \n" Prog.TyDeclIdent.pp
                     cstr
             in
             (name, ty))
@@ -528,8 +528,8 @@ and eval_cterm env = function
       eval_cterm env k
   | Synth sterm -> eval_sterm env sterm
 
-and eval env (fn : Ast.fn_declaration) ty_args vals =
-  let Ast.
+and eval env (fn : Prog.fn_declaration) ty_args vals =
+  let Prog.
         {
           fn_name = current_function;
           signature = { tyvars; parameters; return_type = _ };
@@ -538,17 +538,17 @@ and eval env (fn : Ast.fn_declaration) ty_args vals =
         } =
     fn
   in
-  (*  let () = log "eval : %a\n" Ast.FnIdent.pp current_function in*)
+  (*  let () = log "eval : %a\n" Prog.FnIdent.pp current_function in*)
   let types =
     match (tyvars, ty_args) with
     | Some tv, Some ta -> [ (tv, ta) ]
     | None, None -> []
     | Some lhs, None ->
-        err "eval %a : expect type instance for : %a\n" Ast.FnIdent.pp
-          current_function Ast.TyIdent.pp lhs
+        err "eval %a : expect type instance for : %a\n" Prog.FnIdent.pp
+          current_function Prog.TyIdent.pp lhs
     | None, Some rhs ->
         err "eval %a : no type instance expected but found : %a\n"
-          Ast.FnIdent.pp current_function Pp.pp_ty rhs
+          Prog.FnIdent.pp current_function Pp.pp_ty rhs
   in
   let env = Env.init_tyvariables types env in
   let env = Env.init_variables (List.combine args parameters) vals env in
@@ -556,11 +556,11 @@ and eval env (fn : Ast.fn_declaration) ty_args vals =
   eval_cterm env body
 
 let eval_node fn_name ty_args args env = function
-  | Ast.NTy tydel ->
+  | Prog.NTy tydel ->
       let env = Env.add_types tydel env in
       Either.left env
-  | Ast.NFun fn_decl -> (
-      match Ast.FnIdent.equal fn_name fn_decl.fn_name with
+  | Prog.NFun fn_decl -> (
+      match Prog.FnIdent.equal fn_name fn_decl.fn_name with
       | false ->
           let env = Env.add_function fn_decl env in
           Either.left env

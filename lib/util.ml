@@ -16,7 +16,7 @@ module Cstrs = struct
             (x :: by, remains))
 
   let reorder lhs rhs types =
-    let eq = Ast.TyDeclIdent.equal in
+    let eq = Prog.TyDeclIdent.equal in
     let head, remains = replace ~by:rhs eq lhs types in
     let queue, remains = replace ~by:lhs eq rhs remains in
     head @ queue @ remains
@@ -44,7 +44,8 @@ module Ty = struct
     (* XXX: ugly `... @ [...]` *)
     match (spine1, spine2) with
     | [], [] -> ([], tys @ [ ty2 ])
-    | name1 :: spine1, name2 :: spine2 when Ast.TyDeclIdent.equal name1 name2 ->
+    | name1 :: spine1, name2 :: spine2 when Prog.TyDeclIdent.equal name1 name2
+      ->
         let spine, tys = merge (spine1, tys) (spine2, ty2) in
         (name1 :: spine, tys)
     | _, _ ->
@@ -55,7 +56,7 @@ module Ty = struct
   let rec prefix lhs ty =
     match (lhs, ty) with
     | [], ty -> Some ty
-    | decl :: lhs, App { name; ty } when Ast.TyDeclIdent.equal decl name ->
+    | decl :: lhs, App { name; ty } when Prog.TyDeclIdent.equal decl name ->
         prefix lhs ty
     | _, _ -> None
 
@@ -80,7 +81,7 @@ module Ty = struct
     { tyvars; parameters; return_type }
 
   (*  let rec prefix = function
-    | Ast.TyApp { name; ty } ->
+    | Prog.TyApp { name; ty } ->
         let names, elt = prefix ty in
         (name :: names, elt)
     | (TyBool | TyVar _ | TyFun _) as t -> ([], t)*)
@@ -89,14 +90,14 @@ module Ty = struct
     match (lhs, rhs) with
     | Bool, Bool -> true
     | Var lhs, Var rhs ->
-        Ast.TyIdent.equal lhs rhs
+        Prog.TyIdent.equal lhs rhs
         || assocs
            |> List.find_map (fun (l, r) ->
-                  if Ast.TyIdent.equal l lhs then Some r else None)
-           |> Option.map (Ast.TyIdent.equal rhs)
+                  if Prog.TyIdent.equal l lhs then Some r else None)
+           |> Option.map (Prog.TyIdent.equal rhs)
            |> Option.value ~default:false
     | App { ty = lty; name = lname }, App { ty = rty; name = rname } ->
-        Ast.TyDeclIdent.equal lname rname && equal assocs lty rty
+        Prog.TyDeclIdent.equal lname rname && equal assocs lty rty
     | Fun lsignature, Fun rsignature ->
         equal_signature assocs lsignature rsignature
     | _, _ -> false
@@ -141,7 +142,7 @@ module Ty = struct
         Fun { tyvars; parameters; return_type }
 
   (*
-  let lty t ty = { Ast.t; ty }
+  let lty t ty = { Prog.t; ty }
 *)
 
   let rec ty_cstrs = function
@@ -151,8 +152,8 @@ module Ty = struct
         (name :: r, ty)
 
   (*
-  let to_ty { Ast.t; ty } =
-    List.fold_right (fun (name, _) ty -> Ast.TyApp { name; ty }) t ty
+  let to_ty { Prog.t; ty } =
+    List.fold_right (fun (name, _) ty -> Prog.TyApp { name; ty }) t ty
 *)
   let rec remove_prefix ctsrs ty =
     match ctsrs with
@@ -161,14 +162,14 @@ module Ty = struct
         match ty with
         | Bool | Fun _ | Var _ -> None
         | App { name; ty; _ } ->
-            if Ast.TyDeclIdent.equal t name then remove_prefix q ty else None)
+            if Prog.TyDeclIdent.equal t name then remove_prefix q ty else None)
 
   (*
-  let prefix lty = lty.Ast.t
-  let nest lty = List.length lty.Ast.t
+  let prefix lty = lty.Prog.t
+  let nest lty = List.length lty.Prog.t
 
   let hd = function
-    | { Ast.t = (ty, _) :: _; ty = _ } | { t = []; ty = TyApp { name = ty; _ } }
+    | { Prog.t = (ty, _) :: _; ty = _ } | { t = []; ty = TyApp { name = ty; _ } }
       ->
         Some ty
     | _ -> None
@@ -180,20 +181,20 @@ module Ty = struct
     match (lhs, rhs) with
     | Bool, Bool -> true
     | App { name = lname; _ }, App { name = rname; _ } ->
-        Ast.TyDeclIdent.equal lname rname
+        Prog.TyDeclIdent.equal lname rname
     | _, _ -> false
 
   (*
   let lcstreq lhs rhs =
     match (lhs, rhs) with
-    | { Ast.t = lt; ty = lty }, { Ast.t = rt; ty = rty } -> (
+    | { Prog.t = lt; ty = lty }, { Prog.t = rt; ty = rty } -> (
         match (lt, rt) with
         | [], [] -> cstrql lty rty
-        | (l, _) :: _, (r, _) :: _ -> Ast.TyDeclIdent.equal l r
+        | (l, _) :: _, (r, _) :: _ -> Prog.TyDeclIdent.equal l r
         | _, _ -> false)
 *)
 end
 
 module FunctionDecl = struct
-  let signature fn_decl = fn_decl.Ast.signature
+  let signature fn_decl = fn_decl.Prog.signature
 end

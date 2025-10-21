@@ -1,7 +1,7 @@
 open Alcotest
 open Ua0
 
-let ty = Alcotest.testable Ua0.Pp.pp_ty Util.Ty.equal
+let ty = Alcotest.testable Prog.pp_ty Util.Ty.equal
 let tydecl = Alcotest.testable Prog.TyDeclIdent.pp Prog.TyDeclIdent.equal
 let alpha = Prog.TyIdent.fresh "'a"
 let beta = Prog.TyIdent.fresh "'b"

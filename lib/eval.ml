@@ -197,7 +197,7 @@ module Env = struct
                       Prog.FnIdent.pp fn_name Prog.TyIdent.pp lhs
                 | None, Some rhs ->
                     err "sig %a : no type instance expected but found : %a\n"
-                      Prog.FnIdent.pp fn_name Pp.pp_ty rhs
+                      Prog.FnIdent.pp fn_name Prog.pp_ty rhs
               in
               Value.Ty.
                 {
@@ -548,7 +548,7 @@ and eval env (fn : Prog.fndecl) ty_args vals =
           current_function Prog.TyIdent.pp lhs
     | None, Some rhs ->
         err "eval %a : no type instance expected but found : %a\n"
-          Prog.FnIdent.pp current_function Pp.pp_ty rhs
+          Prog.FnIdent.pp current_function Prog.pp_ty rhs
   in
   let env = Env.init_tyvariables types env in
   let env = Env.init_variables (List.combine args parameters) vals env in

@@ -86,11 +86,20 @@ type scoped =
   ; term_id : TermIdent.t >
 (** First pass check scope and generate unique identifiers *)
 
+type ty = scoped Ty.t
 type term = scoped Term.t
 type tydecl = scoped tydecl_
 type fndecl = scoped fndecl_
 type node = scoped node_
 type prog = scoped prog_
+
+let pp_ty format = Ty.pp TyIdent.pp TyDeclIdent.pp format
+
+let pp_cterm format =
+  Term.pp TermIdent.pp TyIdent.pp TyDeclIdent.pp FnIdent.pp format
+
+let pp_sterm format =
+  Term.pp_sterm TermIdent.pp TyIdent.pp TyDeclIdent.pp FnIdent.pp format
 
 let pp_fndecl format =
   pp_fndecl_ TermIdent.pp TyIdent.pp TyDeclIdent.pp FnIdent.pp format

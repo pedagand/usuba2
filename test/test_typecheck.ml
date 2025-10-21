@@ -48,18 +48,19 @@ type ctx = Env0
 
 let ctx_to_string = function Env0 -> "env0"
 let ctx_of = function Env0 -> env0
-let ty = Alcotest.testable Ua0.Pp.pp_ty Util.Ty.equal
+let ty = Alcotest.testable Prog.pp_ty Util.Ty.equal
 
 let check_typesynth ctx tm expected_ty =
   let name =
-    Format.asprintf "`%a` has type `%a` in %s" Pp.pp_sterm tm Pp.pp_ty
+    Format.asprintf "`%a` has type `%a` in %s" Prog.pp_sterm tm Prog.pp_ty
       expected_ty (ctx_to_string ctx)
   in
   check ty name (Ua0.Typecheck.typesynth (ctx_of ctx) tm) expected_ty
 
 let fail_typesynth ctx tm =
   let name =
-    Format.asprintf "`%a` is ill-typed in %s" Pp.pp_sterm tm (ctx_to_string ctx)
+    Format.asprintf "`%a` is ill-typed in %s" Prog.pp_sterm tm
+      (ctx_to_string ctx)
   in
   match_raises name
     (function
@@ -68,15 +69,15 @@ let fail_typesynth ctx tm =
 
 let check_typecheck ctx tm ty =
   let name =
-    Format.asprintf "`%a` accepts type `%a` in %s" Pp.pp_cterm tm Pp.pp_ty ty
-      (ctx_to_string ctx)
+    Format.asprintf "`%a` accepts type `%a` in %s" Prog.pp_cterm tm Prog.pp_ty
+      ty (ctx_to_string ctx)
   in
   check unit name (Ua0.Typecheck.typecheck (ctx_of ctx) ty tm) ()
 
 let fail_typecheck ctx tm ty =
   let name =
-    Format.asprintf "`%a : %a` is ill-typed in %s" Pp.pp_cterm tm Pp.pp_ty ty
-      (ctx_to_string ctx)
+    Format.asprintf "`%a : %a` is ill-typed in %s" Prog.pp_cterm tm Prog.pp_ty
+      ty (ctx_to_string ctx)
   in
   match_raises name
     (function

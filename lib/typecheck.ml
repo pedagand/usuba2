@@ -44,7 +44,8 @@ module Env = struct
         let () =
           Vars.iter
             (fun variable ty ->
-              Format.eprintf "%a : %a - " Prog.TermIdent.pp variable Pp.pp_ty ty)
+              Format.eprintf "%a : %a - " Prog.TermIdent.pp variable Prog.pp_ty
+                ty)
             env.variables
         in
         err "Unbound variable : %a" Prog.TermIdent.pp variable
@@ -72,7 +73,7 @@ module Env = struct
           | Fun signature -> signature
           | ty ->
               err "%a should be a function ty not %a" Prog.TermIdent.pp variable
-                Pp.pp_ty ty)
+                Prog.pp_ty ty)
     in
     match instance with
     | false -> signature

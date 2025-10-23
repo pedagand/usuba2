@@ -80,12 +80,6 @@ module Ty = struct
     let return_type = instanciate types return_type in
     { tyvars; parameters; return_type }
 
-  (*  let rec prefix = function
-    | Prog.TyApp { name; ty } ->
-        let names, elt = prefix ty in
-        (name :: names, elt)
-    | (TyBool | TyVar _ | TyFun _) as t -> ([], t)*)
-
   let rec equal assocs lhs rhs =
     match (lhs, rhs) with
     | Bool, Bool -> true
@@ -141,20 +135,12 @@ module Ty = struct
         let parameters = List.map (lift_boolean cstrs) parameters in
         Fun { tyvars; parameters; return_type }
 
-  (*
-  let lty t ty = { Prog.t; ty }
-*)
-
   let rec ty_cstrs = function
     | (Bool | Var _ | Fun _) as e -> ([], e)
     | App { name; ty } ->
         let r, ty = ty_cstrs ty in
         (name :: r, ty)
 
-  (*
-  let to_ty { Prog.t; ty } =
-    List.fold_right (fun (name, _) ty -> Prog.TyApp { name; ty }) t ty
-*)
   let rec remove_prefix ctsrs ty =
     match ctsrs with
     | [] -> Some ty
@@ -164,17 +150,6 @@ module Ty = struct
         | App { name; ty; _ } ->
             if Prog.TyDeclIdent.equal t name then remove_prefix q ty else None)
 
-  (*
-  let prefix lty = lty.Prog.t
-  let nest lty = List.length lty.Prog.t
-
-  let hd = function
-    | { Prog.t = (ty, _) :: _; ty = _ } | { t = []; ty = TyApp { name = ty; _ } }
-      ->
-        Some ty
-    | _ -> None
-*)
-
   let elt = function App { ty; _ } -> Some ty | Bool | Fun _ | Var _ -> None
 
   let cstrql lhs rhs =
@@ -183,14 +158,4 @@ module Ty = struct
     | App { name = lname; _ }, App { name = rname; _ } ->
         Prog.TyDeclIdent.equal lname rname
     | _, _ -> false
-
-  (*
-  let lcstreq lhs rhs =
-    match (lhs, rhs) with
-    | { Prog.t = lt; ty = lty }, { Prog.t = rt; ty = rty } -> (
-        match (lt, rt) with
-        | [], [] -> cstrql lty rty
-        | (l, _) :: _, (r, _) :: _ -> Prog.TyDeclIdent.equal l r
-        | _, _ -> false)
-*)
 end

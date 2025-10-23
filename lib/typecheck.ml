@@ -66,8 +66,7 @@ module Env = struct
     in
     let signature =
       match variable with
-      | Either.Left fn_ident ->
-          env |> fn_declaration fn_ident |> Util.FunctionDecl.signature
+      | Either.Left fn_ident -> (env |> fn_declaration fn_ident).signature
       | Either.Right variable -> (
           match ty_variable variable env with
           | Fun signature -> signature

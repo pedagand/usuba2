@@ -194,7 +194,3 @@ module Ty = struct
         | _, _ -> false)
 *)
 end
-
-module FunctionDecl = struct
-  let signature fn_decl = fn_decl.Prog.signature
-end

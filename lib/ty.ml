@@ -2,7 +2,7 @@ type 't t =
   | Bool  (** [bool] *)
   | Var of 'ty_var  (** ['a] *)
   | App of { name : 'ty_decl; ty : 't t }  (** [tname ty] *)
-  | Fun of 't signature
+  | Fun of 't signature  (** [['a]^? (ty1, ty2, ...) -> ty] *)
   constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
 
 and 't signature = {
@@ -11,7 +11,6 @@ and 't signature = {
   return_type : 't t;
 }
   constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
-(** [['a]^? (ty1, ty2, ...) -> ty] *)
 
 let pp pp_var pp_decl =
   let pp_var_opt format = Format.pp_print_option pp_var format in

@@ -184,6 +184,38 @@ fn permbits_bitslice ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     let+ f = permbits and slice = state in 
         f.['a](slice)
         
+        
+fn inv_rev_rotate_1 ['a](slice :  Col Row 'a)  Col Row 'a = 
+    // TODO: to be computed
+    slice
+        
+        
+
+// permbits fixslice mode_0        
+fn permbits_fixslice_mod_0_ ['a](state : Slice Col Row 'a) Slice Col Row 'a =
+    let permbits = permbits_bitslice.['a](state) in
+    let+ slice = state in 
+        inv_rev_rotate_1.['a](slice)
+    
+// permbits fixslice mode_1    
+fn permbits_fixslice_mod_1_ ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
+    let state : Slice Col Row 'a = let+ slice = state in rev_rotate_1.['a](slice) in
+    let state = permbits_fixslice_mod_0_.['a](state) in
+    let+ slice = state in rev_rotate_1.['a](slice)
+    
+// permbits fixslice mode_2    
+fn permbits_fixslice_mod_2_ ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
+    let state : Slice Col Row 'a = let+ slice = state in rev_rotate_1.['a](slice) in
+    let state = permbits_fixslice_mod_1_.['a](state) in
+    let+ slice = state in rev_rotate_1.['a](slice)
+    
+// permbits fixslice mode_3    
+fn permbits_fixslice_mod_2_ ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
+    let state : Slice Col Row 'a = let+ slice = state in rev_rotate_1.['a](slice) in
+    let state = permbits_fixslice_mod_2_.['a](state) in
+    let+ slice = state in rev_rotate_1.['a](slice)
+    
+/// SUBCELLS
 fn subcells_ ['a](
     fnot : fn('a) -> 'a,
     fand : fn('a, 'a) -> 'a,

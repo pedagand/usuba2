@@ -185,6 +185,10 @@ fn permbits_bitslice ['a](state : Slice Col Row 'a) Slice Col Row 'a =
         f.['a](slice)
         
         
+fn fix_delay ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
+    let+ slice = state in 
+        rev_rotate_1.['a](slice)
+        
 fn inv_rev_rotate_1 ['a](slice :  Col Row 'a)  Col Row 'a = 
     // TODO: to be computed
     slice
@@ -193,27 +197,105 @@ fn inv_rev_rotate_1 ['a](slice :  Col Row 'a)  Col Row 'a =
 
 // permbits fixslice mode_0        
 fn permbits_fixslice_mod_0_ ['a](state : Slice Col Row 'a) Slice Col Row 'a =
-    let permbits = permbits_bitslice.['a](state) in
+    let state = permbits_bitslice.['a](state) in
     let+ slice = state in 
         inv_rev_rotate_1.['a](slice)
+        
+// Inline permbits_mod_n-1
+fn permbits_fixslice_mod_0_1 ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
+    let state : Slice Col Row 'a =     
+        let permbits : Slice fn ['a](Col Row 'a) -> Col Row 'a = Slice[
+            & rev_rotate_1,
+            & rev_rotate_2,
+            & rev_rotate_3,
+            & rev_rotate_0
+        ] in
+        let+ f = permbits and slice = state in 
+            f.['a](slice) 
+    in
+    let+ slice = state in 
+        inv_rev_rotate_1.['a](slice)
+        
+        
+// unested-let
+fn permbits_fixslice_mod_0_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
+    let permbits : Slice fn ['a](Col Row 'a) -> Col Row 'a = Slice[
+        & rev_rotate_1,
+        & rev_rotate_2,
+        & rev_rotate_3,
+        & rev_rotate_0
+    ] in
+    let state : Slice Col Row 'a =     
+        let+ f = permbits and slice = state in 
+            f.['a](slice) 
+    in
+    let+ slice = state in 
+        inv_rev_rotate_1.['a](slice)
+        
+// inline inv_rev_rotate_1
+fn permbits_fixslice_mod_0_3 ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
+    let permbits : Slice fn ['a](Col Row 'a) -> Col Row 'a = Slice[
+        & rev_rotate_1,
+        & rev_rotate_2,
+        & rev_rotate_3,
+        & rev_rotate_0
+    ] in   
+    let+ f = permbits and slice = state in 
+        inv_rev_rotate_1.['a](f.['a](slice))
+        
+fn  fix_rev_rotate_1 ['a](slice : Col Row 'a) Col Row 'a = 
+    inv_rev_rotate_1.['a](rev_rotate_1.['a](slice))
+    
+fn  fix_rev_rotate_2 ['a](slice : Col Row 'a) Col Row 'a = 
+    inv_rev_rotate_1.['a](rev_rotate_2.['a](slice))
+    
+fn  fix_rev_rotate_3 ['a](slice : Col Row 'a) Col Row 'a = 
+    inv_rev_rotate_1.['a](rev_rotate_3.['a](slice))
+    
+fn  fix_rev_rotate_0 ['a](slice : Col Row 'a) Col Row 'a = 
+    inv_rev_rotate_1.['a](rev_rotate_0.['a](slice))
+
+// inline inv_rev_rotate_1 2
+// - Creation of the composition of inv_rev_rotate_1 with rev_rotate_{0...3}
+// Simplify the composition by compution the composition of permutation
+fn permbits_fixslice_mod_0_4 ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
+    let permbits : Slice fn ['a](Col Row 'a) -> Col Row 'a = Slice[
+        & fix_rev_rotate_1,
+        & fix_rev_rotate_2,
+        & fix_rev_rotate_3,
+        & fix_rev_rotate_0
+    ] in   
+    let+ f = permbits and slice = state in 
+        f.['a](slice)
     
 // permbits fixslice mode_1    
 fn permbits_fixslice_mod_1_ ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
     let state : Slice Col Row 'a = let+ slice = state in rev_rotate_1.['a](slice) in
     let state = permbits_fixslice_mod_0_.['a](state) in
-    let+ slice = state in rev_rotate_1.['a](slice)
+    let+ slice = state in inv_rev_rotate_1.['a](slice)
     
 // permbits fixslice mode_2    
 fn permbits_fixslice_mod_2_ ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
     let state : Slice Col Row 'a = let+ slice = state in rev_rotate_1.['a](slice) in
     let state = permbits_fixslice_mod_1_.['a](state) in
-    let+ slice = state in rev_rotate_1.['a](slice)
+    let+ slice = state in inv_rev_rotate_1.['a](slice)
     
 // permbits fixslice mode_3    
 fn permbits_fixslice_mod_2_ ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
     let state : Slice Col Row 'a = let+ slice = state in rev_rotate_1.['a](slice) in
     let state = permbits_fixslice_mod_2_.['a](state) in
-    let+ slice = state in rev_rotate_1.['a](slice)
+    let+ slice = state in inv_rev_rotate_1.['a](slice)
+
+// permbits_fixslice_mod_{3...26}_
+    
+fn permbits_fixslice_mod_27_ ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
+    let state : Slice Col Row 'a = let+ slice = state in rev_rotate_1.['a](slice) in
+    // permbits_fixslice_mod_27_ should be 27_ be to please the typechecker
+    let state = permbits_fixslice_mod_2_.['a](state) in
+    let+ slice = state in inv_rev_rotate_1.['a](slice)
+    
+// after the last round
+// apply `fix_delay` 28 times
     
 /// SUBCELLS
 fn subcells_ ['a](

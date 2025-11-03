@@ -32,7 +32,7 @@ module Term = struct
   let let_ variable term k = Let { variable; term; k }
 
   let let' variable term k =
-    let variable = TermIdent.fresh variable in
+    let variable = Ident.TermIdent.fresh variable in
     Let { variable; term; k = k (v variable) }
 
   let fn_call ?resolve fn_name args =
@@ -56,11 +56,11 @@ module Term = struct
   let cstr ty terms = Constructor { ty; terms }
 
   let let_plus variable lterm ands k =
-    let variable = TermIdent.fresh variable in
+    let variable = Ident.TermIdent.fresh variable in
     let ands =
       List.map
         (fun (v, term) ->
-          let v = TermIdent.fresh v in
+          let v = Ident.TermIdent.fresh v in
           (v, term))
         ands
     in

@@ -3,12 +3,13 @@ module Idents = struct
 
   module Env = struct
     module SMap = Map.Make (String)
+    open Ident
 
     type t = {
-      types : Prog.TyDeclIdent.t SMap.t;
-      variables : Prog.TermIdent.t SMap.t;
-      fns : Prog.FnIdent.t SMap.t;
-      tyvars : Prog.TyIdent.t SMap.t;
+      types : TyDeclIdent.t SMap.t;
+      variables : TermIdent.t SMap.t;
+      fns : FnIdent.t SMap.t;
+      tyvars : TyIdent.t SMap.t;
     }
 
     let empty =
@@ -20,22 +21,22 @@ module Idents = struct
       }
 
     let add_variable name env =
-      let variable = Prog.TermIdent.fresh name in
+      let variable = TermIdent.fresh name in
       let variables = SMap.add name variable env.variables in
       ({ env with variables }, variable)
 
     let add_fn name env =
-      let fresh = Prog.FnIdent.fresh name in
+      let fresh = FnIdent.fresh name in
       let fns = SMap.add name fresh env.fns in
       ({ env with fns }, fresh)
 
     let add_type name env =
-      let fresh = Prog.TyDeclIdent.fresh name in
+      let fresh = TyDeclIdent.fresh name in
       let types = SMap.add name fresh env.types in
       ({ env with types }, fresh)
 
     let add_tyvar name env =
-      let fresh = Prog.TyIdent.fresh name in
+      let fresh = TyIdent.fresh name in
       let tyvars = SMap.add name fresh env.tyvars in
       ({ env with tyvars }, fresh)
 
@@ -199,7 +200,7 @@ module Idents = struct
 
   let ty_declaration env ty_declaration =
     let Prog.{ tyvar; name; size } = ty_declaration in
-    let tyvar = Prog.TyIdent.fresh tyvar in
+    let tyvar = Ident.TyIdent.fresh tyvar in
     let env, name = Env.add_type name env in
     let ty = Prog.{ tyvar; name; size } in
     (env, ty)

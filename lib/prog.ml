@@ -62,8 +62,8 @@ let pp_prog_ pp_var pp_ty_var pp_ty_decl pp_fn_ident format =
 
 (*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*)
 
-type pre =
-  < ty_decl : string ; fn_ident : string ; ty_var : string ; term_id : string >
+open Ident
+
 (** Parser produces pre-things, before scope checking *)
 
 type pre_term = pre Term.t
@@ -74,16 +74,6 @@ type pre_prog = pre prog_
 
 (*%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*)
 
-module TermIdent = Ident.Make ()
-module TyIdent = Ident.Make ()
-module TyDeclIdent = Ident.Make ()
-module FnIdent = Ident.Make ()
-
-type scoped =
-  < ty_decl : TyDeclIdent.t
-  ; fn_ident : FnIdent.t
-  ; ty_var : TyIdent.t
-  ; term_id : TermIdent.t >
 (** First pass check scope and generate unique identifiers *)
 
 type ty = scoped Ty.t

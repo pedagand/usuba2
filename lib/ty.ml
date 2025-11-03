@@ -137,8 +137,10 @@ let rec equal_ m ty1 ty2 =
   | _, _ -> false
 
 and equal_spine m sp1 sp2 =
-  List.for_all2 Ident.TyDeclIdent.equal sp1.names sp2.names
-  && equal_ m sp1.bty sp2.bty
+  try
+    List.for_all2 Ident.TyDeclIdent.equal sp1.names sp2.names
+    && equal_ m sp1.bty sp2.bty
+  with Invalid_argument _ -> false
 
 and equal_signature m si1 si2 =
   try
@@ -150,7 +152,7 @@ and equal_signature m si1 si2 =
     in
     List.for_all2 (equal_ m) si1.parameters si2.parameters
     && equal_ m si1.return_type si2.return_type
-  with Not_found -> false
+  with Not_found | Invalid_argument _ -> false
 
 let equal xs ys = equal_ Ident.TyIdent.Map.empty xs ys
 

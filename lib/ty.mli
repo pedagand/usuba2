@@ -30,7 +30,7 @@ val map :
   < ty_var : 'a ; ty_decl : 'b ; .. > t ->
   < ty_var : 'c ; ty_decl : 'd ; .. > t
 
-val pp :
+val pp_ :
   (Format.formatter -> 'ty_var -> unit) ->
   (Format.formatter -> 'ty_decl -> unit) ->
   Format.formatter ->
@@ -54,6 +54,8 @@ val to_spine : 't t -> 't spine
 val from_spine : 't spine -> 't t
 
 (** Over scoped terms: *)
+
+val pp : Format.formatter -> Ident.scoped t -> unit
 
 val merges :
   Ident.scoped spine -> Ident.scoped spine list -> Ident.scoped spines

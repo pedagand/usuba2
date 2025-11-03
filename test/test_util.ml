@@ -1,7 +1,7 @@
 open Alcotest
 open Ua0
 
-let ty = Alcotest.testable Prog.pp_ty Ty.equal
+let ty = Alcotest.testable Ty.pp Ty.equal
 let tydecl = Alcotest.testable Ident.TyDeclIdent.pp Ident.TyDeclIdent.equal
 let alpha = Ident.TyIdent.fresh "'a"
 let beta = Ident.TyIdent.fresh "'b"
@@ -11,9 +11,7 @@ let _H = Ident.TyDeclIdent.fresh "H"
 let ty1 = Ty.S.(apps [ _F; _G; _H ] (v alpha))
 
 let check_equal ty1 ty2 expected =
-  let name =
-    Format.asprintf "equal %a %a is %b" Prog.pp_ty ty1 Prog.pp_ty ty2 expected
-  in
+  let name = Format.asprintf "equal %a %a is %b" Ty.pp ty1 Ty.pp ty2 expected in
   check bool name (Ty.equal ty1 ty2) expected
 
 let () =

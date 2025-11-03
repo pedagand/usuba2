@@ -64,7 +64,7 @@ module S = struct
     Fun { tyvars; parameters; return_type }
 end
 
-let pp pp_var pp_decl =
+let pp_ pp_var pp_decl =
   let pp_var_opt format = Format.pp_print_option pp_var format in
   let rec go format = function
     | Bool -> Format.fprintf format "bool"
@@ -88,6 +88,8 @@ let to_spine ty = match ty with App s -> s | _ -> raise Not_found
 let from_spine (s : 't spine) = S.apps s.names s.bty
 
 (* Definitions over scoped terms: *)
+
+let pp = pp_ Ident.TyIdent.pp Ident.TyDeclIdent.pp
 
 let merge ss s =
   let rec go ss (s : Ident.scoped spine) =

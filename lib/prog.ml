@@ -2,7 +2,7 @@ type 't fndecl_ = {
   fn_name : 'fn_ident;
   signature : 't Ty.signature;
   args : 'term_id list;
-  body : 't Term.t;
+  body : 't Term.cterm_;
 }
   constraint
     't =
@@ -13,8 +13,8 @@ type 't fndecl_ = {
 (** [fn f [a](x1: ty1, x2: ty2, ...) ty = t] *)
 
 let pp_fndecl_ pp_var pp_ty_var pp_ty_decl pp_fn_ident format fn =
-  let pp_ty = Ty.pp pp_ty_var pp_ty_decl in
-  let pp_term = Term.pp pp_var pp_ty_var pp_ty_decl pp_fn_ident in
+  let pp_ty = Ty.pp_ pp_ty_var pp_ty_decl in
+  let pp_term = Term.pp_cterm_ pp_var pp_ty_var pp_ty_decl pp_fn_ident in
   let { fn_name; signature; args; body } = fn in
   let pp_parameter format (variable, ty) =
     Format.fprintf format "%a : %a" pp_var variable pp_ty ty
@@ -77,21 +77,14 @@ type pre_prog = pre prog_
 (** First pass check scope and generate unique identifiers *)
 
 type ty = scoped Ty.t
-type term = scoped Term.t
+type term = scoped Term.cterm_
 type tydecl = scoped tydecl_
 type fndecl = scoped fndecl_
 type node = scoped node_
 type prog = scoped prog_
 
-let pp_ty format = Ty.pp TyIdent.pp TyDeclIdent.pp format
-
-let pp_cterm format =
-  Term.pp TermIdent.pp TyIdent.pp TyDeclIdent.pp FnIdent.pp format
-
-let pp_sterm format =
-  Term.pp_sterm TermIdent.pp TyIdent.pp TyDeclIdent.pp FnIdent.pp format
-
 let pp_fndecl format =
+  let open Ident in
   pp_fndecl_ TermIdent.pp TyIdent.pp TyDeclIdent.pp FnIdent.pp format
 
 let pp_tydecl format = pp_tydecl_ TyDeclIdent.pp format

@@ -158,7 +158,7 @@ let rec bind v ty = function
   | Var v' when Ident.TyIdent.equal v v' -> ty
   | Var v -> Var v
   | Bool -> Bool
-  | App sp -> App { sp with bty = bind v ty sp.bty }
+  | App sp -> S.apps sp.names (bind v ty sp.bty)
   | Fun si -> Fun (bind_signature v ty si)
 
 and bind_signature v ty si =

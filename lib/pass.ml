@@ -74,31 +74,11 @@ module Idents = struct
         (find_callable name env)
   end
 
-  let rec ty env = function
-    | Ty.Bool -> Ty.Bool
-    | Var x ->
-        let name = Env.find_tyvar x env in
-        Var name
-    | App { name; ty = t } ->
-        let name = Env.find_tycstr name env in
-        let ty = ty env t in
-        App { name; ty }
-    | Fun signatu ->
-        let signature = signature env signatu in
-        Fun signature
-
-  and signature env sing =
-    let { tyvars; parameters; return_type } : _ Ty.signature = sing in
-    let env, tyvars =
-      match tyvars with
-      | None -> (env, None)
-      | Some t ->
-          let env, t = Env.add_tyvar t env in
-          (env, Some t)
-    in
-    let parameters = List.map (ty env) parameters in
-    let return_type = ty env return_type in
-    { tyvars; parameters; return_type }
+  let ty env =
+    (* XXX: missing binding a signature *)
+    Ty.map
+      (fun x -> Env.find_tyvar x env)
+      (fun name -> Env.find_tycstr name env)
 
   let rec sterm env = function
     | Term.Var v -> Env.find_variable_term v env

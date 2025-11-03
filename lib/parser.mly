@@ -78,12 +78,12 @@ fn_decl:
     
 ty:
     | name=TypeCstrIdentifier ty=ty {
-        App {name; ty}
+       Ty.S.(name @ ty)
     }
-    | TypeVariable { Var $1 }
-    | BOOL { Ty.Bool }
-    | FUNCTION signature {
-        Ty.Fun $2
+    | TypeVariable { Ty.S.v $1 }
+    | BOOL { Ty.S.bool }
+    | FUNCTION s=signature {
+        Ty.S.fn ~tyvars:s.Ty.tyvars s.Ty.parameters s.Ty.return_type
     }
     
 %inline signature:

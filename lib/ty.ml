@@ -24,6 +24,34 @@ type 't spines = {
 }
   constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
 
+let is_App = function App _ -> true | _ -> false
+
+module S = struct
+  let bool = Bool
+  let v v = Var v
+
+  let app name ty =
+    match ty with
+    | App { names; bty } ->
+        assert (not (is_App bty));
+        let names = name :: names in
+        App { names; bty }
+    | _ -> App { names = [ name ]; bty = ty }
+
+  let ( @ ) n ty = app n ty
+
+  let apps names' ty =
+    match ty with
+    | App { names; bty } ->
+        assert (not (is_App bty));
+        let names = List.append names' names in
+        App { names; bty }
+    | _ -> if List.is_empty names' then ty else App { names = names'; bty = ty }
+
+  let fn ?(tyvars = None) parameters return_type =
+    Fun { tyvars; parameters; return_type }
+end
+
 let rec map on_var on_decl = function
   | Bool -> Bool
   | Var v -> Var (on_var v)
@@ -39,30 +67,6 @@ and map_signature on_var on_decl { tyvars; parameters; return_type } =
     parameters = List.map (map on_var on_decl) parameters;
     return_type = map on_var on_decl return_type;
   }
-
-module S = struct
-  let bool = Bool
-  let v v = Var v
-
-  let app name ty =
-    match ty with
-    | App { names; bty } ->
-        let names = name :: names in
-        App { names; bty }
-    | _ -> App { names = [ name ]; bty = ty }
-
-  let ( @ ) n ty = app n ty
-
-  let apps names' ty =
-    match ty with
-    | App { names; bty } ->
-        let names = List.append names' names in
-        App { names; bty }
-    | _ -> if List.is_empty names' then ty else App { names = names'; bty = ty }
-
-  let fn ?(tyvars = None) parameters return_type =
-    Fun { tyvars; parameters; return_type }
-end
 
 let pp_ pp_var pp_decl =
   let pp_var_opt format = Format.pp_print_option pp_var format in

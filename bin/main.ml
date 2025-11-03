@@ -1,8 +1,5 @@
 let () = Printexc.print_backtrace stderr
 let () = Printexc.record_backtrace true
-
-open Util
-
 let keys = Queue.create ()
 let texts = Queue.create ()
 let double = ref false

@@ -13,7 +13,7 @@
 %token <string> TypeCstrIdentifier
 %token <int> IntegerLitteral
 %token LPARENT RPARENT LBRACE RBRACE LSQBRACE RSQBRACE
-%token EQUAL DOT COMMA PIPE CARET EXCLAMATION COLON
+%token EQUAL DOT COMMA PIPE CARET EXCLAMATION COLON UNDERSCORE
 %token AND LET LET_PLUS IN REINDEX CIRC FOLD
 %token TRUE FALSE BOOL LIFT
 %token AMPERSAND MINUS_SUP
@@ -158,10 +158,10 @@ cterm:
         let variable, ty = ty_var in 
         Let {variable; term = Ann(cterm, ty); k }
     }
-    | LET_PLUS variable=Identifier EQUAL lterm=sterm 
+    | LET_PLUS variable=Identifier COLON prefix=nonempty_list(TypeCstrIdentifier) EQUAL lterm=sterm
         ands=list(preceded(AND, splitted(Identifier, EQUAL, sterm))) 
         IN term=cterm {
-            LetPlus { variable; lterm; ands; term }
+            LetPlus { variable; prefix; lterm; ands; term }
     }
     | sterm { Synth $1 }
     

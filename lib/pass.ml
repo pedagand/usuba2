@@ -121,7 +121,7 @@ module Idents = struct
         let env, variable = Env.add_variable variable env in
         let k = cterm env k in
         Let { variable; term = t; k }
-    | LetPlus { variable; lterm; ands; term = t } ->
+    | LetPlus { variable; prefix; lterm; ands; term = t } ->
         (*
           Evaluate the ltherm before adding variable to env.
           Otherwise variable shadowning issues.
@@ -137,7 +137,8 @@ module Idents = struct
             env ands
         in
         let term = cterm env t in
-        LetPlus { variable; lterm; ands; term }
+        let prefix = List.map (Fun.flip Env.find_tycstr env) prefix in
+        LetPlus { variable; prefix; lterm; ands; term }
     | Constructor { ty; terms } ->
         let terms = List.map (cterm env) terms in
         let ty = Env.find_tycstr ty env in

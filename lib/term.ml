@@ -32,6 +32,7 @@ and 't cterm_ =
       variable : 'term_id;
       lterm : 't sterm_;
       ands : ('term_id * 't sterm_) list;
+      prefix : 'ty_decl list;
       term : 't cterm_;
     }  (** [let+ x = l {and y1 = l1 and y2 = l2 ...}^? in t] *)
   | Log of { message : string; variables : 'term_id list; k : 't cterm_ }
@@ -57,13 +58,13 @@ let pps pp_var pp_ty_var pp_ty_decl pp_fn_ident =
     | Let { variable; term; k } ->
         Format.fprintf format "let %a = %a in %a" pp_var variable go_sterm_ term
           go k
-    | LetPlus { variable; lterm; ands; term } ->
+    | LetPlus { variable; lterm; ands; prefix; term } ->
         let pp_and format (variable, lterm) =
           Format.fprintf format "and %a = %a" pp_var variable go_sterm_ lterm
         in
         let pp_ands = Format.pp_print_list pp_and in
-        Format.fprintf format "let+ %a = %a %a in %a" pp_var variable go_sterm_
-          lterm pp_ands ands go term
+        Format.fprintf format "let+ %a : %a _ = %a %a in %a" pp_var variable
+          pp_decls prefix go_sterm_ lterm pp_ands ands go term
     | Constructor { ty; terms } ->
         Format.fprintf format "%a (%a)" pp_ty_decl ty pp_terms terms
     | Log { k; _ } -> go format k
@@ -154,7 +155,7 @@ module S = struct
   let lnot term = Operator (Not term)
   let cstr ty terms = Constructor { ty; terms }
 
-  let let_plus variable lterm ands k =
+  let let_plus variable prefix lterm ands k =
     let variable = Ident.TermIdent.fresh variable in
     let ands =
       List.map
@@ -165,5 +166,5 @@ module S = struct
     in
     let vand = List.map fst ands in
     let term = k variable vand in
-    LetPlus { variable; lterm; ands; term }
+    LetPlus { variable; prefix; lterm; ands; term }
 end

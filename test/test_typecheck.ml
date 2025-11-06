@@ -242,12 +242,12 @@ let () =
         [
           test_case "well-typed functor" `Quick (fun () ->
               check_typecheck Env0
-                Term.S.(let_plus "a" (v z) [] (fun _a _ -> true'))
+                Term.S.(let_plus "a" [ _F ] (v z) [] (fun _a _ -> true'))
                 Ty.S.(_F @ bool));
           test_case "well-typed monoidal functor" `Quick (fun () ->
               check_typecheck Env0
                 Term.S.(
-                  let_plus "a" (v z)
+                  let_plus "a" [ _F ] (v z)
                     [ ("b", v u); ("c", v z) ]
                     (fun _a bs ->
                       match bs with [ _x; y ] -> s (v y) | _ -> assert false))
@@ -255,24 +255,26 @@ let () =
           test_case "well-typed monoidal functor" `Quick (fun () ->
               check_typecheck Env0
                 Term.S.(
-                  let_plus "a" (v z)
+                  let_plus "a" [ _F; _G ] (v z)
                     [ ("b", v u); ("c", v z) ]
                     (fun _a bs ->
                       match bs with [ x; _y ] -> s (v x) | _ -> assert false))
                 Ty.S.(apps [ _F; _G; _H ] (v alpha)));
           test_case "incompatible arg / product monoidal" `Quick (fun () ->
               fail_typecheck Env0
-                Term.S.(let_plus "a" (v z) [ ("b", v w) ] (fun _a _ -> true'))
+                Term.S.(
+                  let_plus "a" [ _F ] (v z) [ ("b", v w) ] (fun _a _ -> true'))
                 Ty.S.(_F @ bool));
           test_case "incompatible arg / product monoidal (dual)" `Quick
             (fun () ->
               fail_typecheck Env0
-                Term.S.(let_plus "a" (v z) [ ("b", v w) ] (fun _a _ -> true'))
+                Term.S.(
+                  let_plus "a" [ _G ] (v z) [ ("b", v w) ] (fun _a _ -> true'))
                 Ty.S.(_G @ bool));
           test_case "incompatible product / product monoidal" `Quick (fun () ->
               fail_typecheck Env0
                 Term.S.(
-                  let_plus "a" (v z)
+                  let_plus "a" [ _F ] (v z)
                     [ ("b", v z); ("c", v w) ]
                     (fun _a _ -> true'))
                 Ty.S.(_F @ bool));

@@ -57,37 +57,20 @@ let rec typecheck env ty tm =
       let ty = typesynth env term in
       let env = Env.add_variable variable ty env in
       typecheck env ty0 k
-  | ty0, LetPlus { variable; lterm; ands; term } ->
-      let ty_var = lterm |> typesynth env |> Ty.to_spine in
-      let ty_ands =
-        List.map
-          (fun (var, tm) ->
-            let ty = tm |> typesynth env |> Ty.to_spine in
-            (var, ty))
-          ands
-      in
-      let spine0 = Ty.to_spine ty0 in
-      let { Ty.names = spine; btys } =
-        Ty.merges spine0 (ty_var :: List.map snd ty_ands)
-      in
-      let rec try_spine spine btys =
-        match btys with
-        | bty0 :: bty_var :: bty_ands -> (
-            let env = Env.add_variable variable bty_var env in
-            let env =
-              Env.add_variables
-                (List.combine (List.map fst ty_ands) bty_ands)
-                env
-            in
-            try typecheck env bty0 term
-            with Ill_typed -> (
-              match spine with
-              | [] -> raise Ill_typed
-              | name :: spine ->
-                  try_spine spine (List.map (fun ty -> Ty.S.(name @ ty)) btys)))
-        | _ -> assert false
-      in
-      try_spine (List.rev spine) btys
+  | ty0, LetPlus { variable; prefix; lterm; ands; term } -> (
+      try
+        let ty0 = Ty.take prefix ty0 in
+        let ty_var = lterm |> typesynth env |> Ty.take prefix in
+        let ty_ands =
+          List.map
+            (fun (var, tm) ->
+              let ty = tm |> typesynth env |> Ty.take prefix in
+              (var, ty))
+            ands
+        in
+        let env = Env.add_variables ((variable, ty_var) :: ty_ands) env in
+        typecheck env ty0 term
+      with Not_found -> raise Ill_typed)
   | ty0, Log { message = _; variables = _; k } -> typecheck env ty0 k
   | ty0, Synth t ->
       let ty = typesynth env t in

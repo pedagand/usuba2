@@ -45,8 +45,8 @@ module Common = struct
     |> Seq.filter (Fun.negate @@ ( = ) ' ')
     |> String.of_seq |> StringUtil.chunks 2
     |> List.map (fun s ->
-           let s = "0x" ^ s in
-           Bits.of_int ~pad:8 @@ Int64.of_string s)
+        let s = "0x" ^ s in
+        Bits.of_int ~pad:8 @@ Int64.of_string s)
     |> List.flatten
 
   let file_to_bools file =
@@ -147,9 +147,7 @@ module Gift = struct
     let slices =
       List.init 4 @@ fun zindex ->
       let zslice = bools_of_rows_cols spec in
-      List.map
-        (fun z -> z |> Ua0.Value.get zindex |> Ua0.Value.as_bool |> Option.get)
-        zslice
+      List.map (fun z -> z |> Ua0.Value.get zindex |> Ua0.Value.as_bool) zslice
     in
     match slices with
     | [ s0; s1; s2; s3 ] -> (s0, s1, s2, s3)
@@ -285,7 +283,7 @@ module Gift = struct
           | _ -> assert false)
         values
     in
-    Ua0.Value.as_array values |> Option.get |> Array.to_list
+    values |> Ua0.Value.as_array |> Array.to_list
 
   (*    List.map2 (RowsCols.map2 (fun (u, v) const -> (u, v, const))) uv consts *)
 end

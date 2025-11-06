@@ -32,6 +32,8 @@ let ( lor ) lhs rhs =
   | VBool lhs, VBool rhs -> VBool (lhs || rhs)
   | _, _ -> assert false
 
+let as_bool = function VBool bool -> bool | _ -> assert false
+
 (** Array *)
 
 let as_array = function VArray array -> array | _ -> assert false

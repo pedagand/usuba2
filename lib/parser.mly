@@ -158,7 +158,7 @@ cterm:
         let variable, ty = ty_var in 
         Let {variable; term = Ann(cterm, ty); k }
     }
-    | LET_PLUS variable=Identifier COLON prefix=nonempty_list(TypeCstrIdentifier) EQUAL lterm=sterm
+    | LET_PLUS variable=Identifier COLON prefix=nonempty_list(TypeCstrIdentifier) UNDERSCORE EQUAL lterm=sterm
         ands=list(preceded(AND, splitted(Identifier, EQUAL, sterm))) 
         IN term=cterm {
             LetPlus { variable; prefix; lterm; ands; term }

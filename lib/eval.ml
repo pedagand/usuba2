@@ -436,4 +436,6 @@ let eval_node env = function
   | Prog.NFun fn_decl ->
       Env.add_function fn_decl.fn_name (eval_node env fn_decl) env
 
-let eval prog = prog |> List.fold_left eval_node Env.init
+let eval prog =
+  let env = List.fold_left eval_node Env.init prog in
+  env.Env.functions

@@ -56,8 +56,8 @@ let eval ~bitslice ~double ast symbole keys texts =
   let kps =
     Seq.map2
       (fun k t ->
-        let k = Util.Common.file_to_bools k in
-        let t = Util.Common.file_to_bools t in
+        let k = Util.Io.file_to_bools k in
+        let t = Util.Io.file_to_bools t in
         (k, t))
       (Queue.to_seq keys) (Queue.to_seq texts)
   in

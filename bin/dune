@@ -1,5 +1,5 @@
 (executable
  (public_name ua0)
  (name main)
- (modules main util)
- (libraries ua0))
+ (modules main)
+ (libraries ua0 util))

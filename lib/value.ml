@@ -11,6 +11,8 @@ let rec pp format = function
       Format.fprintf format "[%a]" (Format.pp_print_array ~pp_sep pp) array
   | VFunction fn -> Format.fprintf format "%s" fn.origin
 
+let equal = ( = )
+
 (** Bool *)
 
 let true' = VBool true

@@ -1,6 +1,7 @@
 (tests
  (names test_util test_typecheck test_typecheck_file)
- (libraries ua0 alcotest fmt)
+ (libraries ua0 util alcotest fmt)
  (modes byte exe)
  (deps
-  (source_tree src)))
+  (source_tree src)
+  (source_tree test-vectors)))

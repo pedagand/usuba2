@@ -12,6 +12,17 @@ module ColsRows = Ua0.Value.NaperianCompose (Cols) (Rows)
 module ColsRowsSlice = Ua0.Value.NaperianCompose (ColsRows) (Slice)
 
 let testable_value = Alcotest.testable Ua0.Value.pp Ua0.Value.equal
+let filename = "test_reindex2.ua"
+let test_reindex2 = Filename.concat "src" filename
+
+let ast file =
+  let ast =
+    In_channel.with_open_bin file (fun ic ->
+        let lexbuf = Lexing.from_channel ic in
+        let () = Lexing.set_filename lexbuf file in
+        Ua0.Parser.module_ Ua0.Lexer.token lexbuf)
+  in
+  Ua0.Pass.Idents.of_string_ast_env ast
 
 let vbitslice value =
   Ua0.Value.reindex_lr (module ColsRows) (module Slice) value
@@ -40,18 +51,6 @@ let value_of_plainfilename ~bitslice filename =
 
 let value_combine lhs rhs =
   Ua0.Value.map2 (fun lhs rhs -> Ua0.Value.VArray [| lhs; rhs |]) lhs rhs
-
-let filename = "test_reindex2.ua"
-let test_reindex2 = Filename.concat "src" filename
-
-let ast file =
-  let ast =
-    In_channel.with_open_bin file (fun ic ->
-        let lexbuf = Lexing.from_channel ic in
-        let () = Lexing.set_filename lexbuf file in
-        Ua0.Parser.module_ Ua0.Lexer.token lexbuf)
-  in
-  Ua0.Pass.Idents.of_string_ast_env ast
 
 let test_vector_16 ~bitslice fn plaintext key cipher () =
   let keys = values_of_keyfilename ~bitslice key in

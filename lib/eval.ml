@@ -359,7 +359,7 @@ let rec eval_sterm env = function
         | Value.VFunction f -> (f.origin, f.value)
         | VBool _ | VArray _ -> assert false
       in
-      let env, value = Env.lift tys value env in
+      let value = Value.mapn' (List.length tys) value in
       let origin =
         Format.asprintf "lift[%a](%s)"
           (Format.pp_print_list

@@ -1,0 +1,39 @@
+name: CI build - test
+on:
+    push
+    
+jobs:
+    build:
+        strategy:
+            fail-fast: false
+            matrix:
+                os:
+                - ubuntu-latest
+                - macos-latest
+                ocaml-compiler:
+                - 5
+        runs-on: ${{ matrix.os }}
+        steps:
+            -   name: Checkout repo
+                uses: actions/checkout@v5
+            -   name: Set-up OCaml
+                uses: ocaml/setup-ocaml@v3
+                with:
+                    ocaml-compiler: ${{ matrix.ocaml-compiler }}
+            -   run: opam install . --deps-only --with-test
+            -   run: opam exec -- dune build
+    
+    test:
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout repo
+                uses: actions/checkout@v5
+            -   name: Set-up OCaml
+                uses: ocaml/setup-ocaml@v3
+                with:
+                    ocaml-compiler: 5
+            -   run: opam install . --deps-only --with-test
+            -   run: opam exec -- dune runtest --force
+
+        

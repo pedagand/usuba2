@@ -1,5 +1,6 @@
 %{
-    open Ast
+    open Prog
+    open Term
     
     let fail_at start end' fmt = 
         let range = MenhirLib.LexerUtil.range (start, end') in
@@ -12,7 +13,7 @@
 %token <string> TypeCstrIdentifier
 %token <int> IntegerLitteral
 %token LPARENT RPARENT LBRACE RBRACE LSQBRACE RSQBRACE
-%token EQUAL DOT COMMA PIPE CARET EXCLAMATION COLON
+%token EQUAL DOT COMMA PIPE CARET EXCLAMATION COLON UNDERSCORE
 %token AND LET LET_PLUS IN REINDEX CIRC FOLD
 %token TRUE FALSE BOOL LIFT
 %token AMPERSAND MINUS_SUP
@@ -28,7 +29,7 @@
 
 %start module_
 
-%type <Ast.pre_prog> module_
+%type <Prog.pre_prog> module_
 
 %%
 
@@ -55,8 +56,8 @@ module_:
     }
     
 node:
-    | type_decl { Ast.NTy $1 }
-    | fn_decl { Ast.NFun $1 }
+    | type_decl { Prog.NTy $1 }
+    | fn_decl { Prog.NFun $1 }
 
 
 type_decl:
@@ -77,12 +78,12 @@ fn_decl:
     
 ty:
     | name=TypeCstrIdentifier ty=ty {
-        App {name; ty}
+       Ty.S.(name @ ty)
     }
-    | TypeVariable { Var $1 }
-    | BOOL { Ty.Bool }
-    | FUNCTION signature {
-        Ty.Fun $2
+    | TypeVariable { Ty.S.v $1 }
+    | BOOL { Ty.S.bool }
+    | FUNCTION s=signature {
+        Ty.S.fn ~tyvars:s.Ty.tyvars s.Ty.parameters s.Ty.return_type
     }
     
 %inline signature:
@@ -125,7 +126,7 @@ sterm:
         FnCall {fn_name = Either.Left fn_name; ty_resolve; args}
     }
     | operator {
-        Ast.Operator $1
+        Operator $1
     }
     | c_ty=parenthesis(splitted(cterm, COLON, ty)) {
         let cterm, ty = c_ty in
@@ -157,10 +158,10 @@ cterm:
         let variable, ty = ty_var in 
         Let {variable; term = Ann(cterm, ty); k }
     }
-    | LET_PLUS variable=Identifier EQUAL lterm=sterm 
+    | LET_PLUS variable=Identifier COLON prefix=nonempty_list(TypeCstrIdentifier) UNDERSCORE EQUAL lterm=sterm
         ands=list(preceded(AND, splitted(Identifier, EQUAL, sterm))) 
         IN term=cterm {
-            LetPlus { variable; lterm; ands; term }
+            LetPlus { variable; prefix; lterm; ands; term }
     }
     | sterm { Synth $1 }
     

@@ -63,6 +63,7 @@ rule token = parse
 | "|" { PIPE }
 | "^"  { CARET }
 | "!"  { EXCLAMATION }
+| "_" { UNDERSCORE }
 | "->" { MINUS_SUP }
 | "//" { single_line_comment lexbuf }
 | type_cstr_identifier as s {

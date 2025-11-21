@@ -3,12 +3,13 @@ module Idents = struct
 
   module Env = struct
     module SMap = Map.Make (String)
+    open Ident
 
     type t = {
-      types : Ast.TyDeclIdent.t SMap.t;
-      variables : Ast.TermIdent.t SMap.t;
-      fns : Ast.FnIdent.t SMap.t;
-      tyvars : Ast.TyIdent.t SMap.t;
+      types : TyDeclIdent.t SMap.t;
+      variables : TermIdent.t SMap.t;
+      fns : FnIdent.t SMap.t;
+      tyvars : TyIdent.t SMap.t;
     }
 
     let empty =
@@ -20,22 +21,22 @@ module Idents = struct
       }
 
     let add_variable name env =
-      let variable = Ast.TermIdent.fresh name in
+      let variable = TermIdent.fresh name in
       let variables = SMap.add name variable env.variables in
       ({ env with variables }, variable)
 
     let add_fn name env =
-      let fresh = Ast.FnIdent.fresh name in
+      let fresh = FnIdent.fresh name in
       let fns = SMap.add name fresh env.fns in
       ({ env with fns }, fresh)
 
     let add_type name env =
-      let fresh = Ast.TyDeclIdent.fresh name in
+      let fresh = TyDeclIdent.fresh name in
       let types = SMap.add name fresh env.types in
       ({ env with types }, fresh)
 
     let add_tyvar name env =
-      let fresh = Ast.TyIdent.fresh name in
+      let fresh = TyIdent.fresh name in
       let tyvars = SMap.add name fresh env.tyvars in
       ({ env with tyvars }, fresh)
 
@@ -68,39 +69,19 @@ module Idents = struct
 
     let find_variable_term name env =
       Either.fold
-        ~left:(fun fn_ident -> Ast.Fn { fn_ident })
-        ~right:(fun s -> Ast.Var s)
+        ~left:(fun fn_ident -> Term.Fn { fn_ident })
+        ~right:(fun s -> Var s)
         (find_callable name env)
   end
 
-  let rec ty env = function
-    | Ast.Ty.Bool -> Ast.Ty.Bool
-    | Var x ->
-        let name = Env.find_tyvar x env in
-        Var name
-    | App { name; ty = t } ->
-        let name = Env.find_tycstr name env in
-        let ty = ty env t in
-        App { name; ty }
-    | Fun signatu ->
-        let signature = signature env signatu in
-        Fun signature
-
-  and signature env sing =
-    let { tyvars; parameters; return_type } : _ Ast.Ty.signature = sing in
-    let env, tyvars =
-      match tyvars with
-      | None -> (env, None)
-      | Some t ->
-          let env, t = Env.add_tyvar t env in
-          (env, Some t)
-    in
-    let parameters = List.map (ty env) parameters in
-    let return_type = ty env return_type in
-    { tyvars; parameters; return_type }
+  let ty env =
+    (* XXX: missing binding a signature *)
+    Ty.map
+      (fun x -> Env.find_tyvar x env)
+      (fun name -> Env.find_tycstr name env)
 
   let rec sterm env = function
-    | Ast.Var v -> Env.find_variable_term v env
+    | Term.Var v -> Env.find_variable_term v env
     | Fn { fn_ident } ->
         let fn_ident = Env.find_fn_ident fn_ident env in
         Fn { fn_ident }
@@ -126,7 +107,7 @@ module Idents = struct
         let args = List.map (cterm env) args in
         FnCall { fn_name; ty_resolve; args }
     | Operator ops ->
-        let op = op env ops in
+        let op = Operator.map (cterm env) ops in
         Operator op
     | Ann (c, t) ->
         let cterm = cterm env c in
@@ -134,13 +115,13 @@ module Idents = struct
         Ann (cterm, ty)
 
   and cterm env = function
-    | (Ast.False | Ast.True) as e -> e
-    | Ast.Let { variable; term = l; k } ->
+    | (Term.False | True) as e -> e
+    | Let { variable; term = l; k } ->
         let t = sterm env l in
         let env, variable = Env.add_variable variable env in
         let k = cterm env k in
         Let { variable; term = t; k }
-    | Ast.LetPlus { variable; lterm; ands; term = t } ->
+    | LetPlus { variable; prefix; lterm; ands; term = t } ->
         (*
           Evaluate the ltherm before adding variable to env.
           Otherwise variable shadowning issues.
@@ -156,7 +137,8 @@ module Idents = struct
             env ands
         in
         let term = cterm env t in
-        Ast.LetPlus { variable; lterm; ands; term }
+        let prefix = List.map (Fun.flip Env.find_tycstr env) prefix in
+        LetPlus { variable; prefix; lterm; ands; term }
     | Constructor { ty; terms } ->
         let terms = List.map (cterm env) terms in
         let ty = Env.find_tycstr ty env in
@@ -169,25 +151,8 @@ module Idents = struct
         let sterm = sterm env s in
         Synth sterm
 
-  and op env = function
-    | Ast.Operator.Not t ->
-        let term = cterm env t in
-        Ast.Operator.Not term
-    | Ast.Operator.And (lhs, rhs) ->
-        let lhs = cterm env lhs in
-        let rhs = cterm env rhs in
-        Ast.Operator.And (lhs, rhs)
-    | Ast.Operator.Or (lhs, rhs) ->
-        let lhs = cterm env lhs in
-        let rhs = cterm env rhs in
-        Ast.Operator.Or (lhs, rhs)
-    | Ast.Operator.Xor (lhs, rhs) ->
-        let lhs = cterm env lhs in
-        let rhs = cterm env rhs in
-        Ast.Operator.Xor (lhs, rhs)
-
   let fn_declaration env fn_declaration =
-    let Ast.{ fn_name; signature; args; body } = fn_declaration in
+    let Prog.{ fn_name; signature; args; body } = fn_declaration in
     let env = Env.clear_variables env in
     let env = Env.clear_ty_variables env in
     let env, tyvars =
@@ -208,26 +173,26 @@ module Idents = struct
     in
     let return_type = ty env signature.return_type in
     let args, parameters = List.split parameters in
-    let signature = { Ast.Ty.tyvars; parameters; return_type } in
+    let signature = { Ty.tyvars; parameters; return_type } in
     let body = cterm env body in
     (* Add name at the end to allow fn_name shadowing. *)
     let env, fn_name = Env.add_fn fn_name env in
-    (env, Ast.{ fn_name; signature; args; body })
+    (env, Prog.{ fn_name; signature; args; body })
 
   let ty_declaration env ty_declaration =
-    let Ast.{ tyvar; name; size } = ty_declaration in
-    let tyvar = Ast.TyIdent.fresh tyvar in
+    let Prog.{ tyvar; name; size } = ty_declaration in
+    let tyvar = Ident.TyIdent.fresh tyvar in
     let env, name = Env.add_type name env in
-    let ty = Ast.{ tyvar; name; size } in
+    let ty = Prog.{ tyvar; name; size } in
     (env, ty)
 
   let node env = function
-    | Ast.NFun fn_decl ->
+    | Prog.NFun fn_decl ->
         let env, fn = fn_declaration env fn_decl in
-        (env, Ast.NFun fn)
-    | Ast.NTy type_decl ->
+        (env, Prog.NFun fn)
+    | Prog.NTy type_decl ->
         let env, ty = ty_declaration env type_decl in
-        (env, Ast.NTy ty)
+        (env, Prog.NTy ty)
 
   let of_string_ast_env modules = List.fold_left_map node Env.empty modules
 

@@ -333,27 +333,27 @@ let reduce_op = function
   | Or (l, r) -> Value.(l lor r)
 
 let rec eval_sterm env = function
-  | Term.Var variable -> (env, Env.lookup variable env)
+  | Term.Var variable -> Env.lookup variable env
   | Fn { fn_ident } ->
       let origin = Format.asprintf "%a" Ident.FnIdent.pp fn_ident in
       let value = Env.fn_declaration fn_ident env in
-      (env, Value.VFunction { origin; value })
+      Value.VFunction { origin; value }
   | Lookup { lterm; index } ->
-      let env, value = eval_sterm env lterm in
+      let value = eval_sterm env lterm in
       let value = Value.get index value in
-      (env, value)
+      value
   | Reindex { lhs; rhs; lterm } ->
       let nap_lhs = Env.naperians lhs env in
       let nap_rhs = Env.naperians rhs env in
-      let env, value = eval_sterm env lterm in
+      let value = eval_sterm env lterm in
       let value = Value.reindex_lr nap_lhs nap_rhs value in
-      (env, value)
+      value
   | Circ sterm ->
-      let env, value = eval_sterm env sterm in
+      let value = eval_sterm env sterm in
       let value = Value.circ value in
-      (env, value)
+      value
   | Lift { tys; func } ->
-      let env, value = eval_sterm env func in
+      let value = eval_sterm env func in
       let origin, value =
         match value with
         | Value.VFunction f -> (f.origin, f.value)
@@ -367,10 +367,9 @@ let rec eval_sterm env = function
              Ident.TyDeclIdent.pp)
           tys origin
       in
-      let value = Value.VFunction { origin; value } in
-      (env, value)
+      Value.VFunction { origin; value }
   | FnCall { fn_name; args; _ } ->
-      let env, args = List.fold_left_map eval_cterm env args in
+      let args = List.map (eval_cterm env) args in
       let f =
         match fn_name with
         | Either.Left fnident -> Env.fn_declaration fnident env
@@ -378,49 +377,49 @@ let rec eval_sterm env = function
             let value = Env.lookup termident env in
             Value.as_function value
       in
-      (env, f args)
+      f args
   | Operator operator ->
-      let env, r = Operator.traverse eval_cterm env operator in
-      (env, reduce_op r)
+      let _, r =
+        Operator.traverse
+          (fun env term -> (env, eval_cterm env term))
+          env operator
+      in
+      reduce_op r
   | Ann (cterm, _) -> eval_cterm env cterm
 
 and eval_cterm env = function
-  | Term.False -> (env, Value.VBool false)
-  | True -> (env, Value.VBool true)
+  | Term.False -> Value.VBool false
+  | True -> Value.VBool true
   | Constructor { terms; _ } ->
-      let env, vs = List.fold_left_map eval_cterm env terms in
+      let vs = List.map (eval_cterm env) terms in
       let v = Value.VArray (Array.of_list vs) in
-      (env, v)
+      v
   | Let { variable; term; k } ->
-      let env, value = eval_sterm env term in
+      let value = eval_sterm env term in
       let env = Env.bind_variable variable value env in
       eval_cterm env k
   | LetPlus { variable; prefix; lterm; ands; term } ->
-      let env, vvalue = eval_sterm env lterm in
-      let env, ands =
-        List.fold_left_map
-          (fun env (variable, lterm) ->
-            let env, value = eval_sterm env lterm in
-            (env, (variable, value)))
-          env ands
+      let vvalue = eval_sterm env lterm in
+      let ands =
+        List.map
+          (fun (variable, lterm) ->
+            let value = eval_sterm env lterm in
+            (variable, value))
+          ands
       in
       let ands = (variable, vvalue) :: ands in
       let args = List.map (fun (a, _) -> a) ands in
       let values = List.map (fun (_, v) -> v) ands in
       let level = List.length prefix in
-      let value =
-        Value.mapn' level
-          (fun values ->
-            let env =
-              List.fold_left2
-                (fun env indent value -> Env.bind_variable indent value env)
-                env args values
-            in
-            let _, value = eval_cterm env term in
-            value)
-          values
-      in
-      (env, value)
+      Value.mapn' level
+        (fun values ->
+          let env =
+            List.fold_left2
+              (fun env indent value -> Env.bind_variable indent value env)
+              env args values
+          in
+          eval_cterm env term)
+        values
   | Log { message; variables; k } ->
       let () = ignore (message, variables) in
       eval_cterm env k
@@ -428,8 +427,7 @@ and eval_cterm env = function
 
 let eval_node env (fn : Prog.fndecl) vals =
   let env = Env.init_variables fn.args vals env in
-  let _, v = eval_cterm env fn.body in
-  v
+  eval_cterm env fn.body
 
 let eval_node env = function
   | Prog.NTy tydel -> Env.add_types tydel env

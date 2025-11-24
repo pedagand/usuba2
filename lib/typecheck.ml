@@ -4,6 +4,7 @@ module Env = struct
   open Ident
 
   type t = {
+    current_function : string;
     variables : Prog.ty TermIdent.Map.t;
     functions : Prog.fndecl FnIdent.Map.t;
     types : Prog.tydecl TyDeclIdent.Map.t;
@@ -11,10 +12,13 @@ module Env = struct
 
   let empty =
     {
+      current_function = String.empty;
       variables = TermIdent.Map.empty;
       functions = FnIdent.Map.empty;
       types = TyDeclIdent.Map.empty;
     }
+
+  let set_function current_function e = { e with current_function }
 
   let add_function fn env =
     let functions = FnIdent.Map.add fn.Prog.fn_name fn env.functions in
@@ -145,7 +149,9 @@ and typesynth_operator env op =
 
 let typecheck_function env fn =
   let Prog.{ fn_name; signature; args; body } = fn in
-  ignore fn_name;
+  let env =
+    Env.set_function (Format.asprintf "%a" Ident.FnIdent.pp fn_name) env
+  in
   let env =
     Env.clear_variables env
     (* XXX: what's [clear_variables]? *)

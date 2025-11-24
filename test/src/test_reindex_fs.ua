@@ -75,7 +75,7 @@ fn permbits ['a] (state : Col Row Slice 'a) Col Row Slice 'a =
     ] in
     let state = reindex[Col Row | Slice](state) in
     reindex[Slice | Col Row](
-        ( let+ f = permbits and slice = state in 
+        ( let+ f : Slice _ = permbits and slice = state in 
             f.['a](slice) : Slice Col Row 'a )
     )
     
@@ -92,7 +92,7 @@ fn permbits_0 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
         ] in
         let state = reindex[Col Row | Slice]((state : Col Row Slice 'a)) in
         reindex[Slice | Col Row](
-            ( let+ f = permbits and slice = state in 
+            ( let+ f : Slice _ = permbits and slice = state in 
             f.['a](slice) : Slice Col Row 'a )
         ) : Col Row Slice 'a)
     )
@@ -110,7 +110,7 @@ fn permbits_1 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     reindex[Col Row | Slice](
         (
             reindex[Slice | Col Row](
-                ( let+ f = permbits and slice = state in 
+                ( let+ f : Slice _ = permbits and slice = state in 
                     f.['a](slice) : Slice Col Row 'a 
                 )
         ) : Col Row Slice 'a)
@@ -130,7 +130,7 @@ fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     reindex[Col Row | Slice](
         (
             reindex[Slice | Col Row](
-                ( let+ f = permbits and slice = state in 
+                ( let+ f : Slice _ = permbits and slice = state in 
                     f.['a](slice) : Slice Col Row 'a 
                 )
         ) : Col Row Slice 'a)
@@ -147,7 +147,7 @@ fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     let state : Slice Col Row 'a = state in
     reindex[Col Row | Slice](
         reindex[Slice | Col Row](
-            ( let+ f = permbits and slice = state in 
+            ( let+ f : Slice _ = permbits and slice = state in 
                 f.['a](slice) : Slice Col Row 'a 
             )
         )
@@ -165,12 +165,11 @@ fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
         & rev_rotate_0
     ] in
     reindex[Col Row | Slice](
-        (
-            reindex[Slice | Col Row](
-                ( let+ f = permbits and slice = state in 
-                    f.['a](slice) : Slice Col Row 'a 
-                )
-        ) : Col Row Slice 'a)
+        reindex[Slice | Col Row](
+            ( let+ f : Slice _ = permbits and slice = state in 
+                f.['a](slice) : Slice Col Row 'a 
+            )
+        )
     )
     
 // Simplify reindex
@@ -181,13 +180,8 @@ fn permbits_bitslice ['a](state : Slice Col Row 'a) Slice Col Row 'a =
         & rev_rotate_3,
         & rev_rotate_0
     ] in
-    let+ f = permbits and slice = state in 
+    let+ f : Slice _ = permbits and slice = state in 
         f.['a](slice)
-        
-        
-fn fix_delay ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
-    let+ slice = state in 
-        rev_rotate_1.['a](slice)
         
 fn inv_rev_rotate_1 ['a](slice :  Col Row 'a)  Col Row 'a = 
     // TODO: to be computed
@@ -198,7 +192,7 @@ fn inv_rev_rotate_1 ['a](slice :  Col Row 'a)  Col Row 'a =
 // permbits fixslice mode_0        
 fn permbits_fixslice_mod_0_ ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     let state = permbits_bitslice.['a](state) in
-    let+ slice = state in 
+    let+ slice : Slice _ = state in 
         inv_rev_rotate_1.['a](slice)
         
 // Inline permbits_mod_n-1
@@ -210,10 +204,10 @@ fn permbits_fixslice_mod_0_1 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
             & rev_rotate_3,
             & rev_rotate_0
         ] in
-        let+ f = permbits and slice = state in 
+        let+ f : Slice _ = permbits and slice = state in 
             f.['a](slice) 
     in
-    let+ slice = state in 
+    let+ slice : Slice _ = state in 
         inv_rev_rotate_1.['a](slice)
         
         
@@ -226,10 +220,10 @@ fn permbits_fixslice_mod_0_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
         & rev_rotate_0
     ] in
     let state : Slice Col Row 'a =     
-        let+ f = permbits and slice = state in 
+        let+ f : Slice _ = permbits and slice = state in 
             f.['a](slice) 
     in
-    let+ slice = state in 
+    let+ slice : Slice _ = state in 
         inv_rev_rotate_1.['a](slice)
         
 // inline inv_rev_rotate_1
@@ -240,7 +234,7 @@ fn permbits_fixslice_mod_0_3 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
         & rev_rotate_3,
         & rev_rotate_0
     ] in   
-    let+ f = permbits and slice = state in 
+    let+ f : Slice _ = permbits and slice = state in 
         inv_rev_rotate_1.['a](f.['a](slice))
         
 fn  fix_rev_rotate_1 ['a](slice : Col Row 'a) Col Row 'a = 
@@ -265,34 +259,34 @@ fn permbits_fixslice_mod_0_4 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
         & fix_rev_rotate_3,
         & fix_rev_rotate_0
     ] in   
-    let+ f = permbits and slice = state in 
+    let+ f : Slice _ = permbits and slice = state in 
         f.['a](slice)
     
 // permbits fixslice mode_1    
 fn permbits_fixslice_mod_1_ ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
-    let state : Slice Col Row 'a = let+ slice = state in rev_rotate_1.['a](slice) in
+    let state : Slice Col Row 'a = let+ slice : Slice _ = state in rev_rotate_1.['a](slice) in
     let state = permbits_fixslice_mod_0_.['a](state) in
-    let+ slice = state in inv_rev_rotate_1.['a](slice)
+    let+ slice : Slice _ = state in inv_rev_rotate_1.['a](slice)
     
 // permbits fixslice mode_2    
 fn permbits_fixslice_mod_2_ ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
-    let state : Slice Col Row 'a = let+ slice = state in rev_rotate_1.['a](slice) in
+    let state : Slice Col Row 'a = let+ slice : Slice _ = state in rev_rotate_1.['a](slice) in
     let state = permbits_fixslice_mod_1_.['a](state) in
-    let+ slice = state in inv_rev_rotate_1.['a](slice)
+    let+ slice : Slice _ = state in inv_rev_rotate_1.['a](slice)
     
 // permbits fixslice mode_3    
 fn permbits_fixslice_mod_2_ ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
-    let state : Slice Col Row 'a = let+ slice = state in rev_rotate_1.['a](slice) in
+    let state : Slice Col Row 'a = let+ slice : Slice _ = state in rev_rotate_1.['a](slice) in
     let state = permbits_fixslice_mod_2_.['a](state) in
-    let+ slice = state in inv_rev_rotate_1.['a](slice)
+    let+ slice : Slice _ = state in inv_rev_rotate_1.['a](slice)
 
 // permbits_fixslice_mod_{3...26}_
     
 fn permbits_fixslice_mod_27_ ['a](state : Slice Col Row 'a) Slice Col Row 'a = 
-    let state : Slice Col Row 'a = let+ slice = state in rev_rotate_1.['a](slice) in
+    let state : Slice Col Row 'a = let+ slice : Slice _ = state in rev_rotate_1.['a](slice) in
     // permbits_fixslice_mod_27_ should be 27_ be to please the typechecker
     let state = permbits_fixslice_mod_2_.['a](state) in
-    let+ slice = state in inv_rev_rotate_1.['a](slice)
+    let+ slice : Slice _ = state in inv_rev_rotate_1.['a](slice)
     
 // after the last round
 // apply `fix_delay` 28 times
@@ -326,9 +320,8 @@ fn subcells ['a] (
     fxor : fn('a, 'a) -> 'a,
     state : Col Row Slice 'a
 ) Col Row Slice 'a =
-    let+ row = state in 
-        let+ slice = row in
-            subcells_.['a](fnot, fand, for, fxor, slice)
+    let+ slice : Col Row _ = state in 
+        subcells_.['a](fnot, fand, for, fxor, slice)
     
 fn subcells_reindexed ['a] (
     fnot : fn('a) -> 'a,
@@ -339,9 +332,8 @@ fn subcells_reindexed ['a] (
 ) Slice Col Row 'a = 
     let state = reindex[Slice | Col Row]((state : Slice Col Row 'a)) in
     reindex[Col Row | Slice](
-        (let+ row = state in 
-            let+ slice = row in
-                subcells_.['a](fnot, fand, for, fxor, slice) : Col Row Slice 'a)
+        (let+ slice : Col Row _ = state in 
+            subcells_.['a](fnot, fand, for, fxor, slice) : Col Row Slice 'a)
     )
     
 // inline
@@ -353,9 +345,8 @@ fn subcells_1 ['a] (
     state : Slice Col Row 'a
 ) Slice Col Row 'a = 
     reindex[Col Row | Slice](
-        (let+ row = reindex[Slice | Col Row]((state : Slice Col Row 'a)) in 
-            let+ slice = row in
-                subcells_.['a](fnot, fand, for, fxor, slice) : Col Row Slice 'a)
+        (let+ slice : Col Row _ = reindex[Slice | Col Row]((state : Slice Col Row 'a)) in
+            subcells_.['a](fnot, fand, for, fxor, slice) : Col Row Slice 'a)
     )
     
 
@@ -390,10 +381,8 @@ fn add_round_key ['a](
     state : Col Row Slice 'a,
     key : Col Row Slice 'a
 ) Col Row Slice 'a =
-    let+ row_state = state and row_key = key in
-        let+ slice_state = row_state and slice_key = row_key in
-            let+ a_state = slice_state and a_key = slice_key in
-                fxor.(a_state, a_key)
+    let+ a_state : Col Row Slice _ = state and a_key = key in
+        fxor.(a_state, a_key)
         
 fn add_round_key_reindexed['a](
     fxor: fn('a, 'a) -> 'a,
@@ -403,11 +392,8 @@ fn add_round_key_reindexed['a](
     let key = reindex[Slice | Col Row]((key : Slice Col Row 'a)) in
     let state = reindex[Slice | Col Row]((state : Slice Col Row 'a)) in
     reindex[Col Row | Slice](
-        (let+ row_state = state and row_key = key in
-            let+ slice_state = row_state and slice_key = row_key in
-                let+ a_state = slice_state and a_key = slice_key in
-                    fxor.(a_state, a_key) : 
-            Col Row Slice 'a
+        (let+ a_state : Col Row Slice _ = state and a_key = key in
+            fxor.(a_state, a_key) : Col Row Slice 'a
         )
     )
         
@@ -418,13 +404,10 @@ fn add_round_key_1 ['a](
     key : Slice Col Row 'a
 ) Slice Col Row 'a =
     reindex[Col Row | Slice](
-        (let+ row_state = reindex[Slice | Col Row](state) 
-            and row_key = reindex[Slice | Col Row](key) 
+        (let+ a_state : Col Row Slice _ = reindex[Slice | Col Row](state) 
+            and a_key = reindex[Slice | Col Row](key) 
         in
-            let+ slice_state = row_state and slice_key = row_key in
-                let+ a_state = slice_state and a_key = slice_key in
-                    fxor.(a_state, a_key) : 
-            Col Row Slice 'a
+            fxor.(a_state, a_key) : Col Row Slice 'a
         )
     ) 
     
@@ -479,16 +462,16 @@ fn for(lhs: bool, rhs: bool) bool = lhs | rhs
 fn fxor(lhs: bool, rhs : bool) bool = lhs ^ rhs
     
 fn double_not(d: Double bool) Double bool = 
-    let+ b = d in ! b 
+    let+ b : Double _ = d in ! b 
 
 fn double_and(lhs: Double bool, rhs: Double bool) Double bool = 
-    let+ lhs = lhs and rhs = rhs in lhs & rhs
+    let+ lhs : Double _ = lhs and rhs = rhs in lhs & rhs
     
 fn double_or(lhs: Double bool, rhs: Double bool) Double bool = 
-    let+ lhs = lhs and rhs = rhs in lhs | rhs
+    let+ lhs : Double _ = lhs and rhs = rhs in lhs | rhs
     
 fn double_xor(lhs: Double bool, rhs: Double bool) Double bool = 
-    let+ lhs = lhs and rhs = rhs in lhs ^ rhs
+    let+ lhs : Double _ = lhs and rhs = rhs in lhs ^ rhs
     
 fn giftb_32(
     state : Slice Col Row Double bool,
@@ -512,10 +495,10 @@ fn permbits_mod_0 ['a](state: Slice Col Row 'a)
 fn permbits_mod_1 ['a](state : Slice Col Row 'a) 
     Slice Col Row 'a = 
         Slice [
-            let+ row = state[0] in circ(row)[0],
-            let+ row = state[1] in circ(row)[1],
-            let+ row = state[2] in circ(row)[2],
-            let+ row = state[3] in circ(row)[3]
+            let+ row : Col _ = state[0] in circ(row)[0],
+            let+ row : Col _ = state[1] in circ(row)[1],
+            let+ row : Col _ = state[2] in circ(row)[2],
+            let+ row : Col _ = state[3] in circ(row)[3]
         ]
 
     
@@ -531,10 +514,10 @@ fn permbits_mod_2 ['a](state: Slice Col Row 'a)
 fn permbits_mod_3 ['a](state : Slice Col Row 'a) 
     Slice Col Row 'a = 
     Slice [
-        let+ row = state[0] in circ(row)[3],
-        let+ row = state[1] in circ(row)[2],
-        let+ row = state[2] in circ(row)[1],
-        let+ row = state[3] in circ(row)[0]
+        let+ row : Col _ = state[0] in circ(row)[3],
+        let+ row : Col _ = state[1] in circ(row)[2],
+        let+ row : Col _ = state[2] in circ(row)[1],
+        let+ row : Col _ = state[3] in circ(row)[0]
     ]
 
 fn round_fix_ ['a](

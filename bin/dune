@@ -2,4 +2,7 @@
  (public_name ua0)
  (name main)
  (modules main)
+ (modes byte exe)
+ (ocamlc_flags
+  (:standard -g))
  (libraries ua0 util))

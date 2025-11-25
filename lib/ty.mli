@@ -65,3 +65,8 @@ val bind : Ident.TyIdent.t -> Ident.scoped t -> Ident.scoped t -> Ident.scoped t
 
 (* XXX: for test only *)
 val merge : Ident.scoped spines -> Ident.scoped spine -> Ident.scoped spines
+
+val free_vars :
+  < ty_decl : 'a ; ty_var : Ident.TyIdent.t ; .. > t -> Ident.TyIdent.t list
+
+val ty_vars : < ty_decl : 'a ; ty_var : 'b ; .. > t -> 'b option

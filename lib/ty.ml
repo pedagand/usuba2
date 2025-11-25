@@ -179,3 +179,21 @@ and bind_signature v ty si =
     parameters = List.map (bind v ty) si.parameters;
     return_type = bind v ty si.return_type;
   }
+
+let free_vars ty =
+  let module Vars = Set.Make (Ident.TyIdent) in
+  let rec free_vars vars = function
+    | Bool -> vars
+    | Var s -> Vars.add s vars
+    | App { bty; names = _ } -> free_vars vars bty
+    | Fun { tyvars; parameters; return_type } ->
+        let vars = free_vars vars return_type in
+        let vars = List.fold_left free_vars vars parameters in
+        Option.fold ~none:vars ~some:(Fun.flip Vars.remove vars) tyvars
+  in
+  let fv = free_vars Vars.empty ty in
+  Vars.elements fv
+
+let ty_vars = function
+  | Bool | Var _ | App _ -> None
+  | Fun { tyvars; _ } -> tyvars

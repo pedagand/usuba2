@@ -72,6 +72,8 @@ module Idents = struct
         ~left:(fun fn_ident -> Term.Fn { fn_ident })
         ~right:(fun s -> Var s)
         (find_callable name env)
+
+    let tyvars env = env.tyvars |> SMap.bindings |> List.map snd
   end
 
   let ty env =

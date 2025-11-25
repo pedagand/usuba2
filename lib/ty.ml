@@ -48,7 +48,7 @@ module S = struct
         App { names; bty }
     | _ -> if List.is_empty names' then ty else App { names = names'; bty = ty }
 
-  let fn ?(tyvars = None) parameters return_type =
+  let fn ?tyvars parameters return_type =
     Fun { tyvars; parameters; return_type }
 end
 

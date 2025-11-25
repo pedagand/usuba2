@@ -99,7 +99,7 @@ let () =
           test_case "in" `Quick (fun () ->
               check_typesynth Env0
                 Term.S.(vfn f)
-                Ty.S.(fn ~tyvars:(Some alpha) ty_f.parameters ty_f.return_type));
+                Ty.S.(fn ~tyvars:alpha ty_f.parameters ty_f.return_type));
         ] );
       ( "Lookup",
         [
@@ -186,7 +186,7 @@ let () =
               check_typesynth Env0
                 Term.S.(lift [ _F; _G ] (vfn f))
                 Ty.S.(
-                  fn ~tyvars:(Some alpha)
+                  fn ~tyvars:alpha
                     [ _F @ _G @ bool; _F @ _G @ v alpha ]
                     (_F @ _G @ v alpha)));
           test_case "not applicative" `Quick (fun () ->

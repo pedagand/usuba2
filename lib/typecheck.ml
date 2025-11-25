@@ -87,7 +87,7 @@ and typesynth env = function
   | Fn { fn_ident } ->
       let fn = Env.fn_declaration fn_ident env in
       let si = fn.signature in
-      Ty.S.fn ~tyvars:si.tyvars si.parameters si.return_type
+      Ty.S.fn ?tyvars:si.tyvars si.parameters si.return_type
   | Lookup { lterm; index } -> (
       let ty = typesynth env lterm in
       match ty with
@@ -135,8 +135,8 @@ and typesynth env = function
       let ty = typesynth env t in
       match ty with
       | Fun signature ->
-          Ty.S.fn ~tyvars:signature.tyvars
-            (signature.parameters |> List.map (fun bty -> Ty.S.apps tys bty))
+          Ty.S.fn ?tyvars:signature.tyvars
+            (List.map (fun bty -> Ty.S.apps tys bty) signature.parameters)
             (Ty.S.apps tys signature.return_type)
       | _ -> raise Ill_typed)
   | Ann (tm, ty) ->

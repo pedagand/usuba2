@@ -44,10 +44,7 @@ module S : sig
   val apps : 'ty_decl list -> (< ty_decl : 'ty_decl ; .. > as 'b) t -> 'b t
 
   val fn :
-    ?tyvars:'ty_var option ->
-    (< ty_var : 'ty_var ; .. > as 'b) t list ->
-    'b t ->
-    'b t
+    ?tyvars:'ty_var -> (< ty_var : 'ty_var ; .. > as 'b) t list -> 'b t -> 'b t
 end
 
 val to_spine : 't t -> 't spine

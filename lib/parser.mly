@@ -83,7 +83,7 @@ ty:
     | TypeVariable { Ty.S.v $1 }
     | BOOL { Ty.S.bool }
     | FUNCTION s=signature {
-        Ty.S.fn ~tyvars:s.Ty.tyvars s.Ty.parameters s.Ty.return_type
+        Ty.S.fn ?tyvars:s.Ty.tyvars s.Ty.parameters s.Ty.return_type
     }
     
 %inline signature:

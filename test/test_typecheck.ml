@@ -85,6 +85,15 @@ let fail_typecheck ctx tm ty =
 let () =
   run "typesynth"
     [
+      ( "Bind",
+        [
+          test_case "Bool" `Quick (fun () ->
+              Alcotest.check ty "" Ty.S.bool
+              @@ Ty.bind alpha Ty.S.bool Ty.S.bool);
+          test_case "Bool" `Quick (fun () ->
+              Alcotest.check ty "" Ty.S.(_F @ bool)
+              @@ Ty.bind alpha Ty.S.bool Ty.S.(_F @ v alpha));
+        ] );
       ( "Var",
         [
           test_case "in-Bool" `Quick (fun () ->

@@ -77,10 +77,11 @@ module Idents = struct
   end
 
   let ty env =
-    (* XXX: missing binding a signature *)
-    Ty.map
-      (fun x -> Env.find_tyvar x env)
+    Ty.bmap
+      (fun env x -> Env.add_tyvar x env)
+      (fun env x -> Env.find_tyvar x env)
       (fun name -> Env.find_tycstr name env)
+      env
 
   let rec sterm env = function
     | Term.Var v -> Env.find_variable_term v env

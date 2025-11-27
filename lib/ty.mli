@@ -30,6 +30,14 @@ val map :
   < ty_var : 'a ; ty_decl : 'b ; .. > t ->
   < ty_var : 'c ; ty_decl : 'd ; .. > t
 
+val bmap :
+  ('env -> 'a -> 'env * 'c) ->
+  ('env -> 'a -> 'c) ->
+  ('b -> 'd) ->
+  'env ->
+  < ty_var : 'a ; ty_decl : 'b ; .. > t ->
+  < ty_var : 'c ; ty_decl : 'd ; .. > t
+
 val pp_ :
   (Format.formatter -> 'ty_var -> unit) ->
   (Format.formatter -> 'ty_decl -> unit) ->
@@ -65,3 +73,8 @@ val bind : Ident.TyIdent.t -> Ident.scoped t -> Ident.scoped t -> Ident.scoped t
 
 (* XXX: for test only *)
 val merge : Ident.scoped spines -> Ident.scoped spine -> Ident.scoped spines
+
+val free_vars :
+  < ty_decl : 'a ; ty_var : Ident.TyIdent.t ; .. > t -> Ident.TyIdent.t list
+
+val ty_vars : < ty_decl : 'a ; ty_var : 'b ; .. > t -> 'b option

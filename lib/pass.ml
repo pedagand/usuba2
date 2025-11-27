@@ -72,13 +72,16 @@ module Idents = struct
         ~left:(fun fn_ident -> Term.Fn { fn_ident })
         ~right:(fun s -> Var s)
         (find_callable name env)
+
+    let tyvars env = env.tyvars |> SMap.bindings |> List.map snd
   end
 
   let ty env =
-    (* XXX: missing binding a signature *)
-    Ty.map
-      (fun x -> Env.find_tyvar x env)
+    Ty.bmap
+      (fun env x -> Env.add_tyvar x env)
+      (fun env x -> Env.find_tyvar x env)
       (fun name -> Env.find_tycstr name env)
+      env
 
   let rec sterm env = function
     | Term.Var v -> Env.find_variable_term v env

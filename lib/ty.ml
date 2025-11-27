@@ -52,21 +52,33 @@ module S = struct
     Fun { tyvars; parameters; return_type }
 end
 
-let rec map on_var on_decl = function
-  | Bool -> Bool
-  | Var v -> Var (on_var v)
-  | App sp -> App (map_spine on_var on_decl sp)
-  | Fun si -> Fun (map_signature on_var on_decl si)
+let rec bmap_signature on_binder on_var on_decl env
+    { tyvars; parameters; return_type } =
+  let env, tyvars =
+    Option.fold ~none:(env, None)
+      ~some:(fun v ->
+        let e, v = on_binder env v in
+        (e, Some v))
+      tyvars
+  in
+  let parameters = List.map (bmap on_binder on_var on_decl env) parameters in
+  let return_type = bmap on_binder on_var on_decl env return_type in
+  { tyvars; parameters; return_type }
 
-and map_spine on_var on_decl { names; bty } =
-  { names = List.map on_decl names; bty = map on_var on_decl bty }
-
-and map_signature on_var on_decl { tyvars; parameters; return_type } =
+and bmap_spine on_binder on_var on_decl env { names; bty } =
   {
-    tyvars = Option.map on_var tyvars;
-    parameters = List.map (map on_var on_decl) parameters;
-    return_type = map on_var on_decl return_type;
+    names = List.map on_decl names;
+    bty = bmap on_binder on_var on_decl env bty;
   }
+
+and bmap on_binder on_var on_decl env = function
+  | Bool -> Bool
+  | Var v -> Var (on_var env v)
+  | App sp -> App (bmap_spine on_binder on_var on_decl env sp)
+  | Fun si -> Fun (bmap_signature on_binder on_var on_decl env si)
+
+let map on_var on_decl t =
+  bmap (fun e v -> (e, on_var v)) (fun () v -> on_var v) on_decl () t
 
 let pp_ pp_var pp_decl =
   let pp_var_opt format = Format.pp_print_option pp_var format in

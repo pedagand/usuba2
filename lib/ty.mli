@@ -30,6 +30,14 @@ val map :
   < ty_var : 'a ; ty_decl : 'b ; .. > t ->
   < ty_var : 'c ; ty_decl : 'd ; .. > t
 
+val bmap :
+  ('env -> 'a -> 'env * 'c) ->
+  ('env -> 'a -> 'c) ->
+  ('b -> 'd) ->
+  'env ->
+  < ty_var : 'a ; ty_decl : 'b ; .. > t ->
+  < ty_var : 'c ; ty_decl : 'd ; .. > t
+
 val pp_ :
   (Format.formatter -> 'ty_var -> unit) ->
   (Format.formatter -> 'ty_decl -> unit) ->

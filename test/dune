@@ -1,6 +1,12 @@
 (tests
- (names test_pass test_util test_typecheck test_typecheck_file test_vectors)
- (libraries ua0 util alcotest fmt)
+ (names
+  test_pass
+  test_util
+  test_fixslice
+  test_typecheck
+  test_typecheck_file
+  test_vectors)
+ (libraries ua0 util alcotest fmt qcheck qcheck-alcotest)
  (modes byte exe)
  (deps
   (source_tree src)

@@ -369,15 +369,9 @@ let rec eval_sterm env = function
           tys origin
       in
       Value.VFunction { origin; value }
-  | FnCall { fn_name; args; dicts; _ } ->
+  | FnCall { fn; args; dicts; _ } ->
+      let f = Value.as_function (eval_sterm env fn) in
       let args = List.map (eval_cterm env) args in
-      let f =
-        match fn_name with
-        | Either.Left fnident -> Env.fn_declaration fnident env
-        | Right termident ->
-            let value = Env.lookup termident env in
-            Value.as_function value
-      in
       let dicts = List.map (eval_cterm env) dicts in
       (* HACK: pass dicts values with regulars arguments *)
       f (dicts @ args)

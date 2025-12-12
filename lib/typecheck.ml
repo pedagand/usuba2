@@ -95,15 +95,9 @@ and typesynth env = function
           Ty.S.apps names bty
       | _ -> raise Ill_typed)
   | Operator operator -> typesynth_operator env operator
-  | FnCall { fn_name; ty_resolve; dicts; args } ->
+  | FnCall { fn; ty_resolve; dicts; args } ->
       let si =
-        match fn_name with
-        | Left fn_ident ->
-            let fn = Env.fn_declaration fn_ident env in
-            fn.signature
-        | Right x -> (
-            let ty = Env.ty_variable x env in
-            match ty with Fun si -> si | _ -> raise Ill_typed)
+        match typesynth env fn with Fun si -> si | _ -> raise Ill_typed
       in
       let ops, parameters, return_type =
         match (si.tyvars, ty_resolve) with

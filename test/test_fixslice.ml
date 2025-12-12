@@ -32,7 +32,7 @@ let test_compose_id ~eq ~name f1 f2 ty =
 
 (*
 let apply2 f = fun args -> f [ f args ]*)
-let compose g f = fun args -> g [ f args ]
+let compose g f args = g [ f args ]
 let ( $ ) = compose
 
 let symbol ienv functions s =

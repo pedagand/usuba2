@@ -11,7 +11,7 @@ type 't sterm_ =
       ty_resolve : 't Ty.t option;
       dicts : 't cterm_ list;
       args : 't cterm_ list;
-    }  (** [f.[ty](t1, t2, ...)] *)
+    }  (** [f.[ty]<op1, op2, ...>(t1, t2, ...)] *)
   | Operator of 't cterm_ Operator.t
   | Ann of 't cterm_ * 't Ty.t
   constraint

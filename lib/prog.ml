@@ -11,7 +11,8 @@ type 't fndecl_ = {
     ; fn_ident : 'fn_ident
     ; ty_var : 'ty_var
     ; term_id : 'term_id >
-(** [fn f [a](x1: ty1, x2: ty2, ...) ty = t] *)
+(** [fn f [a]^?<op1: ty_op1, op2: ty_op2, ...>^?(x1: ty1, x2: ty2, ...) ty = t]
+*)
 
 let pp_fndecl_ pp_var pp_ty_var pp_ty_decl pp_fn_ident format fn =
   let pp_ty = Ty.pp_ pp_ty_var pp_ty_decl in

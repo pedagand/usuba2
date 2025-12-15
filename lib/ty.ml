@@ -2,7 +2,8 @@ type 't t =
   | Bool  (** [bool] *)
   | Var of 'ty_var  (** ['a] *)
   | App of 't spine  (** [tname0 (tyname1 (... (tyname_n ty)))] *)
-  | Fun of 't signature  (** [['a]^? (ty1, ty2, ...) -> ty] *)
+  | Fun of 't signature
+      (** [['a]^? <ty_op1, ty_op2, ...>^?(ty1, ty2, ...) -> ty] *)
   constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
 
 and 't signature = {

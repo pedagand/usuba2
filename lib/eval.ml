@@ -148,7 +148,8 @@ module Env = struct
     in
     { env with type_variables }
 *)
-  let init_variables parameters values env =
+
+  let bind_variables parameters values env =
     let env = clear_variables env in
     List.fold_left2
       (fun env var value -> bind_variable var value env)
@@ -368,7 +369,7 @@ let rec eval_sterm env = function
           tys origin
       in
       Value.VFunction { origin; value }
-  | FnCall { fn_name; args; _ } ->
+  | FnCall { fn_name; args; dicts; _ } ->
       let args = List.map (eval_cterm env) args in
       let f =
         match fn_name with
@@ -377,7 +378,9 @@ let rec eval_sterm env = function
             let value = Env.lookup termident env in
             Value.as_function value
       in
-      f args
+      let dicts = List.map (eval_cterm env) dicts in
+      (* HACK: pass dicts values with regulars arguments *)
+      f (dicts @ args)
   | Operator operator ->
       let _, r =
         Operator.traverse
@@ -426,7 +429,8 @@ and eval_cterm env = function
   | Synth sterm -> eval_sterm env sterm
 
 let eval_node env (fn : Prog.fndecl) vals =
-  let env = Env.init_variables fn.args vals env in
+  (* HACK: pass dicts values with regulars arguments (part2) *)
+  let env = Env.bind_variables (fn.ops @ fn.args) vals env in
   eval_cterm env fn.body
 
 let eval_node env = function

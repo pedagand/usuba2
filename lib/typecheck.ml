@@ -136,7 +136,7 @@ and typesynth env = function
       match ty with
       | Fun signature ->
           Ty.S.fn ?tyvars:signature.tyvars
-            (List.map (fun bty -> Ty.S.apps tys bty) signature.parameters)
+            (List.map (fun bty -> Ty.S.apps tys bty) signature.ops)
             (List.map (fun bty -> Ty.S.apps tys bty) signature.parameters)
             (Ty.S.apps tys signature.return_type)
       | _ -> raise Ill_typed)

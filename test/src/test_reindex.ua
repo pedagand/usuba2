@@ -73,7 +73,7 @@ fn permbits ['a] (state : Col Row Slice 'a) Col Row Slice 'a =
     ] in
     let state = reindex[Col Row | Slice](state) in
     reindex[Slice | Col Row](
-        ( let+ f = permbits and slice = state in 
+        ( let+ f : Slice _ = permbits and slice = state in 
             f.['a](slice) : Slice Col Row 'a )
     )
     
@@ -88,7 +88,7 @@ fn permbits_0 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
         ] in
         let state = reindex[Col Row | Slice]((state : Col Row Slice 'a)) in
         reindex[Slice | Col Row](
-            ( let+ f = permbits and slice = state in 
+            ( let+ f: Slice _ = permbits and slice = state in 
             f.['a](slice) : Slice Col Row 'a )
         ) : Col Row Slice 'a)
     )
@@ -104,7 +104,7 @@ fn permbits_1 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
     ] in
     let state = reindex[Col Row | Slice]((state : Col Row Slice 'a)) in
     reindex[Slice | Col Row](
-        ( let+ f = permbits and slice = state in 
+        ( let+ f: Slice _ = permbits and slice = state in 
             f.['a](slice) : Slice Col Row 'a 
         )
     )
@@ -118,7 +118,7 @@ fn permbits_2 ['a](state : Slice Col Row 'a) Slice Col Row 'a =
         & rev_rotate_0
     ] in
     reindex[Slice | Col Row](
-        ( let+ f = permbits 
+        ( let+ f: Slice _ = permbits 
             and slice = reindex[Col Row | Slice](
                 (reindex[Slice | Col Row]((state : Slice Col Row 'a)) : Col Row Slice 'a)
             ) in 
@@ -134,7 +134,7 @@ fn permbits_bitslice ['a](state : Slice Col Row 'a) Slice Col Row 'a =
         & rev_rotate_3,
         & rev_rotate_0
     ] in
-    let+ f = permbits and slice = state in 
+    let+ f: Slice _ = permbits and slice = state in 
         f.['a](slice)
 
 fn subcells ['a](

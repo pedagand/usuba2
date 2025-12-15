@@ -12,7 +12,7 @@
 %token <string> TypeVariable
 %token <string> TypeCstrIdentifier
 %token <int> IntegerLitteral
-%token LPARENT RPARENT LBRACE RBRACE LSQBRACE RSQBRACE
+%token LPARENT RPARENT LBRACE RBRACE LSQBRACE RSQBRACE LANGLE RANGLE
 %token EQUAL DOT COMMA PIPE CARET EXCLAMATION COLON UNDERSCORE
 %token AND LET LET_PLUS IN REINDEX CIRC FOLD
 %token TRUE FALSE BOOL LIFT
@@ -43,7 +43,10 @@
 
 %inline sqrbracketed(X):
     | delimited(LSQBRACE, X, RSQBRACE) { $1 }
-    
+
+%inline anglebracketed(X):
+  | delimited(LANGLE, X, RANGLE) { $1 }
+
 %inline splitted(lhs, sep, rhs):
     | lhs=lhs sep rhs=rhs { lhs, rhs }
 
@@ -68,12 +71,17 @@ type_decl:
 
 fn_decl:
     | FUNCTION fn_name=Identifier
-        tyvars=option(sqrbracketed(TypeVariable)) parameters=parenthesis(separated_list(COMMA, splitted(Identifier, COLON, ty)))
+               tyvars=option(sqrbracketed(TypeVariable))
+               ops=option(anglebracketed(separated_list(COMMA, splitted(Identifier, COLON, ty))))
+               parameters=parenthesis(separated_list(COMMA, splitted(Identifier, COLON, ty)))
         return_type=ty EQUAL body=cterm
     { 
         let args = List.map fst parameters in
         let parameters = List.map snd parameters in
-        {fn_name; signature = { tyvars; parameters; return_type}; args; body }
+        let ops = Option.value ~default:[] ops in
+        let ops_args =  List.map fst ops  in
+        let ops = List.map snd ops in
+        {fn_name; signature = { tyvars; ops; parameters; return_type}; ops= ops_args ; args; body }
     }
     
 ty:
@@ -83,19 +91,22 @@ ty:
     | TypeVariable { Ty.S.v $1 }
     | BOOL { Ty.S.bool }
     | FUNCTION s=signature {
-        Ty.S.fn ?tyvars:s.Ty.tyvars s.Ty.parameters s.Ty.return_type
+        Ty.S.fn ?tyvars:s.Ty.tyvars s.Ty.ops s.Ty.parameters s.Ty.return_type
     }
     
 %inline signature:
-    | tyvars=option(sqrbracketed(TypeVariable)) 
+  | tyvars=option(sqrbracketed(TypeVariable))
+        ops=option(anglebracketed(separated_list(COMMA, ty)))
         parameters=parenthesis(separated_list(COMMA, ty)) MINUS_SUP 
-        return_type=ty {
-        {Ty.tyvars; parameters; return_type}
+return_type=ty {
+                let ops = Option.value ~default:[] ops in
+        {Ty.tyvars; ops; parameters; return_type}
     }
     
 %inline fn_identifier:
-    | fn_name=Identifier DOT ty_resolve=option(sqrbracketed(ty))  { 
-        fn_name, ty_resolve 
+  | fn_name=Identifier DOT ty_resolve=option(sqrbracketed(ty)) dicts=option(anglebracketed(separated_list(COMMA, cterm)))  {
+        let dicts = Option.value ~default:[] dicts in
+        fn_name, ty_resolve, dicts
     }
     
 %inline identifier_typed:
@@ -122,8 +133,8 @@ sterm:
         Lift {tys; func}
     }
     | fn=fn_identifier args=parenthesis(separated_list(COMMA, cterm)) {
-        let fn_name, ty_resolve = fn in
-        FnCall {fn_name = Either.Left fn_name; ty_resolve; args}
+        let fn_name, ty_resolve, dicts = fn in
+        FnCall {fn_name = Either.Left fn_name; ty_resolve; dicts; args}
     }
     | operator {
         Operator $1
@@ -137,11 +148,11 @@ sterm:
         args10=parenthesis(splitted(sterm, COMMA, sterm))
     {
         let acc, lterm = args10 in
-        let (fn_name, ty_resolve), const_args = fi in
+        let (fn_name, ty_resolve, dicts), const_args = fi in
         let const_args = Option.fold ~none:[] ~some:Fun.id const_args in
         List.init i Fun.id |> List.fold_left (fun acc i -> 
             let args = const_args @ (Synth acc) :: (Synth (Lookup {lterm; index = i})) :: [] in
-            FnCall {fn_name = Either.Left fn_name; ty_resolve; args }
+            FnCall {fn_name = Either.Left fn_name; ty_resolve; dicts; args }
         ) acc 
     }
     
@@ -187,17 +198,17 @@ cterm:
         args10=parenthesis(splitted(term, COMMA, lterm))
     {
         let acc, lterm = args10 in
-        let (fn_name, ty_resolve), const_args = fi in
+        let (fn_name, ty_resolve, dicts), const_args = fi in
         let const_args = Option.fold ~none:[] ~some:Fun.id const_args in
         List.init i (Fun.id) |> List.fold_left (fun acc i -> 
             let args = const_args @ acc :: (TLookup {lterm; index = i}) :: [] in
-            FnCall {fn_name = Either.Left fn_name; ty_resolve; args }
+            FnCall {fn_name = Either.Left fn_name; dicts; ty_resolve; args }
         ) acc 
     }
     | HASH lterm=lterm { TThunk {lterm} }
     | fn=fn_identifier args=parenthesis(separated_list(COMMA, term)) {
-        let fn_name, ty_resolve = fn in
-        FnCall {fn_name = Either.Left fn_name; ty_resolve; args}
+        let fn_name, ty_resolve, dicts = fn in
+        FnCall {fn_name = Either.Left fn_name; dicts; ty_resolve; args}
     }
     | parenthesis(term) { $1 }
     | operator {

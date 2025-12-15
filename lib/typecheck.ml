@@ -87,7 +87,7 @@ and typesynth env = function
   | Fn { fn_ident } ->
       let fn = Env.fn_declaration fn_ident env in
       let si = fn.signature in
-      Ty.S.fn ?tyvars:si.tyvars si.parameters si.return_type
+      Ty.S.fn ?tyvars:si.tyvars si.ops si.parameters si.return_type
   | Lookup { lterm; index } -> (
       let ty = typesynth env lterm in
       match ty with
@@ -95,7 +95,7 @@ and typesynth env = function
           Ty.S.apps names bty
       | _ -> raise Ill_typed)
   | Operator operator -> typesynth_operator env operator
-  | FnCall { fn_name; ty_resolve; args } ->
+  | FnCall { fn_name; ty_resolve; dicts; args } ->
       let si =
         match fn_name with
         | Left fn_ident ->
@@ -105,18 +105,18 @@ and typesynth env = function
             let ty = Env.ty_variable x env in
             match ty with Fun si -> si | _ -> raise Ill_typed)
       in
-      let parameters, return_type =
+      let ops, parameters, return_type =
         match (si.tyvars, ty_resolve) with
-        | None, None -> (si.parameters, si.return_type)
+        | None, None -> (si.ops, si.parameters, si.return_type)
         | Some a, Some ty ->
+            let ops = List.map (Ty.bind a ty) si.ops in
             let parameters = List.map (Ty.bind a ty) si.parameters in
             let return_type = Ty.bind a ty si.return_type in
-            (parameters, return_type)
+            (ops, parameters, return_type)
         | _, _ -> raise Ill_typed
       in
-      List.iter2
-        (fun ty_expected arg -> typecheck env ty_expected arg)
-        parameters args;
+      List.iter2 (typecheck env) ops dicts;
+      List.iter2 (typecheck env) parameters args;
       return_type
   | Reindex { lhs; rhs; lterm } -> (
       let ty = typesynth env lterm in
@@ -137,6 +137,7 @@ and typesynth env = function
       | Fun signature ->
           Ty.S.fn ?tyvars:signature.tyvars
             (List.map (fun bty -> Ty.S.apps tys bty) signature.parameters)
+            (List.map (fun bty -> Ty.S.apps tys bty) signature.parameters)
             (Ty.S.apps tys signature.return_type)
       | _ -> raise Ill_typed)
   | Ann (tm, ty) ->
@@ -148,13 +149,18 @@ and typesynth_operator env op =
   Ty.S.bool
 
 let typecheck_function env fn =
-  let Prog.{ fn_name; signature; args; body } = fn in
+  let Prog.{ fn_name; signature; ops; args; body } = fn in
   let env =
     Env.set_function (Format.asprintf "%a" Ident.FnIdent.pp fn_name) env
   in
   let env =
     Env.clear_variables env
     (* XXX: what's [clear_variables]? *)
+  in
+  let env =
+    List.fold_left2
+      (fun env variable ty -> Env.add_variable variable ty env)
+      env ops signature.ops
   in
   let env =
     List.fold_left2

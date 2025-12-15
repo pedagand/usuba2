@@ -1,8 +1,8 @@
 module Vars = Set.Make (Ua0.Ident.TyIdent)
 
 let ty = Alcotest.testable Ua0.Ty.pp Ua0.Ty.equal
-let f b = Ua0.Ty.S.(fn ~tyvars:b [ v b ] (v b))
-let f_free b = Ua0.Ty.S.(fn [ v b ] (v b))
+let f b = Ua0.Ty.S.(fn ~tyvars:b [] [ v b ] (v b))
+let f_free b = Ua0.Ty.S.(fn [] [ v b ] (v b))
 
 let test_free message () =
   let a = "'a" in

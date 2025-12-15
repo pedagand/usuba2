@@ -21,12 +21,20 @@ let ty_f =
   Ty.
     {
       tyvars = Some alpha;
+      ops = [];
       parameters = Ty.S.[ bool; v alpha ];
       return_type = Ty.S.v alpha;
     }
 
 let def_f =
-  Prog.{ fn_name = f; signature = ty_f; args = [ x; y ]; body = Synth (Var y) }
+  Prog.
+    {
+      fn_name = f;
+      signature = ty_f;
+      ops = [];
+      args = [ x; y ];
+      body = Synth (Var y);
+    }
 
 let env0 =
   let open Ua0.Typecheck.Env in
@@ -108,7 +116,8 @@ let () =
           test_case "in" `Quick (fun () ->
               check_typesynth Env0
                 Term.S.(vfn f)
-                Ty.S.(fn ~tyvars:alpha ty_f.parameters ty_f.return_type));
+                Ty.S.(
+                  fn ~tyvars:alpha ty_f.ops ty_f.parameters ty_f.return_type));
         ] );
       ( "Lookup",
         [
@@ -130,23 +139,23 @@ let () =
         [
           test_case "well-typed" `Quick (fun () ->
               check_typesynth Env0
-                Term.S.(fn_call ~resolve:Ty.S.(v alpha) f [ s (v x); s (v y) ])
+                Term.S.(fn_call ~ty:Ty.S.(v alpha) f [] [ s (v x); s (v y) ])
                 Ty.S.(v alpha));
           test_case "well-typed instanciated" `Quick (fun () ->
               check_typesynth Env0
-                Term.S.(fn_call ~resolve:Ty.S.bool f [ s (v x); s (v x) ])
+                Term.S.(fn_call ~ty:Ty.S.bool f [] [ s (v x); s (v x) ])
                 Ty.S.bool);
           test_case "no arguments" `Quick (fun () ->
-              fail_typesynth Env0 Term.S.(fn_call ~resolve:Ty.S.(v alpha) f []));
+              fail_typesynth Env0 Term.S.(fn_call ~ty:Ty.S.(v alpha) f [] []));
           test_case "insufficiently applied" `Quick (fun () ->
               fail_typesynth Env0
-                Term.S.(fn_call ~resolve:Ty.S.(v alpha) f [ s (v x) ]));
+                Term.S.(fn_call ~ty:Ty.S.(v alpha) f [] [ s (v x) ]));
           test_case "wrong args" `Quick (fun () ->
               fail_typesynth Env0
-                Term.S.(fn_call ~resolve:Ty.S.(v alpha) f [ s (v y); s (v x) ]));
+                Term.S.(fn_call ~ty:Ty.S.(v alpha) f [] [ s (v y); s (v x) ]));
           test_case "ill-typed instanciation" `Quick (fun () ->
               fail_typesynth Env0
-                Term.S.(fn_call ~resolve:Ty.S.bool f [ s (v x); s (v y) ]));
+                Term.S.(fn_call ~ty:Ty.S.bool f [] [ s (v x); s (v y) ]));
         ] );
       ( "Ann",
         [
@@ -195,7 +204,7 @@ let () =
               check_typesynth Env0
                 Term.S.(lift [ _F; _G ] (vfn f))
                 Ty.S.(
-                  fn ~tyvars:alpha
+                  fn ~tyvars:alpha []
                     [ _F @ _G @ bool; _F @ _G @ v alpha ]
                     (_F @ _G @ v alpha)));
           test_case "not applicative" `Quick (fun () ->

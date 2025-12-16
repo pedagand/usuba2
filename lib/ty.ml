@@ -2,11 +2,13 @@ type 't t =
   | Bool  (** [bool] *)
   | Var of 'ty_var  (** ['a] *)
   | App of 't spine  (** [tname0 (tyname1 (... (tyname_n ty)))] *)
-  | Fun of 't signature  (** [['a]^? (ty1, ty2, ...) -> ty] *)
+  | Fun of 't signature
+      (** [['a]^? <ty_op1, ty_op2, ...>^?(ty1, ty2, ...) -> ty] *)
   constraint 't = < ty_var : 'ty_var ; ty_decl : 'ty_decl ; .. >
 
 and 't signature = {
   tyvars : 'ty_var option;
+  ops : 't t list;
   parameters : 't t list;
   return_type : 't t;
 }
@@ -48,12 +50,12 @@ module S = struct
         App { names; bty }
     | _ -> if List.is_empty names' then ty else App { names = names'; bty = ty }
 
-  let fn ?tyvars parameters return_type =
-    Fun { tyvars; parameters; return_type }
+  let fn ?tyvars ops parameters return_type =
+    Fun { tyvars; ops; parameters; return_type }
 end
 
 let rec bmap_signature on_binder on_var on_decl env
-    { tyvars; parameters; return_type } =
+    { tyvars; ops; parameters; return_type } =
   let env, tyvars =
     Option.fold ~none:(env, None)
       ~some:(fun v ->
@@ -61,9 +63,10 @@ let rec bmap_signature on_binder on_var on_decl env
         (e, Some v))
       tyvars
   in
+  let ops = List.map (bmap on_binder on_var on_decl env) ops in
   let parameters = List.map (bmap on_binder on_var on_decl env) parameters in
   let return_type = bmap on_binder on_var on_decl env return_type in
-  { tyvars; parameters; return_type }
+  { tyvars; ops; parameters; return_type }
 
 and bmap_spine on_binder on_var on_decl env { names; bty } =
   {
@@ -85,9 +88,9 @@ let pp_ pp_var pp_decl =
   let rec go format = function
     | Bool -> Format.fprintf format "bool"
     | App { names; bty } -> go_apps bty format names
-    | Fun { tyvars; parameters; return_type } ->
-        Format.fprintf format "fn %a(%a) -> %a" pp_var_opt tyvars gos parameters
-          go return_type
+    | Fun { tyvars; ops; parameters; return_type } ->
+        Format.fprintf format "fn %a<%a>(%a) -> %a" pp_var_opt tyvars gos ops
+          gos parameters go return_type
     | Var name -> Format.fprintf format "%a" pp_var name
   and go_apps ty format = function
     | [] -> go format ty
@@ -198,8 +201,9 @@ let free_vars ty =
     | Bool -> vars
     | Var s -> Vars.add s vars
     | App { bty; names = _ } -> free_vars vars bty
-    | Fun { tyvars; parameters; return_type } ->
+    | Fun { tyvars; ops; parameters; return_type } ->
         let vars = free_vars vars return_type in
+        let vars = List.fold_left free_vars vars ops in
         let vars = List.fold_left free_vars vars parameters in
         Option.fold ~none:vars ~some:(Fun.flip Vars.remove vars) tyvars
   in

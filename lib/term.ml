@@ -9,8 +9,9 @@ type 't sterm_ =
   | FnCall of {
       fn_name : ('fn_ident, 'term_id) Either.t;
       ty_resolve : 't Ty.t option;
+      dicts : 't cterm_ list;
       args : 't cterm_ list;
-    }  (** [f.[ty](t1, t2, ...)] *)
+    }  (** [f.[ty]<op1, op2, ...>(t1, t2, ...)] *)
   | Operator of 't cterm_ Operator.t
   | Ann of 't cterm_ * 't Ty.t
   constraint
@@ -81,13 +82,13 @@ let pps pp_var pp_ty_var pp_ty_decl pp_fn_ident =
         Format.fprintf format "reindex[%a | %a](%a)" pp_decls lhs pp_decls rhs
           go_sterm_ lterm
     | Circ lterm -> Format.fprintf format "circ(%a)" go_sterm_ lterm
-    | FnCall { fn_name; ty_resolve; args } ->
+    | FnCall { fn_name; ty_resolve; dicts; args } ->
         let pp_ty_resolve =
           Format.pp_print_option (fun format ty ->
               Format.fprintf format "[%a]" pp_ty ty)
         in
-        Format.fprintf format "%a.%a(%a)" pp_fn_name fn_name pp_ty_resolve
-          ty_resolve pp_args args
+        Format.fprintf format "%a.%a<%a>(%a)" pp_fn_name fn_name pp_ty_resolve
+          ty_resolve pp_args dicts pp_args args
     | Ann (tm, ty) -> Format.fprintf format "(%a : %a)" go tm pp_ty ty
   and pp_terms format =
     Format.pp_print_list
@@ -135,11 +136,12 @@ module S = struct
     let variable = Ident.TermIdent.fresh variable in
     Let { variable; term; k = k (v variable) }
 
-  let fn_call ?resolve fn_name args =
-    FnCall { fn_name = Left fn_name; ty_resolve = resolve; args }
+  let fn_call ?ty fn_name dicts args =
+    let ty_resolve = ty in
+    FnCall { fn_name = Left fn_name; ty_resolve; dicts; args }
 
-  let v_call ?resolve variable_name args =
-    FnCall { fn_name = Right variable_name; ty_resolve = resolve; args }
+  let v_call ?ty_resolve variable_name dicts args =
+    FnCall { fn_name = Right variable_name; ty_resolve; dicts; args }
 
   let circ t = Circ t
   let lift tys func = Lift { tys; func }

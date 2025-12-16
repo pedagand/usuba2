@@ -32,8 +32,8 @@ let () =
               check_equal Ty.S.(apps [ _G; _H ] bool) Ty.S.(_G @ _H @ bool) true);
           test_case "equal" `Quick (fun () ->
               check_equal
-                Ty.S.(fn ~tyvars:alpha [ v alpha ] (v alpha))
-                Ty.S.(fn ~tyvars:beta [ v beta ] (v beta))
+                Ty.S.(fn ~tyvars:alpha [] [ v alpha ] (v alpha))
+                Ty.S.(fn ~tyvars:beta [] [ v beta ] (v beta))
                 true);
           test_case "not equal" `Quick (fun () ->
               check_equal Ty.S.(v alpha) Ty.S.(v beta) false);

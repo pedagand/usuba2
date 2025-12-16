@@ -55,6 +55,8 @@ rule token = parse
 | "}" { RBRACE }
 | "[" { LSQBRACE }
 | "]" { RSQBRACE }
+| "<" { LANGLE }
+| ">" { RANGLE }
 | "&" { AMPERSAND }
 | "," { COMMA }
 | "=" { EQUAL }

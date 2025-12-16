@@ -103,12 +103,13 @@ module Idents = struct
         let func = sterm env func in
         let tys = List.map (Fun.flip Env.find_tycstr env) tys in
         Lift { tys; func }
-    | FnCall { fn_name; ty_resolve; args } ->
+    | FnCall { fn_name; ty_resolve; dicts; args } ->
         let fn_name = Either.fold ~left:Fun.id ~right:Fun.id fn_name in
         let fn_name = Env.find_callable fn_name env in
         let ty_resolve = Option.map (ty env) ty_resolve in
+        let dicts = List.map (cterm env) dicts in
         let args = List.map (cterm env) args in
-        FnCall { fn_name; ty_resolve; args }
+        FnCall { fn_name; ty_resolve; dicts; args }
     | Operator ops ->
         let op = Operator.map (cterm env) ops in
         Operator op
@@ -155,7 +156,7 @@ module Idents = struct
         Synth sterm
 
   let fn_declaration env fn_declaration =
-    let Prog.{ fn_name; signature; args; body } = fn_declaration in
+    let Prog.{ fn_name; signature; ops; args; body } = fn_declaration in
     let env = Env.clear_variables env in
     let env = Env.clear_ty_variables env in
     let env, tyvars =
@@ -164,6 +165,15 @@ module Idents = struct
       | Some t ->
           let env, t = Env.add_tyvar t env in
           (env, Some t)
+    in
+    let env, ops =
+      List.fold_left_map
+        (fun env (variable, t) ->
+          let ty = ty env t in
+          let env, variable = Env.add_variable variable env in
+          (env, (variable, ty)))
+        env
+        (List.combine ops signature.ops)
     in
     let env, parameters =
       List.fold_left_map
@@ -175,12 +185,13 @@ module Idents = struct
         (List.combine args signature.parameters)
     in
     let return_type = ty env signature.return_type in
+    let ops, ops_ty = List.split ops in
     let args, parameters = List.split parameters in
-    let signature = { Ty.tyvars; parameters; return_type } in
+    let signature = { Ty.tyvars; parameters; ops = ops_ty; return_type } in
     let body = cterm env body in
     (* Add name at the end to allow fn_name shadowing. *)
     let env, fn_name = Env.add_fn fn_name env in
-    (env, Prog.{ fn_name; signature; args; body })
+    (env, Prog.{ fn_name; signature; ops; args; body })
 
   let ty_declaration env ty_declaration =
     let Prog.{ tyvar; name; size } = ty_declaration in

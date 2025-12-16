@@ -1,6 +1,7 @@
 type 't fndecl_ = {
   fn_name : 'fn_ident;
   signature : 't Ty.signature;
+  ops : 'term_id list;
   args : 'term_id list;
   body : 't Term.cterm_;
 }
@@ -10,12 +11,13 @@ type 't fndecl_ = {
     ; fn_ident : 'fn_ident
     ; ty_var : 'ty_var
     ; term_id : 'term_id >
-(** [fn f [a](x1: ty1, x2: ty2, ...) ty = t] *)
+(** [fn f [a]^?<op1: ty_op1, op2: ty_op2, ...>^?(x1: ty1, x2: ty2, ...) ty = t]
+*)
 
 let pp_fndecl_ pp_var pp_ty_var pp_ty_decl pp_fn_ident format fn =
   let pp_ty = Ty.pp_ pp_ty_var pp_ty_decl in
   let pp_term = Term.pp_cterm_ pp_var pp_ty_var pp_ty_decl pp_fn_ident in
-  let { fn_name; signature; args; body } = fn in
+  let { fn_name; signature; ops; args; body } = fn in
   let pp_parameter format (variable, ty) =
     Format.fprintf format "%a : %a" pp_var variable pp_ty ty
   in
@@ -28,10 +30,11 @@ let pp_fndecl_ pp_var pp_ty_var pp_ty_decl pp_fn_ident format fn =
       ~pp_sep:(fun format () -> Format.fprintf format ", ")
       pp_parameter
   in
+  let ops = List.combine ops signature.ops in
   let parameters = List.combine args signature.parameters in
-  Format.fprintf format "fn %a %a(%a) %a = %a" pp_fn_ident fn_name pp_tyvars
-    signature.tyvars pp_parameters parameters pp_ty signature.return_type
-    pp_term body
+  Format.fprintf format "fn %a %a<%a>(%a) %a = %a" pp_fn_ident fn_name pp_tyvars
+    signature.tyvars pp_parameters ops pp_parameters parameters pp_ty
+    signature.return_type pp_term body
 
 (* Type decl only create alias. *)
 type 't tydecl_ = {

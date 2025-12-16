@@ -1,6 +1,6 @@
-module Value = Ua0.Value
+module Eval = Ua0.Eval.Make (Ua0.Value.Bool)
+module Value = Eval.Value
 module IEnv = Ua0.Pass.Idents.Env
-module EEnv = Ua0.Eval.Env
 open Gen
 
 (* Load & eval `gift_spec.ua` and `gift_bitslice.ua` *)
@@ -50,10 +50,10 @@ let test_gift32 =
        (QCheck.array_of_size (QCheck.Gen.return 28) qvalue_4x4x4x2))
   @@ fun (state, keys) ->
   Value.equal
-    (GiftBitslice.gift32 [ state; Value.VArray keys ])
+    (GiftBitslice.gift32 [ state; Value.Array keys ])
     (let state = GiftBitslice.transpose32 [ state ] in
      let keys = keys |> Array.map (fun x -> GiftBitslice.transpose32 [ x ]) in
-     let s = GiftSpec.gift32 [ state; Value.VArray keys ] in
+     let s = GiftSpec.gift32 [ state; Value.Array keys ] in
      GiftBitslice.transpose32_inv [ s ])
 
 let test_round32 =

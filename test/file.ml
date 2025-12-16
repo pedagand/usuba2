@@ -1,6 +1,6 @@
-module Value = Ua0.Value
+module Eval = Ua0.Eval.Make (Ua0.Value.Bool)
+module Value = Eval.Value
 module IEnv = Ua0.Pass.Idents.Env
-module EEnv = Ua0.Eval.Env
 
 let load filename =
   let env, ast =
@@ -13,9 +13,9 @@ let load filename =
     in
     Ua0.Pass.Idents.of_string_ast_env ast
   in
-  let prog = Ua0.Eval.eval ast in
+  let prog = Eval.eval ast in
   let symbol s =
     let f = IEnv.find_fn_ident s env in
-    EEnv.Functions.find f prog
+    Eval.Env.Functions.find f prog
   in
   symbol

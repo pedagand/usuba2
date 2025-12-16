@@ -1,17 +1,21 @@
-module Double = Ua0.Value.Naperian (struct
+module Value = Ua0.Value.Make (Ua0.Value.Bool)
+module Gift = Util.Gift.Make (Ua0.Value.Bool)
+module Eval = Ua0.Eval.Make (Ua0.Value.Bool)
+
+module Double = Value.Naperian (struct
   let n = 2
 end)
 
-module Rows = Ua0.Value.Naperian (struct
+module Rows = Value.Naperian (struct
   let n = 4
 end)
 
 module Cols = Rows
 module Slice = Rows
-module ColsRows = Ua0.Value.NaperianCompose (Cols) (Rows)
-module ColsRowsSlice = Ua0.Value.NaperianCompose (ColsRows) (Slice)
+module ColsRows = Value.NaperianCompose (Cols) (Rows)
+module ColsRowsSlice = Value.NaperianCompose (ColsRows) (Slice)
 
-let testable_value = Alcotest.testable Ua0.Value.pp Ua0.Value.equal
+let testable_value = Alcotest.testable Value.pp Value.equal
 
 module GiftSpec = struct
   let symbol = File.load "src/gift_spec.ua"
@@ -25,11 +29,8 @@ module GiftBitslice = struct
   let gift32 = symbol "gift32_bitslice"
 end
 
-let vbitslice value =
-  Ua0.Value.reindex_lr (module ColsRows) (module Slice) value
-
-let invbitslice value =
-  Ua0.Value.reindex_lr (module Slice) (module ColsRows) value
+let vbitslice value = Value.reindex_lr (module ColsRows) (module Slice) value
+let invbitslice value = Value.reindex_lr (module Slice) (module ColsRows) value
 
 let test_vector n =
   let ( / ) = Filename.concat in
@@ -42,22 +43,22 @@ let test_vector n =
 
 let values_of_keyfilename ~bitslice key =
   let key = Util.Io.file_to_bools key in
-  let keys = Util.Gift.uvconsts key in
+  let keys = Gift.uvconsts key in
   match bitslice with true -> List.map vbitslice keys | false -> keys
 
 let value_of_plainfilename ~bitslice filename =
   let state = Util.Io.file_to_bools filename in
-  let state = Util.Gift.spec_tabulate state in
+  let state = Gift.spec_tabulate state in
   match bitslice with true -> vbitslice state | false -> state
 
 let value_combine lhs rhs =
-  Ua0.Value.map2 (fun lhs rhs -> Ua0.Value.VArray [| lhs; rhs |]) lhs rhs
+  Value.map2 (fun lhs rhs -> Value.Array [| lhs; rhs |]) lhs rhs
 
 let test_vector_16 ~bitslice fn plaintext key cipher () =
   let keys = values_of_keyfilename ~bitslice key in
   let state = value_of_plainfilename ~bitslice plaintext in
-  let result = Util.Gift.spec_tabulate @@ Util.Io.file_to_bools cipher in
-  let value = fn [ state; Ua0.Value.VArray (Array.of_list keys) ] in
+  let result = Gift.spec_tabulate @@ Util.Io.file_to_bools cipher in
+  let value = fn [ state; Value.Array (Array.of_list keys) ] in
   let message, value =
     match bitslice with
     | true -> ("gift bitslice", invbitslice value)
@@ -68,18 +69,18 @@ let test_vector_16 ~bitslice fn plaintext key cipher () =
 let test_vector_32 ~bitslice fn p1 k1 c1 p2 k2 c2 () =
   let k1 = values_of_keyfilename ~bitslice k1 in
   let s1 = value_of_plainfilename ~bitslice p1 in
-  let r1 = Util.Gift.spec_tabulate @@ Util.Io.file_to_bools c1 in
+  let r1 = Gift.spec_tabulate @@ Util.Io.file_to_bools c1 in
 
   let k2 = values_of_keyfilename ~bitslice k2 in
   let s2 = value_of_plainfilename ~bitslice p2 in
-  let r2 = Util.Gift.spec_tabulate @@ Util.Io.file_to_bools c2 in
+  let r2 = Gift.spec_tabulate @@ Util.Io.file_to_bools c2 in
   let results = [ r1; r2 ] in
 
   let state = value_combine s1 s2 in
   let keys = List.map2 value_combine k1 k2 in
 
-  let value = fn [ state; Ua0.Value.VArray (Array.of_list keys) ] in
-  let v1, v2 = Ua0.Value.split2 value in
+  let value = fn [ state; Value.Array (Array.of_list keys) ] in
+  let v1, v2 = Value.split2 value in
   let values = [ v1; v2 ] in
 
   let message, values =

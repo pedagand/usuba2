@@ -8,6 +8,10 @@ let bitslice = ref false
 let typecheck = ref false
 let fn_name = ref None
 
+module Value = Ua0.Value.Make (Ua0.Value.Bool)
+module Gift = Util.Gift.Make (Ua0.Value.Bool)
+module Eval = Ua0.Eval.Make (Ua0.Value.Bool)
+
 let spec =
   Arg.align
     [
@@ -30,24 +34,21 @@ let usage =
 
 let () = Arg.parse spec pos_args usage
 
-module Double = Ua0.Value.Naperian (struct
+module Double = Value.Naperian (struct
   let n = 2
 end)
 
-module Rows = Ua0.Value.Naperian (struct
+module Rows = Value.Naperian (struct
   let n = 4
 end)
 
 module Cols = Rows
 module Slice = Rows
-module ColsRows = Ua0.Value.NaperianCompose (Cols) (Rows)
-module ColsRowsSlice = Ua0.Value.NaperianCompose (ColsRows) (Slice)
+module ColsRows = Value.NaperianCompose (Cols) (Rows)
+module ColsRowsSlice = Value.NaperianCompose (ColsRows) (Slice)
 
-let vbitslice value =
-  Ua0.Value.reindex_lr (module ColsRows) (module Slice) value
-
-let invbitslice value =
-  Ua0.Value.reindex_lr (module Slice) (module ColsRows) value
+let vbitslice value = Value.reindex_lr (module ColsRows) (module Slice) value
+let invbitslice value = Value.reindex_lr (module Slice) (module ColsRows) value
 
 let eval ~bitslice ~double ast symbole keys texts =
   let ( let* ) = Option.bind in
@@ -65,8 +66,8 @@ let eval ~bitslice ~double ast symbole keys texts =
   let kps =
     Seq.map
       (fun (k, t) ->
-        let state = Util.Gift.spec_tabulate t in
-        let keys = Util.Gift.uvconsts k in
+        let state = Gift.spec_tabulate t in
+        let keys = Gift.uvconsts k in
         (state, keys))
       kps
   in
@@ -85,29 +86,29 @@ let eval ~bitslice ~double ast symbole keys texts =
           kps
   in
 
-  let fns = Ua0.Eval.eval ast in
+  let fns = Eval.eval ast in
 
   let* args =
     match double with
     | false ->
         let* (state, keys), _ = Seq.uncons kps in
         let keys = Array.of_list keys in
-        Some [ state; VArray keys ]
+        Some [ state; Array keys ]
     | true ->
         let* (c1, ks1), kps = Seq.uncons kps in
         let* (c2, ks2), _ = Seq.uncons kps in
         let state =
-          Ua0.Value.map2 (fun lhs rhs -> Ua0.Value.VArray [| lhs; rhs |]) c1 c2
+          Value.map2 (fun lhs rhs -> Value.Array [| lhs; rhs |]) c1 c2
         in
         let ks =
           List.map2
-            (Ua0.Value.map2 (fun lhs rhs -> Ua0.Value.VArray [| lhs; rhs |]))
+            (Value.map2 (fun lhs rhs -> Value.Array [| lhs; rhs |]))
             ks1 ks2
         in
         let keys = Array.of_list ks in
-        Some [ state; VArray keys ]
+        Some [ state; Array keys ]
   in
-  let* fn = Ua0.Eval.Env.Functions.find_opt symbole fns in
+  let* fn = Eval.Env.Functions.find_opt symbole fns in
   Some (fn args)
 
 (*let print module' = Format.printf "%a\n" Ua0.Pp.pp_module module'*)
@@ -125,10 +126,10 @@ let ast symbole file =
   (ast, symbole)
 
 let pp_value value =
-  let () = Format.(fprintf err_formatter "%a\n" Ua0.Value.pp value) in
-  let slices = Util.Gift.to_slice value in
-  let chars = Util.Gift.transpose_inverse slices in
-  Util.Gift.pp Format.err_formatter chars
+  let () = Format.(fprintf err_formatter "%a\n" Value.pp value) in
+  let slices = Gift.to_slice value in
+  let chars = Gift.transpose_inverse slices in
+  Gift.pp Format.err_formatter chars
 
 let main () =
   match Queue.is_empty texts with
@@ -159,7 +160,7 @@ let main () =
               let values =
                 match !double with
                 | true ->
-                    let lhs, rhs = Ua0.Value.split2 value in
+                    let lhs, rhs = Value.split2 value in
                     [ lhs; rhs ]
                 | false -> [ value ]
               in

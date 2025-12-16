@@ -1,10 +1,10 @@
-module Value = Ua0.Value
+module Value = Ua0.Value.Make (Ua0.Value.Bool)
 
 (* Generators *)
 
-let value2 (a, b) = Value.VArray [| a; b |]
-let value4 (a, b, c, d) = Value.VArray [| a; b; c; d |]
-let qvalue_bool = QCheck.(bool |> map (fun v -> Value.VBool v))
+let value2 (a, b) = Value.Array [| a; b |]
+let value4 (a, b, c, d) = Value.Array [| a; b; c; d |]
+let qvalue_bool = QCheck.(map (fun v -> Value.Bool v) bool)
 
 let qvalue4 =
   QCheck.(tup4 qvalue_bool qvalue_bool qvalue_bool qvalue_bool |> map value4)

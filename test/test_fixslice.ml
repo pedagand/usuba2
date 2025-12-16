@@ -1,4 +1,4 @@
-module Value = Ua0.Value
+module Value = Ua0.Value.Make (Ua0.Value.Bool)
 
 (* Load & eval `gift_fixslice.ua` *)
 

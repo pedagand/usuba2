@@ -2,7 +2,10 @@ module Value = Ua0.Value
 module IEnv = Ua0.Pass.Idents.Env
 module EEnv = Ua0.Eval.Env
 
-let ast file =
+let filename = "src/test_reindex_fs.ua"
+
+let env, ast =
+  let file = filename in
   let ast =
     In_channel.with_open_bin file (fun ic ->
         let lexbuf = Lexing.from_channel ic in
@@ -11,8 +14,7 @@ let ast file =
   in
   Ua0.Pass.Idents.of_string_ast_env ast
 
-let filename = "test_reindex_fs.ua"
-let test_reindex_fs = Filename.concat "src" filename
+let prog = Ua0.Eval.eval ast
 let qvalue_bool = QCheck.(bool |> map (fun v -> Value.VBool v))
 let value4 (a, b, c, d) = Value.VArray [| a; b; c; d |]
 
@@ -134,32 +136,24 @@ let test_permbits_fixslice_mod_3_no_sigma ienv functions =
 
 let () =
   let open Alcotest in
-  let env, ast = ast test_reindex_fs in
-  let functions = Ua0.Eval.eval ast in
   run "fixslice - test_reindex_fs.ua"
     [
       ( "Transpose",
-        [
-          QCheck_alcotest.to_alcotest (test_compose_transposition env functions);
-        ] );
+        [ QCheck_alcotest.to_alcotest (test_compose_transposition env prog) ] );
       ( "Sigma",
         [
-          QCheck_alcotest.to_alcotest (test_sigma_compose env functions);
-          QCheck_alcotest.to_alcotest (test_sigma4_id env functions);
+          QCheck_alcotest.to_alcotest (test_sigma_compose env prog);
+          QCheck_alcotest.to_alcotest (test_sigma4_id env prog);
         ] );
       ( "Permbits",
         [
           QCheck_alcotest.to_alcotest
-            (test_permibits_fixslice_transformation env functions);
+            (test_permibits_fixslice_transformation env prog);
+          QCheck_alcotest.to_alcotest (test_permbits_fixslice_mod_0 env prog);
+          QCheck_alcotest.to_alcotest (test_permbits_fixslice_mod_1 env prog);
+          QCheck_alcotest.to_alcotest (test_permbits_fixslice_mod_2 env prog);
+          QCheck_alcotest.to_alcotest (test_permbits_fixslice_mod_3 env prog);
           QCheck_alcotest.to_alcotest
-            (test_permbits_fixslice_mod_0 env functions);
-          QCheck_alcotest.to_alcotest
-            (test_permbits_fixslice_mod_1 env functions);
-          QCheck_alcotest.to_alcotest
-            (test_permbits_fixslice_mod_2 env functions);
-          QCheck_alcotest.to_alcotest
-            (test_permbits_fixslice_mod_3 env functions);
-          QCheck_alcotest.to_alcotest
-            (test_permbits_fixslice_mod_3_no_sigma env functions);
+            (test_permbits_fixslice_mod_3_no_sigma env prog);
         ] );
     ]

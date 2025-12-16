@@ -134,9 +134,9 @@ let () =
   let open Alcotest in
   let env, prog = ast test_reindex2 in
   let gift16 = Ua0.Pass.Idents.Env.find_fn_ident "gift16" env in
-  let giftb_16 = Ua0.Pass.Idents.Env.find_fn_ident "giftb_16" env in
+  let giftb_16 = Ua0.Pass.Idents.Env.find_fn_ident "gift16_bitslice" env in
   let gift32 = Ua0.Pass.Idents.Env.find_fn_ident "gift32" env in
-  let giftb_32 = Ua0.Pass.Idents.Env.find_fn_ident "giftb_32" env in
+  let giftb_32 = Ua0.Pass.Idents.Env.find_fn_ident "gift32_bitslice" env in
 
   let fns = Ua0.Eval.eval prog in
   run "test-vector"

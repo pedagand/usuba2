@@ -73,13 +73,14 @@ let test_gift32 ienv functions =
   let transpose32 = symbol ienv functions "transpose32" in
   let transpose32_inv = symbol ienv functions "transpose32_inv" in
   let gift32 = symbol ienv functions "gift32" in
-  let giftb_32 = symbol ienv functions "giftb_32" in
-  QCheck.Test.make ~name:"giftb32 = transpose32 . gift32 . transpose32_inv"
+  let gift32_bitslice = symbol ienv functions "gift32_bitslice" in
+  QCheck.Test.make
+    ~name:"gift32_bitslice = transpose32 . gift32 . transpose32_inv"
     (QCheck.pair qvalue_4x4x4x2
        (QCheck.array_of_size (QCheck.Gen.return 28) qvalue_4x4x4x2))
   @@ fun (state, keys) ->
   Value.equal
-    (giftb_32 [ state; Value.VArray keys ])
+    (gift32_bitslice [ state; Value.VArray keys ])
     (let state = transpose32 [ state ] in
      let keys = keys |> Array.map (fun x -> transpose32 [ x ]) in
      let s = gift32 [ state; Value.VArray keys ] in

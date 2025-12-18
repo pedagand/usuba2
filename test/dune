@@ -1,6 +1,7 @@
 (tests
  (names
   test_pass
+  test_costs
   test_util
   test_bitslice
   test_fixslice

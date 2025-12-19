@@ -27,16 +27,6 @@ fn subcells_ ['a]
     let s2 = fxor.(s2, fand.(s0, s1)) in
     Slice [s3, s1, s2, s0]
 
-fn subcells ['a]
-            <fnot : fn('a) -> 'a,
-             fand : fn('a, 'a) -> 'a,
-             for : fn('a, 'a) -> 'a,
-             fxor : fn('a, 'a) -> 'a>
-            (state : Col Row Slice 'a)
-            Col Row Slice 'a =
-    let+ slice : Col Row _ = state in
-    subcells_.['a]<fnot, fand, for, fxor>(slice)
-
 // Spec: subcells_bitslice = reindex[ | ] . subcells . reindex [ | ]
 // Alt spec: subcells . reindex [ | ] = reindex[ | ] . subcells_bitslice
 fn subcells_bitslice0 ['a]
@@ -168,20 +158,6 @@ fn rev_rotate_3 ['a] (cols : Col Row 'a) Col Row 'a =
     let rows = transpose.['a](cols) in
     let rows = circ(rows)[3] in
     reindex[Row | Col](rows)
-
-fn permbits ['a] (state : Col Row Slice 'a) Col Row Slice 'a =
-    let permbits : Slice fn ['a](Col Row 'a) -> Col Row 'a = Slice[
-        & rev_rotate_1,
-        & rev_rotate_2,
-        & rev_rotate_3,
-        & rev_rotate_0
-    ] in
-    let state = reindex[Col Row | Slice](state) in
-    let res =
-        (let+ f : Slice _ = permbits
-         and slice = state in
-         f.['a](slice) : Slice Col Row 'a) in
-    reindex[Slice | Col Row](res)
 
 // Spec: permbits_bitslice = reindex[ | ] . permbits . reindex [ | ]
 // Alt spec: permbits . reindex[ | ] = reindex [ | ] . permbits_bitslice
@@ -393,14 +369,6 @@ fn permbits_bitslice ['a](state : Slice Col Row 'a) Slice Col Row 'a =
 // ****************************************************************
 // Add round key
 
-fn add_round_key ['a]
-                 <fxor: fn('a, 'a) -> 'a>
-                 (state : Col Row Slice 'a,
-                  key : Col Row Slice 'a)
-                  Col Row Slice 'a =
-    let+ a_state : Col Row Slice _ = state and a_key = key in
-    fxor.(a_state, a_key)
-
 // Spec: add_round_key_bitslice(_,_) = reindex[ | ] . add_round_key(reindex [ | ](_), reindex [ | ](_))
 // Alt spec: add_round_key(reindex [ | ](_), reindex [ | ](_)) = reindex [ | ] . add_round_key_bitslice(_,_)
 fn add_round_key_bitslice0 ['a]
@@ -459,109 +427,97 @@ fn add_round_key_bitslice ['a]
 // ****************************************************************
 // Round
 
-fn round ['a]
-         <fnot : fn('a) -> 'a,
-          fand : fn('a, 'a) -> 'a,
-          for : fn('a, 'a) -> 'a,
-          fxor : fn('a, 'a) -> 'a>
-         (state : Col Row Slice 'a,
-          key : Col Row Slice 'a)
-          Col Row Slice 'a =
-        let state = subcells.['a]<fnot, fand, for, fxor>(state) in
-        let state = permbits.['a](state) in
-        add_round_key.['a]<fxor>(state, key)
-
 // Spec: round_bitslice = reindex[ | ] . round . reindex [ | ]
-fn round_bitslice0 ['a]
-                  <fnot : fn('a) -> 'a,
-                   fand : fn('a, 'a) -> 'a,
-                   for : fn('a, 'a) -> 'a,
-                   fxor : fn('a, 'a) -> 'a>
-                  (state : Slice Col Row 'a,
-                   key : Slice Col Row 'a)
-                   Slice Col Row 'a =
-        let state = reindex[Slice | Col Row](state) in
-        let key = reindex[Slice | Col Row](key) in
-        let state = subcells.['a]<fnot, fand, for, fxor>(state) in
-        let state = permbits.['a](state) in
-        let res = add_round_key.['a]<fxor>(state, key) in
-        reindex[Col Row | Slice](res)
+// fn round_bitslice0 ['a]
+//                   <fnot : fn('a) -> 'a,
+//                    fand : fn('a, 'a) -> 'a,
+//                    for : fn('a, 'a) -> 'a,
+//                    fxor : fn('a, 'a) -> 'a>
+//                   (state : Slice Col Row 'a,
+//                    key : Slice Col Row 'a)
+//                    Slice Col Row 'a =
+//         let state = reindex[Slice | Col Row](state) in
+//         let key = reindex[Slice | Col Row](key) in
+//         let state = subcells.['a]<fnot, fand, for, fxor>(state) in
+//         let state = permbits.['a](state) in
+//         let res = add_round_key.['a]<fxor>(state, key) in
+//         reindex[Col Row | Slice](res)
 
 // By (Let-Beta) on `let state = ... in ...`
-fn round_bitslice1 ['a]
-                  <fnot : fn('a) -> 'a,
-                   fand : fn('a, 'a) -> 'a,
-                   for : fn('a, 'a) -> 'a,
-                   fxor : fn('a, 'a) -> 'a>
-                  (state : Slice Col Row 'a,
-                   key : Slice Col Row 'a)
-                   Slice Col Row 'a =
-        let key = reindex[Slice | Col Row](key) in
-        let state = subcells.['a]<fnot, fand, for, fxor>(reindex[Slice | Col Row](state)) in
-        let state = permbits.['a](state) in
-        let res = add_round_key.['a]<fxor>(state, key) in
-        reindex[Col Row | Slice](res)
+// fn round_bitslice1 ['a]
+//                   <fnot : fn('a) -> 'a,
+//                    fand : fn('a, 'a) -> 'a,
+//                    for : fn('a, 'a) -> 'a,
+//                    fxor : fn('a, 'a) -> 'a>
+//                   (state : Slice Col Row 'a,
+//                    key : Slice Col Row 'a)
+//                    Slice Col Row 'a =
+//         let key = reindex[Slice | Col Row](key) in
+//         let state = subcells.['a]<fnot, fand, for, fxor>(reindex[Slice | Col Row](state)) in
+//         let state = permbits.['a](state) in
+//         let res = add_round_key.['a]<fxor>(state, key) in
+//         reindex[Col Row | Slice](res)
 
 // By Alt Spec of `subcells`
-fn round_bitslice2 ['a]
-                  <fnot : fn('a) -> 'a,
-                   fand : fn('a, 'a) -> 'a,
-                   for : fn('a, 'a) -> 'a,
-                   fxor : fn('a, 'a) -> 'a>
-                  (state : Slice Col Row 'a,
-                   key : Slice Col Row 'a)
-                   Slice Col Row 'a =
-        let key = reindex[Slice | Col Row](key) in
-        let state = subcells_bitslice.['a]<fnot, fand, for, fxor>(state) in
-        let state = reindex[Slice | Col Row](state) in
-        let state = permbits.['a](state) in
-        let res = add_round_key.['a]<fxor>(state, key) in
-        reindex[Col Row | Slice](res)
+// fn round_bitslice2 ['a]
+//                   <fnot : fn('a) -> 'a,
+//                    fand : fn('a, 'a) -> 'a,
+//                    for : fn('a, 'a) -> 'a,
+//                    fxor : fn('a, 'a) -> 'a>
+//                   (state : Slice Col Row 'a,
+//                    key : Slice Col Row 'a)
+//                    Slice Col Row 'a =
+//         let key = reindex[Slice | Col Row](key) in
+//         let state = subcells_bitslice.['a]<fnot, fand, for, fxor>(state) in
+//         let state = reindex[Slice | Col Row](state) in
+//         let state = permbits.['a](state) in
+//         let res = add_round_key.['a]<fxor>(state, key) in
+//         reindex[Col Row | Slice](res)
 
 // By (Let-Beta) on `let state = .. in ..`
-fn round_bitslice3 ['a]
-                  <fnot : fn('a) -> 'a,
-                   fand : fn('a, 'a) -> 'a,
-                   for : fn('a, 'a) -> 'a,
-                   fxor : fn('a, 'a) -> 'a>
-                  (state : Slice Col Row 'a,
-                   key : Slice Col Row 'a)
-                   Slice Col Row 'a =
-        let key = reindex[Slice | Col Row](key) in
-        let state = subcells_bitslice.['a]<fnot, fand, for, fxor>(state) in
-        let state = permbits.['a](reindex[Slice | Col Row](state)) in
-        let res = add_round_key.['a]<fxor>(state, key) in
-        reindex[Col Row | Slice](res)
+// fn round_bitslice3 ['a]
+//                   <fnot : fn('a) -> 'a,
+//                    fand : fn('a, 'a) -> 'a,
+//                    for : fn('a, 'a) -> 'a,
+//                    fxor : fn('a, 'a) -> 'a>
+//                   (state : Slice Col Row 'a,
+//                    key : Slice Col Row 'a)
+//                    Slice Col Row 'a =
+//         let key = reindex[Slice | Col Row](key) in
+//         let state = subcells_bitslice.['a]<fnot, fand, for, fxor>(state) in
+//         let state = permbits.['a](reindex[Slice | Col Row](state)) in
+//         let res = add_round_key.['a]<fxor>(state, key) in
+//         reindex[Col Row | Slice](res)
 
 // By Alt Spec of `permbits`
-fn round_bitslice4 ['a]
-                  <fnot : fn('a) -> 'a,
-                   fand : fn('a, 'a) -> 'a,
-                   for : fn('a, 'a) -> 'a,
-                   fxor : fn('a, 'a) -> 'a>
-                  (state : Slice Col Row 'a,
-                   key : Slice Col Row 'a)
-                   Slice Col Row 'a =
-        let key = reindex[Slice | Col Row](key) in
-        let state = subcells_bitslice.['a]<fnot, fand, for, fxor>(state) in
-        let state = permbits_bitslice.['a](state) in
-        let state = reindex[Slice | Col Row](state) in
-        let res = add_round_key.['a]<fxor>(state, key) in
-        reindex[Col Row | Slice](res)
+// fn round_bitslice4 ['a]
+//                   <fnot : fn('a) -> 'a,
+//                    fand : fn('a, 'a) -> 'a,
+//                    for : fn('a, 'a) -> 'a,
+//                    fxor : fn('a, 'a) -> 'a>
+//                   (state : Slice Col Row 'a,
+//                    key : Slice Col Row 'a)
+//                    Slice Col Row 'a =
+//         let key = reindex[Slice | Col Row](key) in
+//         let state = subcells_bitslice.['a]<fnot, fand, for, fxor>(state) in
+//         let state = permbits_bitslice.['a](state) in
+//         let state = reindex[Slice | Col Row](state) in
+//         let res = add_round_key.['a]<fxor>(state, key) in
+//         reindex[Col Row | Slice](res)
 
 // By (Let-Beta) on `let key = ... in ...` and `let state = ... in ...`
-fn round_bitslice5 ['a]
-                  <fnot : fn('a) -> 'a,
-                   fand : fn('a, 'a) -> 'a,
-                   for : fn('a, 'a) -> 'a,
-                   fxor : fn('a, 'a) -> 'a>
-                  (state : Slice Col Row 'a,
-                   key : Slice Col Row 'a)
-                   Slice Col Row 'a =
-        let state = subcells_bitslice.['a]<fnot, fand, for, fxor>(state) in
-        let state = permbits_bitslice.['a](state) in
-        let res = add_round_key.['a]<fxor>(reindex[Slice | Col Row](state), reindex[Slice | Col Row](key)) in
-        reindex[Col Row | Slice](res)
+// fn round_bitslice5 ['a]
+//                   <fnot : fn('a) -> 'a,
+//                    fand : fn('a, 'a) -> 'a,
+//                    for : fn('a, 'a) -> 'a,
+//                    fxor : fn('a, 'a) -> 'a>
+//                   (state : Slice Col Row 'a,
+//                    key : Slice Col Row 'a)
+//                    Slice Col Row 'a =
+//         let state = subcells_bitslice.['a]<fnot, fand, for, fxor>(state) in
+//         let state = permbits_bitslice.['a](state) in
+//         let res = add_round_key.['a]<fxor>(reindex[Slice | Col Row](state), reindex[Slice | Col Row](key)) in
+//         reindex[Col Row | Slice](res)
 
 // By Alt Spec of `add_round_key`
 fn round_bitslice6 ['a]
@@ -596,29 +552,19 @@ fn round_bitslice ['a]
 // ****************************************************************
 // Primitive
 
-fn gift ['a]
-        <fnot : fn('a) -> 'a,
-         fand : fn('a, 'a) -> 'a,
-         for : fn('a, 'a) -> 'a,
-         fxor : fn('a, 'a) -> 'a>
-        (state : Col Row Slice 'a,
-         keys : Keys Col Row Slice 'a)
-         Col Row Slice 'a =
-    fold[28](round.['a]<fnot, fand, for, fxor>)(state, keys)
-
 // Spec of `gift_bitslice` gift_bitslice = reindex[ | ] . gift . reindex [ | ]
-fn gift_bitslice0 ['a]
-                 <fnot : fn('a) -> 'a,
-                  fand : fn('a, 'a) -> 'a,
-                  for : fn('a, 'a) -> 'a,
-                  fxor : fn('a, 'a) -> 'a>
-                 (state : Slice Col Row 'a,
-                  keys : Keys Slice Col Row 'a)
-                  Slice Col Row 'a =
-    let state = reindex[Slice | Col Row](state) in
-    let keys = (let+ keys : Keys _ = keys in reindex[Slice | Col Row](keys) : Keys Col Row Slice 'a) in
-    let state = fold[28](round.['a]<fnot, fand, for, fxor>)(state, keys) in
-    reindex[Col Row | Slice](state)
+// fn gift_bitslice0 ['a]
+//                  <fnot : fn('a) -> 'a,
+//                   fand : fn('a, 'a) -> 'a,
+//                   for : fn('a, 'a) -> 'a,
+//                   fxor : fn('a, 'a) -> 'a>
+//                  (state : Slice Col Row 'a,
+//                   keys : Keys Slice Col Row 'a)
+//                   Slice Col Row 'a =
+//     let state = reindex[Slice | Col Row](state) in
+//     let keys = (let+ keys : Keys _ = keys in reindex[Slice | Col Row](keys) : Keys Col Row Slice 'a) in
+//     let state = fold[28](round.['a]<fnot, fand, for, fxor>)(state, keys) in
+//     reindex[Col Row | Slice](state)
 
 // (Fold-reindex)
 // XXX: invalid syntax
@@ -668,21 +614,10 @@ fn double_or(lhs: Double bool, rhs: Double bool) Double bool =
 fn double_xor(lhs: Double bool, rhs: Double bool) Double bool =
     let+ lhs : Double _ = lhs and rhs = rhs in lhs ^ rhs
 
-fn subcells32 (
-    state : Col Row Slice Double bool
-) Col Row Slice Double bool =
-  subcells.[Double bool]<double_not, double_and, double_or, double_xor>(state)
-
 fn subcells32_bitslice (
     state : Slice Col Row Double bool
 ) Slice Col Row Double bool =
   subcells_bitslice.[Double bool]<double_not, double_and, double_or, double_xor>(state)
-
-fn round32 (
-    state : Col Row Slice Double bool,
-    key : Col Row Slice Double bool
-) Col Row Slice Double bool =
-  round.[Double bool]<double_not, double_and, double_or, double_xor>(state, key)
 
 fn round32_bitslice(
     state : Slice Col Row Double bool,
@@ -690,25 +625,11 @@ fn round32_bitslice(
 ) Slice Col Row Double bool =
    round_bitslice.[Double bool]<double_not, double_and, double_or, double_xor>(state, key)
 
-
-fn gift16(
-    state : Col Row Slice bool,
-    keys : Keys Col Row Slice bool
-) Col Row Slice bool =
-    gift.[bool]<fnot, fand, for, fxor>(state, keys)
-
 fn gift16_bitslice(
     state : Slice Col Row bool,
     keys : Keys Slice Col Row bool
 ) Slice Col Row bool =
     gift_bitslice.[bool]<&fnot, &fand, &for, &fxor>(state, keys)
-
-fn gift32(
-    state : Col Row Slice Double bool,
-    keys : Keys Col Row Slice Double bool
-) Col Row Slice Double bool =
-    gift.[Double bool]
-        <double_not, double_and, double_or, double_xor>(state, keys)
 
 fn gift32_bitslice(
     state : Slice Col Row Double bool,

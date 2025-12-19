@@ -2,6 +2,7 @@
  (names
   test_pass
   test_util
+  test_bitslice
   test_fixslice
   test_typecheck
   test_typecheck_file

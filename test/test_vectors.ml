@@ -12,17 +12,18 @@ module ColsRows = Ua0.Value.NaperianCompose (Cols) (Rows)
 module ColsRowsSlice = Ua0.Value.NaperianCompose (ColsRows) (Slice)
 
 let testable_value = Alcotest.testable Ua0.Value.pp Ua0.Value.equal
-let filename = "test_reindex2.ua"
-let test_reindex2 = Filename.concat "src" filename
 
-let ast file =
-  let ast =
-    In_channel.with_open_bin file (fun ic ->
-        let lexbuf = Lexing.from_channel ic in
-        let () = Lexing.set_filename lexbuf file in
-        Ua0.Parser.module_ Ua0.Lexer.token lexbuf)
-  in
-  Ua0.Pass.Idents.of_string_ast_env ast
+module GiftSpec = struct
+  let symbol = File.load "src/gift_spec.ua"
+  let gift16 = symbol "gift16"
+  let gift32 = symbol "gift32"
+end
+
+module GiftBitslice = struct
+  let symbol = File.load "src/gift_bitslice.ua"
+  let gift16 = symbol "gift16_bitslice"
+  let gift32 = symbol "gift32_bitslice"
+end
 
 let vbitslice value =
   Ua0.Value.reindex_lr (module ColsRows) (module Slice) value
@@ -88,8 +89,7 @@ let test_vector_32 ~bitslice fn p1 k1 c1 p2 k2 c2 () =
   in
   Alcotest.(check @@ list testable_value) message results values
 
-let tests_gift16 ~bitslice symbole env =
-  let fn = Ua0.Eval.Env.Functions.find symbole env in
+let tests_gift16 ~bitslice fn =
   let p1, k1, c1 = test_vector `T1 in
   let p2, k2, c2 = test_vector `T2 in
   let p3, k3, c3 = test_vector `T3 in
@@ -100,8 +100,7 @@ let tests_gift16 ~bitslice symbole env =
       test_case "test-vector 3" `Quick (test_vector_16 ~bitslice fn p3 k3 c3);
     ]
 
-let tests_gift32 ~bitslice symbole env =
-  let fn = Ua0.Eval.Env.Functions.find symbole env in
+let tests_gift32 ~bitslice fn =
   let p1, k1, c1 = test_vector `T1 in
   let p2, k2, c2 = test_vector `T2 in
   let p3, k3, c3 = test_vector `T3 in
@@ -132,17 +131,10 @@ let tests_gift32 ~bitslice symbole env =
 
 let () =
   let open Alcotest in
-  let env, prog = ast test_reindex2 in
-  let gift16 = Ua0.Pass.Idents.Env.find_fn_ident "gift16" env in
-  let giftb_16 = Ua0.Pass.Idents.Env.find_fn_ident "giftb_16" env in
-  let gift32 = Ua0.Pass.Idents.Env.find_fn_ident "gift32" env in
-  let giftb_32 = Ua0.Pass.Idents.Env.find_fn_ident "giftb_32" env in
-
-  let fns = Ua0.Eval.eval prog in
   run "test-vector"
     [
-      ("gift16 spec", tests_gift16 ~bitslice:false gift16 fns);
-      ("gift16 bitslice", tests_gift16 ~bitslice:true giftb_16 fns);
-      ("gift32 spec", tests_gift32 ~bitslice:false gift32 fns);
-      ("gift32 bitslice", tests_gift32 ~bitslice:true giftb_32 fns);
+      ("gift16 spec", tests_gift16 ~bitslice:false GiftSpec.gift16);
+      ("gift16 bitslice", tests_gift16 ~bitslice:true GiftBitslice.gift16);
+      ("gift32 spec", tests_gift32 ~bitslice:false GiftSpec.gift32);
+      ("gift32 bitslice", tests_gift32 ~bitslice:true GiftBitslice.gift32);
     ]

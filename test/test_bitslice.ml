@@ -58,7 +58,7 @@ let test_gift32 =
 
 let test_round32 =
   QCheck.Test.make
-    ~name:"round32_bitslice = transpose32 . rounde32 . transpose32_inv"
+    ~name:"round32_bitslice = transpose32 . round32 . transpose32_inv"
     (QCheck.pair qvalue_4x4x4x2 qvalue_4x4x4x2)
   @@ fun (state, key) ->
   Value.equal

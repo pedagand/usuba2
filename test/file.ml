@@ -20,7 +20,7 @@ let load filename =
   symbol
 
 let load_cost filename =
-  let module Eval = Ua0.Cost.Make (Ua0.Value.Bool) in
+  let module Eval = Ua0.Cost.Make (Ua0.Value.Symbolical) in
   let module Value = Eval.Value in
   let module IEnv = Ua0.Pass.Idents.Env in
   let env, ast =

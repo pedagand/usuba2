@@ -14,7 +14,7 @@ depends: [
   "ocaml"
   "menhir"
   "alcotest" {with-test}
-  "qcheck" {with-test}
+  "qcheck" {< "0.90" & with-test}
   "qcheck-alcotest" {with-test}
   "fmt" {with-test}
   "odoc" {with-doc}

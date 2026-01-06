@@ -26,7 +26,7 @@
  (depends ocaml   
   menhir
   (alcotest :with-test)
-  (qcheck :with-test)
+  (qcheck (and (< 0.90) :with-test) )
   (qcheck-alcotest :with-test)
   (fmt :with-test)
   )

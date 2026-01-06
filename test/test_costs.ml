@@ -113,6 +113,9 @@ module GiftSpec = struct
   let v_fxor = vsymbol "fxor"
   let subcells = symbol "subcells"
   let add_round_key = symbol "add_round_key"
+  let permbits = symbol "permbits"
+  let round = symbol "round"
+  let gift = symbol "gift"
 
   (* Test *)
 
@@ -121,17 +124,38 @@ module GiftSpec = struct
     let c, _ = subcells [ v_fnot; v_fand; v_for'; v_fxor; arg ] in
     Alcotest.(check int) "" (11 * 16) c
 
+  let test_permbits () =
+    let arg = value4x4x4 () in
+    let c, _ = permbits [ arg ] in
+    Alcotest.(check int) "" 0 c
+
   let test_add_round_key () =
     let state = value4x4x4 () in
     let key = value4x4x4 () in
     let c, _ = add_round_key [ v_fxor; state; key ] in
     Alcotest.(check int) "" 64 c
 
+  let test_round () =
+    let state = value4x4x4 () in
+    let key = value4x4x4 () in
+    let c, _ = round [ v_fnot; v_fand; v_for'; v_fxor; state; key ] in
+    Alcotest.(check int) "" ((11 * 16) + 64) c
+
+  let test_gift () =
+    let state = value4x4x4 () in
+    let keys = value_4x4x4x28 () in
+    let c, _ = gift [ v_fnot; v_fand; v_for'; v_fxor; state; keys ] in
+    let expected = 28 * ((11 * 16) + 64) in
+    Alcotest.(check int) "" expected c
+
   let tests =
     Alcotest.
       [
         test_case "subcells" `Quick test_subcells;
+        test_case "test_permbits" `Quick test_permbits;
         test_case "add_round_key" `Quick test_add_round_key;
+        test_case "round" `Quick test_round;
+        test_case "gift" `Quick test_gift;
       ]
 end
 

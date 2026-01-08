@@ -22,18 +22,18 @@ module Bool : Boolean with type t = bool = struct
   let pp = Format.pp_print_bool
 end
 
-module Symbolical = struct
-  type t = Bool of bool | Var of Ident.TermIdent.t | Op of t Operator.t
+module Symbolic = struct
+  type t = Const of bool | Var of Ident.TermIdent.t | Op of t Operator.t
 
-  let true' = Bool true
-  let false' = Bool false
+  let true' = Const true
+  let false' = Const false
   let lnot e = Op (Operator.Not e)
   let ( land ) lhs rhs = Op (Operator.And (lhs, rhs))
   let ( lor ) lhs rhs = Op (Operator.Or (lhs, rhs))
   let ( lxor ) lhs rhs = Op (Operator.Xor (lhs, rhs))
 
   let rec pp format = function
-    | Bool b -> Format.pp_print_bool format b
+    | Const b -> Format.pp_print_bool format b
     | Var v -> Ident.TermIdent.pp format v
     | Op o -> Operator.pp pp format o
 end

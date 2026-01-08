@@ -1,4 +1,4 @@
-module Eval = Ua0.Cost.Make (Ua0.Value.Symbolical)
+module Eval = Ua0.Cost.Make (Ua0.Value.Symbolic)
 module Value = Eval.Value
 module TermIdent = Ua0.Ident.TermIdent
 

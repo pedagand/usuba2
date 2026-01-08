@@ -5,7 +5,7 @@ module TermIdent = Ua0.Ident.TermIdent
 let fresh_n n =
   let a =
     Array.init n (fun i ->
-        let i = TermIdent.fresh (string_of_int i) in
+        let i = TermIdent.fresh (Printf.sprintf "?X{%d}" i) in
         Value.Bool (Var i))
   in
   Value.Array a

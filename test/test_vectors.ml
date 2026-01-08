@@ -1,6 +1,6 @@
-module Value = Ua0.Value.Make (Ua0.Value.Bool)
 module Gift = Util.Gift.Make (Ua0.Value.Bool)
-module Eval = Ua0.Eval.Make (Ua0.Value.Bool)
+module Eval = Ua0.Eval
+module Value = Eval.Value
 
 module Double = Value.Naperian (struct
   let n = 2

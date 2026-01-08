@@ -1,4 +1,4 @@
-module Eval = Ua0.Eval.Make (Ua0.Value.Bool)
+module Eval = Ua0.Eval
 module Value = Eval.Value
 module IEnv = Ua0.Pass.Idents.Env
 open Gen

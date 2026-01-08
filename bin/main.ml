@@ -10,7 +10,7 @@ let fn_name = ref None
 
 module Value = Ua0.Value.Make (Ua0.Value.Bool)
 module Gift = Util.Gift.Make (Ua0.Value.Bool)
-module Eval = Ua0.Eval.Make (Ua0.Value.Bool)
+module Eval = Ua0.Eval
 
 let spec =
   Arg.align
